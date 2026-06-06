@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="070a6198-d545-4a20-9655-e916ccd567c7" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/.claude/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/.vscode/extensions.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/.vscode/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/AGENTS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/CLAUDE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/_layout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/explore.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/game/classic.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/game/multiple-choice.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/game/result-lose.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/game/result-win.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/game/summary.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/game/timed.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/game/true-false.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/(tabs)/index.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/_layout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/modal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/pruebaHome.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/settings.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/app/stats.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/android-icon-background.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/android-icon-foreground.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/android-icon-monochrome.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/favicon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/icon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/partial-react-logo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/react-logo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/react-logo@2x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/react-logo@3x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/assets/images/splash-icon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/AnimatedTitle.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/external-link.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/AnswerPad.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/ConfigCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/CounterSelector.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/GameLayout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/GameStatusBar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/LevelResultScreen.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/OperationCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/SummaryCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/game/TimerBar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/haptic-tab.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/hello-wave.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/parallax-scroll-view.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/themed-text.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/themed-view.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/ui/collapsible.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/ui/icon-symbol.ios.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/components/ui/icon-symbol.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/constants/theme.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/eslint.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/use-color-scheme.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/use-color-scheme.web.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/use-theme-color.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/useClassicGame.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/useCompareGame.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/useGame.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/useMultipleChoiceGame.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/useNumericInput.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/hooks/useTrueFalseGame.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/classicProgress.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/math/compareGenerator.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/math/distractors.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/math/generator.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/math/multipleChoiceGenerator.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/math/random.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/math/trueFalseGenerator.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/math/types.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/scoring/score.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/lib/storage/async-storage.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/scripts/reset-project.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/tsconfig.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/types/game.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/types/score.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/types/settings.ts" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Interface" />
+        <option value="Enum" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="ProjectErrors" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="3EMg884wHpdrgcZILaxCstcZmZH" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Docker.subastas-api/Docker-compose.yml: Compose Deployment.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;708&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;707&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Spring Boot.SubastasApiApplication.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/santu/Desktop/subastas-api&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager" selected="Docker.subastas-api/Docker-compose.yml: Compose Deployment">
+    <configuration name="SubastasApiApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="subastas-api" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.subastas.subastas_api.SubastasApiApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="docker-deploy" factoryName="docker-compose.yml" temporary="true">
+      <deployment type="docker-compose.yml">
+        <settings />
+      </deployment>
+      <method v="2" />
+    </configuration>
+    <configuration name="subastas-api/Docker-compose.yml: Compose Deployment" type="docker-deploy" factoryName="docker-compose.yml" temporary="true" server-name="Docker">
+      <deployment type="docker-compose.yml">
+        <settings>
+          <option name="envFilePath" value="" />
+          <option name="sourceFilePath" value="subastas-api/Docker-compose.yml" />
+        </settings>
+      </deployment>
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Docker.subastas-api/Docker-compose.yml: Compose Deployment" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-fbdcb00ec9e3-intellij.indexing.shared.core-IU-251.23774.435" />
+        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-IU-251.23774.435" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="070a6198-d545-4a20-9655-e916ccd567c7" name="Changes" comment="" />
+      <created>1779993690299</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1779993690299</updated>
+      <workItem from="1779993692006" duration="4284000" />
+      <workItem from="1780067562021" duration="15493000" />
+      <workItem from="1780174565664" duration="13639000" />
+      <workItem from="1780502079299" duration="20368000" />
+      <workItem from="1780576809406" duration="257000" />
+      <workItem from="1780679088221" duration="6304000" />
+      <workItem from="1780721877301" duration="545000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/dev" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
