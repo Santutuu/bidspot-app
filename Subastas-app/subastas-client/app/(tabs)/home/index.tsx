@@ -5,7 +5,7 @@ import AuctionCard from "@/src/components/home/AuctionCard";
 import { router } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-const categories = ["Arte", "Joyas", "Autos", "Muebles"];
+const categories = ["Artes", "Joyas", "Autos", "Muebles"];
 
 const auctions = [
   {
