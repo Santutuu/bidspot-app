@@ -7,6 +7,7 @@ import com.subastas.subastas_api.DTO.auth.UsuarioActualDTO;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,7 +29,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDTO> register(
-            @RequestBody RegisterRequestDTO request
+            @Valid @RequestBody RegisterRequestDTO request
     ) {
         AuthResponseDTO response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -36,7 +37,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(
-            @RequestBody LoginRequestDTO request
+            @Valid @RequestBody LoginRequestDTO request
     ) {
         AuthResponseDTO response = authService.login(request);
         return ResponseEntity.ok(response);
@@ -45,15 +46,10 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UsuarioActualDTO> me(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Usuario no autenticado"
-            );
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado");
         }
 
-        String mail = authentication.getName();
-
-        Usuario usuario = usuarioRepository.findByMail(mail)
+        Usuario usuario = usuarioRepository.findByMail(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
                         "Usuario no autenticado"

@@ -3,17 +3,19 @@ package com.subastas.subastas_api.service;
 import com.subastas.subastas_api.DTO.auth.AuthResponseDTO;
 import com.subastas.subastas_api.DTO.auth.LoginRequestDTO;
 import com.subastas.subastas_api.DTO.auth.RegisterRequestDTO;
+import com.subastas.subastas_api.exception.EmailAlreadyExistsException;
+import com.subastas.subastas_api.exception.InvalidCredentialsException;
+import com.subastas.subastas_api.exception.UserBlockedException;
 import com.subastas.subastas_api.model.EstadoUsuario;
 import com.subastas.subastas_api.model.Rol;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.security.JwtService;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
@@ -34,19 +36,16 @@ public class AuthService {
     }
 
     public AuthResponseDTO register(RegisterRequestDTO request) {
-        validarRegistro(request);
+        String mailNormalizado = request.getMail().trim().toLowerCase();
 
-        if (usuarioRepository.existsByMail(request.getMail())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Ya existe un usuario registrado con ese mail"
-            );
+        if (usuarioRepository.existsByMail(mailNormalizado)) {
+            throw new EmailAlreadyExistsException(mailNormalizado);
         }
 
         Usuario usuario = new Usuario(
-                request.getNombre(),
-                request.getApellido(),
-                request.getMail(),
+                request.getNombre().trim(),
+                request.getApellido().trim(),
+                mailNormalizado,
                 passwordEncoder.encode(request.getPassword()),
                 Rol.USER,
                 EstadoUsuario.PENDIENTE_VALIDACION,
@@ -59,34 +58,36 @@ public class AuthService {
 
         String token = jwtService.generateToken(usuarioGuardado.getMail());
 
-        return new AuthResponseDTO(
-                token,
-                usuarioGuardado.getIdUsuario(),
-                usuarioGuardado.getNombre(),
-                usuarioGuardado.getMail(),
-                usuarioGuardado.getRol().name(),
-                usuarioGuardado.getEstado().name()
-        );
+        return toAuthResponse(usuarioGuardado, token);
     }
 
     public AuthResponseDTO login(LoginRequestDTO request) {
-        validarLogin(request);
+        String mailNormalizado = request.getMail().trim().toLowerCase();
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getMail(),
-                        request.getPassword()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            mailNormalizado,
+                            request.getPassword()
+                    )
+            );
+        } catch (BadCredentialsException ex) {
+            throw new InvalidCredentialsException();
+        }
 
-        Usuario usuario = usuarioRepository.findByMail(request.getMail())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Credenciales inválidas"
-                ));
+        Usuario usuario = usuarioRepository.findByMail(mailNormalizado)
+                .orElseThrow(InvalidCredentialsException::new);
+
+        if (usuario.getEstado() == EstadoUsuario.BLOQUEADO) {
+            throw new UserBlockedException();
+        }
 
         String token = jwtService.generateToken(usuario.getMail());
 
+        return toAuthResponse(usuario, token);
+    }
+
+    private AuthResponseDTO toAuthResponse(Usuario usuario, String token) {
         return new AuthResponseDTO(
                 token,
                 usuario.getIdUsuario(),
@@ -95,48 +96,5 @@ public class AuthService {
                 usuario.getRol().name(),
                 usuario.getEstado().name()
         );
-    }
-
-    private void validarRegistro(RegisterRequestDTO request) {
-        if (request.getNombre() == null || request.getNombre().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre es obligatorio");
-        }
-
-        if (request.getApellido() == null || request.getApellido().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El apellido es obligatorio");
-        }
-
-        if (request.getMail() == null || request.getMail().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El mail es obligatorio");
-        }
-
-        if (request.getPassword() == null || request.getPassword().length() < 6) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "La contraseña debe tener al menos 6 caracteres"
-            );
-        }
-
-        if (request.getFrenteDNIUrl() == null || request.getFrenteDNIUrl().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La foto del frente del DNI es obligatoria");
-        }
-
-        if (request.getDorsoDNIUrl() == null || request.getDorsoDNIUrl().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La foto del dorso del DNI es obligatoria");
-        }
-
-        if (request.getDomicilio() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El domicilio es obligatorio");
-        }
-    }
-
-    private void validarLogin(LoginRequestDTO request) {
-        if (request.getMail() == null || request.getMail().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El mail es obligatorio");
-        }
-
-        if (request.getPassword() == null || request.getPassword().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña es obligatoria");
-        }
     }
 }
