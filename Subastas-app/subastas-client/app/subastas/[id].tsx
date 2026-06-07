@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -9,23 +10,79 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 
-const images = [
-  require("@/assets/images/white-old-vehicle.jpg"),
-  require("@/assets/images/white-old-vehicle.jpg"),
-  require("@/assets/images/white-old-vehicle.jpg"),
-];
-
+const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
 const IMAGE_WIDTH = 360;
 
+function getEstadoTexto(estado: string) {
+  switch (estado) {
+    case "CREADA":
+      return "Subasta programada";
+    case "ACTIVA":
+      return "Subasta en vivo";
+    case "FINALIZADA":
+      return "Subasta finalizada";
+    case "CANCELADA":
+      return "Subasta cancelada";
+    default:
+      return estado;
+  }
+}
+
+function getPrecioLabel(tipoPrecio: string) {
+  if (tipoPrecio === "PRECIO_ACTUAL") return "Precio actual";
+  if (tipoPrecio === "PRECIO_INICIAL") return "Precio inicial";
+  return "Precio final";
+}
+
+function formatPrice(moneda: string, precio: number) {
+  const symbol = moneda === "DOLARES" ? "USD" : "$";
+  return `${symbol} ${precio}`;
+}
+
 export default function DetalleSubastaScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { detalle, loading, error, recargar } = useDetalleSubasta(id);
+
   const listRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (loading) {
+    return (
+      <View style={styles.stateContainer}>
+        <ActivityIndicator size="large" color="#2F63F6" />
+        <Text style={styles.stateText}>Cargando detalle...</Text>
+      </View>
+    );
+  }
+
+  if (error || !detalle) {
+    return (
+      <View style={styles.stateContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Pressable style={styles.retryButton} onPress={recargar}>
+          <Text style={styles.retryText}>Reintentar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const baseImages =
+    detalle.imagenesUrl && detalle.imagenesUrl.length > 0
+      ? detalle.imagenesUrl
+      : [null];
+
+  const carouselImages = Array.from(
+    { length: 3 },
+    (_, index) => baseImages[index] ?? baseImages[0]
+  );
 
   function goToImage(direction: "prev" | "next") {
     const nextIndex =
       direction === "next"
-        ? Math.min(currentIndex + 1, images.length - 1)
+        ? Math.min(currentIndex + 1, carouselImages.length - 1)
         : Math.max(currentIndex - 1, 0);
 
     setCurrentIndex(nextIndex);
@@ -41,7 +98,7 @@ export default function DetalleSubastaScreen() {
       <View style={styles.carouselContainer}>
         <FlatList
           ref={listRef}
-          data={images}
+          data={carouselImages}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -53,7 +110,11 @@ export default function DetalleSubastaScreen() {
             setCurrentIndex(index);
           }}
           renderItem={({ item }) => (
-            <Image source={item} style={styles.mainImage} resizeMode="cover" />
+            <Image
+              source={item ? { uri: item } : defaultImage}
+              style={styles.mainImage}
+              resizeMode="cover"
+            />
           )}
         />
 
@@ -73,7 +134,7 @@ export default function DetalleSubastaScreen() {
       </View>
 
       <View style={styles.thumbnailRow}>
-        {images.map((image, index) => (
+        {carouselImages.map((image, index) => (
           <Pressable
             key={index}
             onPress={() => {
@@ -82,7 +143,7 @@ export default function DetalleSubastaScreen() {
             }}
           >
             <Image
-              source={image}
+              source={image ? { uri: image } : defaultImage}
               style={[
                 styles.thumbnail,
                 currentIndex === index && styles.thumbnailActive,
@@ -93,33 +154,47 @@ export default function DetalleSubastaScreen() {
         ))}
       </View>
 
-      <Text style={styles.title}>Rayo McQueen modelo 97</Text>
+      <Text style={styles.title}>{detalle.titulo}</Text>
 
-      <Text style={styles.label}>Precio actual</Text>
-      <Text style={styles.price}>USD 150.50</Text>
+      <Text style={styles.status}>{getEstadoTexto(detalle.estadoSubasta)}</Text>
 
-      <Text style={styles.description}>
-        Vehículo de colección en excelente estado. Pieza única con gran valor
-        histórico. Ideal para coleccionistas y amantes de los autos clásicos.
+      {detalle.estadoSubasta === "CREADA" && (
+        <Text style={styles.dateText}>
+          Inicia el {detalle.fechaInicio} a las {detalle.horaInicio} hs
+        </Text>
+      )}
+
+      <Text style={styles.label}>{getPrecioLabel(detalle.tipoPrecio)}</Text>
+      <Text style={styles.price}>
+        {formatPrice(detalle.moneda, detalle.precioMostrado)}
       </Text>
 
-      <Text style={styles.auctioneer}>Martillero: Angel Rodriguez</Text>
+      <Text style={styles.description}>{detalle.descripcion}</Text>
 
-      <Text style={styles.bidLabel}>Monto a ofertar</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ingresá tu oferta"
-        placeholderTextColor="#888"
-        keyboardType="numeric"
-      />
+      <Text style={styles.auctioneer}>Martillero: {detalle.martillero}</Text>
 
-      <Pressable style={styles.bidButton}>
-        <Text style={styles.bidButtonText}>Ofertar</Text>
-      </Pressable>
+      {detalle.puedeOfertar && (
+        <>
+          <Text style={styles.bidLabel}>Monto a ofertar</Text>
 
-      <Pressable>
-        <Text style={styles.streamingLink}>Link streaming subasta</Text>
-      </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder="Ingresá tu oferta"
+            placeholderTextColor="#888"
+            keyboardType="numeric"
+          />
+
+          <Pressable style={styles.bidButton}>
+            <Text style={styles.bidButtonText}>Ofertar</Text>
+          </Pressable>
+        </>
+      )}
+
+      {detalle.estadoSubasta === "ACTIVA" && (
+        <Pressable>
+          <Text style={styles.streamingLink}>Link streaming subasta</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -145,7 +220,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.4,
     borderColor: "#222",
     backgroundColor: "#F3F3F3",
-    position: "relative",
   },
 
   mainImage: {
@@ -180,15 +254,15 @@ const styles = StyleSheet.create({
 
   thumbnailRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
+    justifyContent: "center",
+    gap: 20,
     marginTop: 12,
     marginBottom: 16,
   },
 
   thumbnail: {
-    width: 105,
-    height: 75,
+    width: 100,
+    height: 100,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#999",
@@ -204,7 +278,20 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontWeight: "700",
     color: "#111",
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+
+  status: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#2F63F6",
+    marginBottom: 6,
+  },
+
+  dateText: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 14,
   },
 
   label: {
@@ -268,5 +355,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
+  },
+
+  stateContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+
+  stateText: {
+    marginTop: 10,
+    fontSize: 15,
+    color: "#555",
+  },
+
+  errorText: {
+    fontSize: 15,
+    color: "#B91C1C",
+    textAlign: "center",
+    marginBottom: 14,
+  },
+
+  retryButton: {
+    backgroundColor: "#2F63F6",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+
+  retryText: {
+    color: "white",
+    fontWeight: "700",
   },
 });
