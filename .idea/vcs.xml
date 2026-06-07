@@ -2,7 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
-    <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/Subastas-app/subastas-api" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Subastas-app/subastas-client" vcs="Git" />
   </component>
 </project>

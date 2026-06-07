@@ -85,6 +85,7 @@
       <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/types/game.ts" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/types/score.ts" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../Proyecto-Ecuaciones/types/settings.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Subastas-app/subastas-api/src/main/java/com/subastas/subastas_api/model/Categoria.java" beforeDir="false" afterPath="$PROJECT_DIR$/Subastas-app/subastas-api/src/main/java/com/subastas/subastas_api/model/Categoria.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -101,7 +102,8 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/Subastas-app/subastas-api" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="KubernetesApiPersistence">{}</component>
   <component name="KubernetesApiProvider">{
@@ -144,7 +146,7 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
-  <component name="RunManager" selected="Docker.subastas-api/Docker-compose.yml: Compose Deployment">
+  <component name="RunManager" selected="Spring Boot.SubastasApiApplication">
     <configuration name="SubastasApiApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <module name="subastas-api" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.subastas.subastas_api.SubastasApiApplication" />
@@ -194,7 +196,8 @@
       <workItem from="1780502079299" duration="20368000" />
       <workItem from="1780576809406" duration="257000" />
       <workItem from="1780679088221" duration="6304000" />
-      <workItem from="1780721877301" duration="545000" />
+      <workItem from="1780721877301" duration="5584000" />
+      <workItem from="1780782904994" duration="1692000" />
     </task>
     <servers />
   </component>

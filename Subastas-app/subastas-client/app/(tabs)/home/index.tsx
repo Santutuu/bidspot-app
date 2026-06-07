@@ -1,64 +1,117 @@
-import HomeCarousel from "@/src/components/home/homeCarrousel";
-import CategoryCircle from "@/src/components/home/CategoryCircle";
 import AuctionCard from "@/src/components/home/AuctionCard";
+import CategoryCircle from "@/src/components/home/CategoryCircle";
+import HomeCarousel from "@/src/components/home/homeCarrousel";
+import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
 
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-const categories = ["Artes", "Joyas", "Autos", "Muebles"];
-
-const auctions = [
-  {
-    id: "1",
-    title: "TÍTULO",
-    currentPrice: "Precio actual",
-  },
-  {
-    id: "2",
-    title: "TÍTULO",
-    currentPrice: "Precio actual",
-  },
-  {
-    id: "3",
-    title: "TÍTULO",
-    currentPrice: "Precio actual",
-  },
-  {
-    id: "4",
-    title: "TÍTULO",
-    currentPrice: "Precio actual",
-  },
+const categories = [
+  { label: "Arte", value: "ARTE" },
+  { label: "Joyas", value: "JOYAS" },
+  { label: "Vehículos", value: "VEHICULOS" },
+  { label: "Ropa", value: "ROPA" },
+  { label: "Otros", value: "OTROS" },
 ];
 
+function formatPrice(
+  precioActual: number | null,
+  precioVisible: boolean,
+  moneda: string,
+) {
+  if (!precioVisible || precioActual === null) {
+    return "Precio no disponible";
+  }
+
+  const symbol = moneda === "DOLARES" ? "USD" : "$";
+
+  return `${symbol} ${precioActual}`;
+}
+
 export default function HomeScreen() {
+  const { subastas, loading, error, recargar } = useSubastasRecomendadas();
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <HomeCarousel />
 
       <Text style={styles.sectionTitle}>Categorías</Text>
 
-      <View style={styles.categoriesRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoriesScrollContent}
+      >
         {categories.map((category) => (
           <CategoryCircle
-            key={category}
-            name={category}
+            key={category.value}
+            name={category.label}
             onPress={() =>
-              router.push(`/subastas/category/${category.toLowerCase()}`)
+              router.push({
+                pathname: "/subastas/category/[categoria]",
+                params: { categoria: category.value },
+              })
             }
           />
         ))}
-      </View>
+      </ScrollView>
 
-      <View style={styles.cardsGrid}>
-        {auctions.map((auction) => (
-          <AuctionCard
-            key={auction.id}
-            title={auction.title}
-            currentPrice={auction.currentPrice}
-            onPress={() => router.push(`/subastas/${auction.id}`)}
-          />
-        ))}
-      </View>
+      <Text style={styles.sectionTitle}>Subastas recomendadas</Text>
+
+      {loading && (
+        <View style={styles.stateContainer}>
+          <ActivityIndicator size="large" color="#2F63F6" />
+          <Text style={styles.stateText}>Cargando subastas...</Text>
+        </View>
+      )}
+
+      {!loading && error && (
+        <View style={styles.stateContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+
+          <Pressable style={styles.retryButton} onPress={recargar}>
+            <Text style={styles.retryText}>Reintentar</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {!loading && !error && subastas.length === 0 && (
+        <View style={styles.stateContainer}>
+          <Text style={styles.stateText}>
+            No hay subastas recomendadas disponibles.
+          </Text>
+        </View>
+      )}
+
+      {!loading && !error && subastas.length > 0 && (
+        <View style={styles.cardsGrid}>
+          {subastas.map((subasta) => (
+            <AuctionCard
+              key={subasta.id}
+              title={subasta.titulo}
+              currentPrice={formatPrice(
+                subasta.precioActual,
+                subasta.precioVisible,
+                subasta.moneda,
+              )}
+              imageUrl={subasta.imagenUrl}
+              onPress={() =>
+                router.push({
+                  pathname: "/subastas/[id]",
+                  params: { id: String(subasta.id) },
+                })
+              }
+            />
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -82,11 +135,10 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 
-  categoriesRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingHorizontal: 14,
-    marginBottom: 22,
+  categoriesScrollContent: {
+    paddingHorizontal: 15,
+    paddingBottom: 4,
+    gap: 5,
   },
 
   cardsGrid: {
@@ -94,5 +146,38 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
     paddingHorizontal: 18,
+  },
+
+  stateContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 26,
+    alignItems: "center",
+  },
+
+  stateText: {
+    marginTop: 10,
+    fontSize: 15,
+    color: "#555",
+    textAlign: "center",
+  },
+
+  errorText: {
+    fontSize: 15,
+    color: "#B91C1C",
+    textAlign: "center",
+    marginBottom: 14,
+  },
+
+  retryButton: {
+    backgroundColor: "#2F63F6",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+
+  retryText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

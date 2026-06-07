@@ -1,7 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Link, Tabs } from "expo-router";
-import { Pressable, StyleSheet, View, Text } from "react-native";
-
+import { Tabs, router } from "expo-router";
+import { Pressable, StyleSheet, View } from "react-native";
 
 export default function TabsLayout() {
   return (
@@ -16,26 +15,23 @@ export default function TabsLayout() {
         headerShadowVisible: false,
 
         headerLeft: () => (
-          <Link href="/profile" asChild>
-            <Pressable style={styles.headerLeft}>
-              <Ionicons name="person-circle-outline" size={34} color="white" />
-            </Pressable>
-          </Link>
+          <Pressable
+            style={styles.headerLeft}
+            onPress={() => router.push("/(tabs)/profile")}
+          >
+            <Ionicons name="person-circle-outline" size={34} color="white" />
+          </Pressable>
         ),
 
         headerRight: () => (
           <View style={styles.headerRight}>
-            <Link href="/notifications" asChild>
-              <Pressable>
-                <Ionicons name="notifications-outline" size={30} color="white" />
-              </Pressable>
-            </Link>
+            <Pressable onPress={() => router.push("/(tabs)/notifications")}>
+              <Ionicons name="notifications-outline" size={30} color="white" />
+            </Pressable>
 
-            <Link href="/mensajeria" asChild>
-              <Pressable>
-                <Ionicons name="chatbox-outline" size={30} color="white" />
-              </Pressable>
-            </Link>
+            <Pressable onPress={() => router.push("/mensajeria/index")}>
+              <Ionicons name="chatbox-outline" size={30} color="white" />
+            </Pressable>
           </View>
         ),
 
@@ -49,40 +45,40 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-  name="home"
-  options={{
-    tabBarIcon: ({ color }) => (
-      <Text style={{ fontSize: 30, color }}>⌂</Text>
-    ),
-  }}
-/>
+        name="home"
+        options={{
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home-outline" size={26} color={color} />
+          ),
+        }}
+      />
 
-<Tabs.Screen
-  name="search"
-  options={{
-    tabBarIcon: ({ color }) => (
-      <Text style={{ fontSize: 30, color }}>⌕</Text>
-    ),
-  }}
-/>
+      <Tabs.Screen
+        name="search"
+        options={{
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="search-outline" size={26} color={color} />
+          ),
+        }}
+      />
 
-<Tabs.Screen
-  name="saved"
-  options={{
-    tabBarIcon: ({ color }) => (
-      <Text style={{ fontSize: 30, color }}>♡</Text>
-    ),
-  }}
-/>
+      <Tabs.Screen
+        name="saved"
+        options={{
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="bookmark-outline" size={26} color={color} />
+          ),
+        }}
+      />
 
-<Tabs.Screen
-  name="profile"
-  options={{
-    tabBarIcon: ({ color }) => (
-      <Text style={{ fontSize: 30, color }}>♙</Text>
-    ),
-  }}
-/>
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-outline" size={26} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
@@ -104,12 +100,12 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#DDD",
-    
+
     paddingBottom: 20,
-    
   },
 
   tabBarItem: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },

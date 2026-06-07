@@ -3,23 +3,30 @@ import { Image, Pressable, StyleSheet, Text } from "react-native";
 type Props = {
   title: string;
   currentPrice: string;
+  imageUrl?: string | null;
   onPress?: () => void;
 };
+
+const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
 
 export default function AuctionCard({
   title,
   currentPrice,
+  imageUrl,
   onPress,
 }: Props) {
+  const imageSource =
+    imageUrl && imageUrl.trim().length > 0
+      ? { uri: imageUrl }
+      : defaultImage;
+
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      <Image
-        source={require("@/assets/images/white-old-vehicle.jpg")}
-        style={styles.image}
-        resizeMode="cover"
-      />
+      <Image source={imageSource} style={styles.image} resizeMode="cover" />
 
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} numberOfLines={2}>
+        {title}
+      </Text>
 
       <Text style={styles.price}>{currentPrice}</Text>
     </Pressable>
@@ -42,6 +49,7 @@ const styles = StyleSheet.create({
     height: 135,
     borderRadius: 8,
     marginBottom: 12,
+    backgroundColor: "#EEE",
   },
 
   title: {
