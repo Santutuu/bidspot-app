@@ -1,0 +1,120 @@
+app
+│
+├── (tabs)
+│   ├── home
+│   ├── search
+│   ├── saved
+│   ├── profile
+│   └── notifications
+│
+├── auth
+│   ├── login.tsx
+│   ├── register.tsx
+│   └── account-created.tsx
+│
+├── subastas
+│   ├── [id].tsx
+│   ├── category
+│   │     └── [categoria].tsx
+│   ├── bid-result.tsx
+│   └── won-auction.tsx
+│
+├── compras
+│   ├── [id].tsx
+│   ├── payment
+│   │     ├── select-method.tsx
+│   │     ├── tarjeta.tsx
+│   │     └── cheque.tsx
+│   └── completed.tsx
+│
+├── publicaciones
+│   ├── create.tsx
+│   ├── [id].tsx
+│   └── tracking.tsx
+│
+├── medios-pago
+│   ├── index.tsx
+│   ├── tarjetas
+│   └── cheques
+│
+├── ventas
+│   ├── index.tsx
+│   ├── historial.tsx
+│   └── estadisticas.tsx
+│
+└── mensajeria
+    └── [chatId].tsx
+
+Fuera de app, que es navegación pura:
+
+src
+│
+├── api
+│   ├── axios.ts
+│   ├── authApi.ts
+│   ├── subastaApi.ts
+│   ├── compraApi.ts
+│   ├── publicacionApi.ts
+│   ├── notificacionApi.ts
+│   └── usuarioApi.ts
+│
+├── components
+│   ├── ui
+│   │     Button.tsx
+│   │     Card.tsx
+│   │     Input.tsx
+│   │     Modal.tsx
+│   │
+│   ├── subasta
+│   ├── compra
+│   ├── publicacion
+│   ├── profile
+│   └── mensajeria
+│
+├── hooks
+│   ├── useAuth.ts
+│   ├── useSubastas.ts
+│   ├── useDetalleSubasta.ts
+│   ├── useCompras.ts
+│   ├── usePublicaciones.ts
+│   ├── useMensajeria.ts
+│   └── useNotificaciones.ts
+│
+├── context
+│   ├── AuthContext.tsx
+│   ├── NotificationContext.tsx
+│   └── ThemeContext.tsx
+│
+├── storage
+│   ├── tokenStorage.ts
+│   ├── sessionStorage.ts
+│   └── userStorage.ts
+│
+├── dto
+│   ├── SubastaHomeDTO.ts
+│   ├── DetalleSubastaDTO.ts
+│   ├── CompraDTO.ts
+│   ├── NotificacionDTO.ts
+│   └── UsuarioDTO.ts
+│
+├── types
+│   ├── Subasta.ts
+│   ├── Compra.ts
+│   ├── Usuario.ts
+│   └── enums
+│
+├── constants
+│   ├── colors.ts
+│   ├── routes.ts
+│   └── config.ts
+│
+├── utils
+│   ├── currency.ts
+│   ├── dates.ts
+│   ├── validation.ts
+│   └── formatting.ts
+│
+└── assets
+    ├── images
+    ├── icons
+    └── fonts
