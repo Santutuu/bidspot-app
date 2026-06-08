@@ -8,7 +8,11 @@ const slides = [
   },
   {
     image: require("@/assets/images/obras_arte.jpg"),
-    title: "Ofertar nunca fue tan fácil!",
+    title: "Ofertar nunca fue tan fácil",
+  },
+  {
+    image: require("@/src/assets/images/camiseta-maradona.jpg"),
+    title: "Descubre articulos especiales y sumalos a tu coleccion",
   },
 ];
 

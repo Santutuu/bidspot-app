@@ -1,6 +1,11 @@
-import { useRef, useState } from "react";
+import { useAuth } from "@/src/context/authContext";
+import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
+import { requireValidatedUser } from "@/src/utils/authGuards";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -10,8 +15,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 
 const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
 const IMAGE_WIDTH = 360;
@@ -44,10 +47,48 @@ function formatPrice(moneda: string, precio: number) {
 
 export default function DetalleSubastaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { detalle, loading, error, recargar } = useDetalleSubasta(id);
+
+  const { loadingAuth, isAuthenticated, isValidated, isBlocked, isRejected } =
+    useAuth();
+
+  const { detalle, loading, error, recargar } = useDetalleSubasta(
+    isAuthenticated ? id : undefined,
+  );
 
   const listRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [montoOferta, setMontoOferta] = useState("");
+
+  useEffect(() => {
+    if (loadingAuth) return;
+
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Iniciá sesión",
+        "Necesitás iniciar sesión para ver el detalle de la subasta.",
+        [
+          {
+            text: "Volver",
+            style: "cancel",
+            onPress: () => router.back(),
+          },
+          {
+            text: "Iniciar sesión",
+            onPress: () => router.replace("/auth/login"),
+          },
+        ],
+      );
+    }
+  }, [loadingAuth, isAuthenticated]);
+
+  if (loadingAuth || !isAuthenticated) {
+    return (
+      <View style={styles.stateContainer}>
+        <ActivityIndicator size="large" color="#2F63F6" />
+        <Text style={styles.stateText}>Verificando sesión...</Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -61,7 +102,10 @@ export default function DetalleSubastaScreen() {
   if (error || !detalle) {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.errorText}>
+          {error ?? "No pudimos cargar el detalle de la subasta."}
+        </Text>
+
         <Pressable style={styles.retryButton} onPress={recargar}>
           <Text style={styles.retryText}>Reintentar</Text>
         </Pressable>
@@ -75,8 +119,8 @@ export default function DetalleSubastaScreen() {
       : [null];
 
   const carouselImages = Array.from(
-    { length: 3 },
-    (_, index) => baseImages[index] ?? baseImages[0]
+    { length: 4 },
+    (_, index) => baseImages[index] ?? baseImages[0],
   );
 
   function goToImage(direction: "prev" | "next") {
@@ -93,6 +137,44 @@ export default function DetalleSubastaScreen() {
     });
   }
 
+  function handleOffer() {
+    const allowed = requireValidatedUser({
+      isAuthenticated,
+      isValidated,
+      isBlocked,
+      isRejected,
+    });
+
+    if (!allowed) return;
+
+    if (!montoOferta.trim()) {
+      Alert.alert("Monto obligatorio", "Ingresá el monto que querés ofertar.");
+      return;
+    }
+
+    const monto = Number(montoOferta);
+
+    if (Number.isNaN(monto) || monto <= 0) {
+      Alert.alert("Monto inválido", "Ingresá un monto válido.");
+      return;
+    }
+
+    Alert.alert("Oferta lista", "Después conectamos el endpoint de puja.");
+  }
+
+  function handleStreaming() {
+    const allowed = requireValidatedUser({
+      isAuthenticated,
+      isValidated,
+      isBlocked,
+      isRejected,
+    });
+
+    if (!allowed) return;
+
+    Alert.alert("Streaming", "Después abrimos el link de streaming.");
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.carouselContainer}>
@@ -105,7 +187,7 @@ export default function DetalleSubastaScreen() {
           keyExtractor={(_, index) => index.toString()}
           onMomentumScrollEnd={(event) => {
             const index = Math.round(
-              event.nativeEvent.contentOffset.x / IMAGE_WIDTH
+              event.nativeEvent.contentOffset.x / IMAGE_WIDTH,
             );
             setCurrentIndex(index);
           }}
@@ -137,6 +219,7 @@ export default function DetalleSubastaScreen() {
         {carouselImages.map((image, index) => (
           <Pressable
             key={index}
+            style={styles.thumbnailButton}
             onPress={() => {
               setCurrentIndex(index);
               listRef.current?.scrollToIndex({ index, animated: true });
@@ -154,44 +237,60 @@ export default function DetalleSubastaScreen() {
         ))}
       </View>
 
-      <Text style={styles.title}>{detalle.titulo}</Text>
+      <View style={styles.infoCard}>
+        <Text style={styles.title}>{detalle.titulo}</Text>
 
-      <Text style={styles.status}>{getEstadoTexto(detalle.estadoSubasta)}</Text>
-
-      {detalle.estadoSubasta === "CREADA" && (
-        <Text style={styles.dateText}>
-          Inicia el {detalle.fechaInicio} a las {detalle.horaInicio} hs
+        <Text style={styles.label}>{getPrecioLabel(detalle.tipoPrecio)}</Text>
+        <Text style={styles.price}>
+          {formatPrice(detalle.moneda, detalle.precioMostrado)}
         </Text>
-      )}
 
-      <Text style={styles.label}>{getPrecioLabel(detalle.tipoPrecio)}</Text>
-      <Text style={styles.price}>
-        {formatPrice(detalle.moneda, detalle.precioMostrado)}
-      </Text>
+        <Text style={styles.description}>{detalle.descripcion}</Text>
+      </View>
 
-      <Text style={styles.description}>{detalle.descripcion}</Text>
+      <View style={styles.metaCard}>
+        <Text style={styles.sectionLabel}>Estado de la subasta</Text>
+        <View style={styles.statusRow}>
+          <Text style={styles.status}>
+            {getEstadoTexto(detalle.estadoSubasta)}
+          </Text>
+          {detalle.estadoSubasta === "CREADA" && (
+            <Text style={styles.dateText}>
+              Inicia el {detalle.fechaInicio} a las {detalle.horaInicio} hs
+            </Text>
+          )}
+        </View>
+      </View>
 
-      <Text style={styles.auctioneer}>Martillero: {detalle.martillero}</Text>
+      <View style={styles.auctioneerCard}>
+        <Text style={styles.sectionLabel}>Martillero</Text>
+        <Text style={styles.auctioneer}>{detalle.martillero}</Text>
+      </View>
 
       {detalle.puedeOfertar && (
-        <>
+        <View style={styles.offerCard}>
           <Text style={styles.bidLabel}>Monto a ofertar</Text>
+          <Text style={styles.bidHint}>
+            Ingresá el monto para confirmar tu oferta.
+          </Text>
 
           <TextInput
             style={styles.input}
             placeholder="Ingresá tu oferta"
             placeholderTextColor="#888"
             keyboardType="numeric"
+            value={montoOferta}
+            onChangeText={setMontoOferta}
           />
 
-          <Pressable style={styles.bidButton}>
+          <Pressable style={styles.bidButton} onPress={handleOffer}>
             <Text style={styles.bidButtonText}>Ofertar</Text>
           </Pressable>
-        </>
+        </View>
       )}
 
       {detalle.estadoSubasta === "ACTIVA" && (
-        <Pressable>
+        <Pressable onPress={handleStreaming} style={styles.streamingCard}>
           <Text style={styles.streamingLink}>Link streaming subasta</Text>
         </Pressable>
       )}
@@ -253,20 +352,27 @@ const styles = StyleSheet.create({
   },
 
   thumbnailRow: {
+    width: IMAGE_WIDTH,
+    alignSelf: "center",
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
+    justifyContent: "space-between",
+    gap: 8,
     marginTop: 12,
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+
+  thumbnailButton: {
+    width: 82,
+    height: 70,
   },
 
   thumbnail: {
-    width: 100,
-    height: 100,
+    width: 82,
+    height: 70,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#999",
-    backgroundColor: "#EEE",
+    borderColor: "#C7D2FE",
+    backgroundColor: "#F3F4F6",
   },
 
   thumbnailActive: {
@@ -274,86 +380,130 @@ const styles = StyleSheet.create({
     borderColor: "#2F63F6",
   },
 
+  infoCard: {
+    marginBottom: 18,
+  },
+
+  metaCard: {
+    marginBottom: 18,
+  },
+
+  auctioneerCard: {
+    marginBottom: 22,
+  },
+
+  offerCard: {
+    marginBottom: 18,
+  },
+
   title: {
-    fontSize: 23,
-    fontWeight: "700",
-    color: "#111",
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#111827",
     marginBottom: 8,
+  },
+
+  sectionLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+
+  statusRow: {
+    gap: 8,
   },
 
   status: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#2F63F6",
-    marginBottom: 6,
+    color: "#2563EB",
+    marginBottom: 4,
   },
 
   dateText: {
     fontSize: 14,
-    color: "#555",
-    marginBottom: 14,
+    color: "#4B5563",
+    lineHeight: 20,
   },
 
   label: {
-    fontSize: 15,
-    color: "#333",
-    marginBottom: 4,
+    fontSize: 14,
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
   },
 
   price: {
-    fontSize: 34,
-    fontWeight: "700",
-    color: "#111",
-    marginBottom: 16,
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 12,
   },
 
   description: {
-    fontSize: 16,
-    color: "#333",
+    fontSize: 15,
+    color: "#374151",
     lineHeight: 23,
-    marginBottom: 22,
+    marginBottom: 6,
   },
 
   auctioneer: {
-    fontSize: 14,
-    color: "#555",
+    fontSize: 15,
+    color: "#111827",
     fontWeight: "600",
-    marginBottom: 28,
   },
 
   bidLabel: {
     fontSize: 16,
-    color: "#222",
-    fontWeight: "600",
+    color: "#111827",
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
+  bidHint: {
+    fontSize: 13,
+    color: "#6B7280",
     marginBottom: 8,
   },
 
   input: {
     borderBottomWidth: 1.5,
-    borderBottomColor: "#444",
-    paddingVertical: 8,
+    borderBottomColor: "#111827",
+    paddingVertical: 10,
     fontSize: 17,
-    marginBottom: 24,
+    marginBottom: 18,
+    color: "#111827",
   },
 
   bidButton: {
-    borderWidth: 1.5,
-    borderColor: "#16A34A",
+    backgroundColor: "#111827",
     paddingVertical: 14,
     alignItems: "center",
-    marginBottom: 16,
+    borderRadius: 14,
+    marginBottom: 4,
   },
 
   bidButtonText: {
-    color: "#111",
-    fontSize: 18,
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "700",
+  },
+
+  streamingCard: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginBottom: 18,
   },
 
   streamingLink: {
     color: "#2563EB",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     textAlign: "center",
   },
 

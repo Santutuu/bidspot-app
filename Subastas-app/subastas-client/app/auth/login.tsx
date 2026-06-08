@@ -21,31 +21,37 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!mail.trim()) {
-      return Alert.alert("Campo obligatorio", "Ingresá tu email.");
+      Alert.alert("Campo obligatorio", "Ingresá tu email.");
+      return;
+    }
+
+    if (!isValidEmail(mail)) {
+      Alert.alert("Email inválido", "Ingresá un email válido.");
+      return;
     }
 
     if (!password.trim()) {
-      return Alert.alert("Campo obligatorio", "Ingresá tu contraseña.");
+      Alert.alert("Campo obligatorio", "Ingresá tu contraseña.");
+      return;
     }
 
     try {
       setLoading(true);
 
       const response = await loginUser({
-        mail: mail.trim(),
+        mail: mail.trim().toLowerCase(),
         password,
       });
 
       await login(response);
 
       router.replace("/(tabs)/home");
-    } catch (error) {
-      console.error("Error login:", error);
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message ??
+        "No pudimos iniciar sesión. Intentá nuevamente.";
 
-      Alert.alert(
-        "No pudimos iniciar sesión",
-        "Revisá tu email y contraseña e intentá nuevamente."
-      );
+      Alert.alert("Error de inicio de sesión", message);
     } finally {
       setLoading(false);
     }
@@ -58,7 +64,8 @@ export default function LoginScreen() {
       <Text style={styles.title}>Iniciar sesión</Text>
 
       <Text style={styles.subtitle}>
-        Ingresá para guardar subastas, ver detalles y participar cuando tu cuenta esté validada.
+        Ingresá para guardar subastas, ver detalles y participar cuando tu cuenta
+        esté validada.
       </Text>
 
       <TextInput
@@ -67,6 +74,7 @@ export default function LoginScreen() {
         placeholderTextColor="#9CA3AF"
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
         value={mail}
         onChangeText={setMail}
       />
@@ -97,6 +105,10 @@ export default function LoginScreen() {
       </Pressable>
     </View>
   );
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 const styles = StyleSheet.create({

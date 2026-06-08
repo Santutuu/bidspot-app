@@ -4,13 +4,15 @@ import HomeCarousel from "@/src/components/home/homeCarrousel";
 import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
 
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 const categories = [
@@ -37,6 +39,25 @@ function formatPrice(
 
 export default function HomeScreen() {
   const { subastas, loading, error, recargar } = useSubastasRecomendadas();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return (
+      <View style={styles.splashContainer}>
+        <Image
+          source={require("@/src/assets/images/banner-logo.png")}
+          style={styles.splashImage}
+          resizeMode="cover"
+        />
+        <View style={styles.splashOverlay} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -124,6 +145,22 @@ const styles = StyleSheet.create({
 
   content: {
     paddingBottom: 24,
+  },
+
+  splashContainer: {
+    flex: 1,
+    backgroundColor: "#0F172A",
+  },
+
+  splashImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.35)",
   },
 
   sectionTitle: {

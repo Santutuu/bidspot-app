@@ -1,15 +1,22 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs, router } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: true,
-        headerTitle: "",
+        headerTitle: () => (
+          <Image
+            source={require("@/src/assets/images/logo-minimalista.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        ),
+        headerTitleAlign: "left",
         headerStyle: {
-          backgroundColor: "#2F63F6",
+          backgroundColor: "rgba(47, 99, 246, 0.88)",
           height: 105,
         },
         headerShadowVisible: false,
@@ -19,18 +26,18 @@ export default function TabsLayout() {
             style={styles.headerLeft}
             onPress={() => router.push("/(tabs)/profile")}
           >
-            <Ionicons name="person-circle-outline" size={34} color="white" />
+            <Ionicons name="person-circle-outline" size={38} color="white" />
           </Pressable>
         ),
 
         headerRight: () => (
           <View style={styles.headerRight}>
             <Pressable onPress={() => router.push("/(tabs)/notifications")}>
-              <Ionicons name="notifications-outline" size={30} color="white" />
+              <Ionicons name="notifications-outline" size={34} color="white" />
             </Pressable>
 
-            <Pressable onPress={() => router.push("/mensajeria/index")}>
-              <Ionicons name="chatbox-outline" size={30} color="white" />
+            <Pressable onPress={() => router.push("/mensajeria")}>
+              <Ionicons name="chatbox-outline" size={34} color="white" />
             </Pressable>
           </View>
         ),
@@ -84,15 +91,25 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  logo: {
+    width: 360,
+    height: 104,
+    marginLeft: -32,
+    shadowColor: "#FFFFFF",
+    shadowOpacity: 0.75,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+
   headerLeft: {
-    marginLeft: 22,
+    marginLeft: 6,
   },
 
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 24,
-    marginRight: 24,
+    gap: 16,
+    marginRight: 8,
   },
 
   tabBar: {
