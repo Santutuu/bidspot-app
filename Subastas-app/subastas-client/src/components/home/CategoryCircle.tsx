@@ -8,20 +8,11 @@ type Props = {
 
 function getIcon(name: string) {
   switch (name) {
-    case "Arte":
-      return "brush-outline";
-
-    case "Joyas":
-      return "medal-outline";
-
-    case "Vehículos":
-      return "car-outline";
-
-    case "Ropa":
-      return "bag-handle-outline";
-
-    default:
-      return "cube-outline";
+    case "Arte": return "brush-outline";
+    case "Joyas": return "medal-outline";
+    case "Vehículos": return "car-outline";
+    case "Ropa": return "bag-handle-outline";
+    default: return "cube-outline";
   }
 }
 
@@ -32,7 +23,7 @@ export default function CategoryCircle({ name, onPress }: Props) {
         <Ionicons
           name={getIcon(name)}
           size={30}
-          color="#333"
+          color="#2F63F6" // Color azul fuerte para el icono
         />
       </View>
 
@@ -53,22 +44,21 @@ const styles = StyleSheet.create({
     height: 74,
     borderRadius: 37,
 
-    backgroundColor: "#F8F8F8",
+    // Azul muy tenue (casi blanco)
+    backgroundColor: "#F0F5FF", 
 
-    borderWidth: 1.5,
-    borderColor: "#999",
+    // Borde marcado en azul
+    borderWidth: 2,
+    borderColor: "#2F63F6", 
 
     justifyContent: "center",
     alignItems: "center",
 
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
+    // Sombra sutil
+    shadowColor: "#2F63F6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 3,
-
     elevation: 2,
   },
 

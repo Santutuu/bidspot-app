@@ -54,8 +54,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home-outline" size={26} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={{ 
+              width: 30, 
+              height: 30, 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.5 }}>🏠</Text>
+            </View>
           ),
         }}
       />
@@ -63,8 +70,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="search"
         options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="search-outline" size={26} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={{ 
+              width: 30, 
+              height: 30, 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.5 }}>🔍</Text>
+            </View>
           ),
         }}
       />
@@ -72,8 +86,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="saved"
         options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="bookmark-outline" size={26} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={{ 
+              width: 30, 
+              height: 30, 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.5 }}>🔖</Text>
+            </View>
           ),
         }}
       />
@@ -81,8 +102,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person-outline" size={26} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={{ 
+              width: 30, 
+              height: 30, 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.5 }}>👤</Text>
+            </View>
           ),
         }}
       />

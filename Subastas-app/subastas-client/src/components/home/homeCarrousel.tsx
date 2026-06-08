@@ -1,5 +1,5 @@
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FlatList, Image, Pressable, StyleSheet, Text, View, Dimensions } from "react-native";
 
 const slides = [
   {
@@ -16,15 +16,30 @@ const slides = [
   },
 ];
 
-const SLIDE_WIDTH = 385;
+const { width } = Dimensions.get("window");
+const SLIDE_WIDTH = width - 20; // Ajustado para que sea responsive al ancho de pantalla
 
 export default function HomeCarousel() {
   const listRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Lógica para el slide automático cada 5 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = (currentIndex + 1) % slides.length;
+      
+      setCurrentIndex(nextIndex);
+      listRef.current?.scrollToIndex({
+        index: nextIndex,
+        animated: true,
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentIndex]);
+
   function goToSlide(direction: "prev" | "next") {
     let nextIndex = currentIndex;
-
     if (direction === "next") {
       nextIndex = Math.min(currentIndex + 1, slides.length - 1);
     } else {
@@ -32,7 +47,6 @@ export default function HomeCarousel() {
     }
 
     setCurrentIndex(nextIndex);
-
     listRef.current?.scrollToIndex({
       index: nextIndex,
       animated: true,
@@ -61,10 +75,7 @@ export default function HomeCarousel() {
               style={styles.image}
               resizeMode="cover"
             />
-
-            {/* Overlay oscuro para aumentar contraste */}
             <View style={styles.overlay} />
-
             <View style={styles.textContainer}>
               <Text style={styles.title}>{item.title}</Text>
             </View>
@@ -99,43 +110,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#DDD",
   },
-
   slide: {
     width: SLIDE_WIDTH,
     height: 280,
   },
-
   image: {
     width: SLIDE_WIDTH,
     height: 280,
   },
-
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.38)",
   },
-
   textContainer: {
     position: "absolute",
     left: 24,
     right: 24,
     bottom: 30,
   },
-
   title: {
     color: "white",
     fontSize: 30,
     fontWeight: "800",
     lineHeight: 38,
-
     textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: {
-      width: 0,
-      height: 3,
-    },
+    textShadowOffset: { width: 0, height: 3 },
     textShadowRadius: 10,
   },
-
   arrowButton: {
     position: "absolute",
     top: "42%",
@@ -146,15 +147,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.18)",
     borderRadius: 20,
   },
-
-  leftArrow: {
-    left: 10,
-  },
-
-  rightArrow: {
-    right: 10,
-  },
-
+  leftArrow: { left: 10 },
+  rightArrow: { right: 10 },
   arrow: {
     color: "white",
     fontSize: 34,

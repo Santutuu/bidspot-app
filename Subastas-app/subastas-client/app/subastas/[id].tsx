@@ -1,6 +1,7 @@
 import { useAuth } from "@/src/context/authContext";
 import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 import { requireValidatedUser } from "@/src/utils/authGuards";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -52,7 +53,7 @@ export default function DetalleSubastaScreen() {
     useAuth();
 
   const { detalle, loading, error, recargar } = useDetalleSubasta(
-    isAuthenticated ? id : undefined,
+    isAuthenticated ? id : undefined
   );
 
   const listRef = useRef<FlatList>(null);
@@ -76,7 +77,7 @@ export default function DetalleSubastaScreen() {
             text: "Iniciar sesión",
             onPress: () => router.replace("/auth/login"),
           },
-        ],
+        ]
       );
     }
   }, [loadingAuth, isAuthenticated]);
@@ -120,7 +121,7 @@ export default function DetalleSubastaScreen() {
 
   const carouselImages = Array.from(
     { length: 4 },
-    (_, index) => baseImages[index] ?? baseImages[0],
+    (_, index) => baseImages[index] ?? baseImages[0]
   );
 
   function goToImage(direction: "prev" | "next") {
@@ -177,6 +178,14 @@ export default function DetalleSubastaScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+
+      <Pressable 
+  onPress={() => router.back()} // Esto vuelve a la pantalla anterior
+  style={{ marginBottom: 30 }}
+>
+  <Ionicons name="chevron-back" size={40} color="black" />
+</Pressable>
+      
       <View style={styles.carouselContainer}>
         <FlatList
           ref={listRef}
@@ -187,7 +196,7 @@ export default function DetalleSubastaScreen() {
           keyExtractor={(_, index) => index.toString()}
           onMomentumScrollEnd={(event) => {
             const index = Math.round(
-              event.nativeEvent.contentOffset.x / IMAGE_WIDTH,
+              event.nativeEvent.contentOffset.x / IMAGE_WIDTH
             );
             setCurrentIndex(index);
           }}
@@ -199,6 +208,8 @@ export default function DetalleSubastaScreen() {
             />
           )}
         />
+        
+        
 
         <Pressable
           style={[styles.arrowButton, styles.leftArrow]}
@@ -241,6 +252,7 @@ export default function DetalleSubastaScreen() {
         <Text style={styles.title}>{detalle.titulo}</Text>
 
         <Text style={styles.label}>{getPrecioLabel(detalle.tipoPrecio)}</Text>
+
         <Text style={styles.price}>
           {formatPrice(detalle.moneda, detalle.precioMostrado)}
         </Text>
@@ -248,22 +260,27 @@ export default function DetalleSubastaScreen() {
         <Text style={styles.description}>{detalle.descripcion}</Text>
       </View>
 
+      <View style={styles.separator} />
+
       <View style={styles.metaCard}>
         <Text style={styles.sectionLabel}>Estado de la subasta</Text>
-        <View style={styles.statusRow}>
-          <Text style={styles.status}>
-            {getEstadoTexto(detalle.estadoSubasta)}
+
+        <Text style={styles.status}>
+          {getEstadoTexto(detalle.estadoSubasta)}
+        </Text>
+
+        {detalle.estadoSubasta === "CREADA" && (
+          <Text style={styles.dateText}>
+            Inicia el {detalle.fechaInicio} a las {detalle.horaInicio} hs
           </Text>
-          {detalle.estadoSubasta === "CREADA" && (
-            <Text style={styles.dateText}>
-              Inicia el {detalle.fechaInicio} a las {detalle.horaInicio} hs
-            </Text>
-          )}
-        </View>
+        )}
       </View>
+
+      <View style={styles.separator} />
 
       <View style={styles.auctioneerCard}>
         <Text style={styles.sectionLabel}>Martillero</Text>
+
         <Text style={styles.auctioneer}>{detalle.martillero}</Text>
       </View>
 
@@ -307,24 +324,27 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 18,
     paddingTop: 18,
-    paddingBottom: 40,
+    paddingBottom: 52,
   },
 
   carouselContainer: {
     width: IMAGE_WIDTH,
-    height: 360,
+    height: 320,
     alignSelf: "center",
     borderRadius: 28,
     overflow: "hidden",
     borderWidth: 1.4,
     borderColor: "#222",
     backgroundColor: "#F3F3F3",
+    position: "relative",
   },
 
   mainImage: {
     width: IMAGE_WIDTH,
-    height: 360,
+    height: 320,
   },
+
+
 
   arrowButton: {
     position: "absolute",
@@ -358,7 +378,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
     marginTop: 12,
-    marginBottom: 14,
+    marginBottom: 30,
   },
 
   thumbnailButton: {
@@ -381,92 +401,97 @@ const styles = StyleSheet.create({
   },
 
   infoCard: {
-    marginBottom: 18,
+    marginTop: 10,
+    marginBottom: 8,
   },
 
   metaCard: {
-    marginBottom: 18,
+    marginBottom: 8,
   },
 
   auctioneerCard: {
-    marginBottom: 22,
+    marginBottom: 36,
   },
 
   offerCard: {
-    marginBottom: 18,
+    marginTop: 4,
+    marginBottom: 24,
+  },
+
+  separator: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginVertical: 26,
   },
 
   title: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: "800",
     color: "#111827",
-    marginBottom: 8,
+    lineHeight: 40,
+    marginBottom: 28,
+  },
+
+  label: {
+    fontSize: 12,
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+
+  price: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 30,
+  },
+
+  description: {
+    fontSize: 16,
+    color: "#374151",
+    lineHeight: 28,
+    marginBottom: 10,
   },
 
   sectionLabel: {
     fontSize: 12,
-    color: "#6B7280",
+    color: "#9CA3AF",
     textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-
-  statusRow: {
-    gap: 8,
+    letterSpacing: 1.3,
+    marginBottom: 18,
   },
 
   status: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "700",
     color: "#2563EB",
-    marginBottom: 4,
+    marginBottom: 14,
   },
 
   dateText: {
-    fontSize: 14,
-    color: "#4B5563",
-    lineHeight: 20,
-  },
-
-  label: {
-    fontSize: 14,
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-
-  price: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 12,
-  },
-
-  description: {
     fontSize: 15,
-    color: "#374151",
-    lineHeight: 23,
-    marginBottom: 6,
+    color: "#4B5563",
+    lineHeight: 24,
   },
 
   auctioneer: {
-    fontSize: 15,
+    fontSize: 17,
     color: "#111827",
     fontWeight: "600",
   },
 
   bidLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: "#111827",
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 8,
   },
 
   bidHint: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#6B7280",
-    marginBottom: 8,
+    marginBottom: 16,
   },
 
   input: {
@@ -474,13 +499,13 @@ const styles = StyleSheet.create({
     borderBottomColor: "#111827",
     paddingVertical: 10,
     fontSize: 17,
-    marginBottom: 18,
+    marginBottom: 22,
     color: "#111827",
   },
 
   bidButton: {
     backgroundColor: "#111827",
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: "center",
     borderRadius: 14,
     marginBottom: 4,
