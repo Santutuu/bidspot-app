@@ -10,7 +10,6 @@ export async function loginUser(
   request: LoginRequestDTO
 ): Promise<AuthResponseDTO> {
   const response = await api.post<AuthResponseDTO>("/auth/login", request);
-
   return response.data;
 }
 
@@ -18,7 +17,6 @@ export async function registerUser(
   request: RegisterRequestDTO
 ): Promise<AuthResponseDTO> {
   const response = await api.post<AuthResponseDTO>("/auth/register", request);
-
   return response.data;
 }
 

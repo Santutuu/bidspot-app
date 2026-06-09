@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const freshUser = await getCurrentUser();
           setUser(freshUser);
           await saveAuthData(savedToken, freshUser);
-        } catch (error) {
+        } catch {
           await clearAuthData();
           setToken(null);
           setUser(null);
@@ -82,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function logout() {
     setToken(null);
     setUser(null);
-
     await clearAuthData();
   }
 

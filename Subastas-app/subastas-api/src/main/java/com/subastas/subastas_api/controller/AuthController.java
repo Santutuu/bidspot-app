@@ -7,7 +7,6 @@ import com.subastas.subastas_api.DTO.auth.UsuarioActualDTO;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.service.AuthService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -29,7 +28,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDTO> register(
-            @Valid @RequestBody RegisterRequestDTO request
+            @RequestBody RegisterRequestDTO request
     ) {
         AuthResponseDTO response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -37,7 +36,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(
-            @Valid @RequestBody LoginRequestDTO request
+            @RequestBody LoginRequestDTO request
     ) {
         AuthResponseDTO response = authService.login(request);
         return ResponseEntity.ok(response);
@@ -46,10 +45,15 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UsuarioActualDTO> me(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Usuario no autenticado"
+            );
         }
 
-        Usuario usuario = usuarioRepository.findByMail(authentication.getName())
+        String mail = authentication.getName();
+
+        Usuario usuario = usuarioRepository.findByMail(mail)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
                         "Usuario no autenticado"
@@ -60,7 +64,8 @@ public class AuthController {
                 usuario.getNombre(),
                 usuario.getApellido(),
                 usuario.getMail(),
-                usuario.getRol().name()
+                usuario.getRol().name(),
+                usuario.getEstado().name()
         );
 
         return ResponseEntity.ok(response);
