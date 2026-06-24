@@ -19,6 +19,7 @@ type AuthContextType = {
   isBlocked: boolean;
   isRejected: boolean;
   isAdmin: boolean;
+  requiresPaymentSetup: boolean;
 
   login: (response: AuthResponseDTO) => Promise<void>;
   logout: () => Promise<void>;
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mail: response.mail,
       rol: response.rol,
       estado: response.estado,
+      categoria: response.categoria ?? null,
     };
 
     setToken(response.token);
@@ -101,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isBlocked = user?.estado === "BLOQUEADO";
   const isRejected = user?.estado === "RECHAZADO";
   const isAdmin = user?.rol === "ADMIN";
+  const requiresPaymentSetup = !!user?.requiereMedioDePago;
 
   return (
     <AuthContext.Provider
@@ -113,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isBlocked,
         isRejected,
         isAdmin,
+        requiresPaymentSetup,
         login,
         logout,
         refreshUser,

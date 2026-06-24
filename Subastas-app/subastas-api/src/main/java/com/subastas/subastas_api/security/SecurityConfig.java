@@ -39,14 +39,16 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/auth/register",
+                                "/auth/pre-register",
+                                "/auth/registration-status",
+                                "/auth/complete-registration",
                                 "/auth/login",
+                                "/uploads/**",
                                 "/subastas/recomendadas",
-                                "/subastas/categoria/**",
-                                "/uploads/**"
+                                "/subastas/categoria/**"
                         ).permitAll()
-                        .requestMatchers("/auth/me").authenticated()
-                        .anyRequest().permitAll()
+                        .requestMatchers("/me/**").authenticated()
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(
                         jwtAuthenticationFilter,

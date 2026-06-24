@@ -2,7 +2,7 @@ import { clearAuthData, getStoredToken } from "@/src/storage/authStorage";
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://2033-2800-250a-d4-d27-6197-80ed-c8bb-c868.ngrok-free.app",
+  baseURL: "https://ed86-181-2-202-196.ngrok-free.app",
 });
 
 api.interceptors.request.use(async (config) => {
@@ -23,7 +23,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

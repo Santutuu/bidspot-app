@@ -23,7 +23,7 @@ public class UsuarioController {
     @PostMapping
     public void crear(@RequestBody Usuario usuario) {
         Usuario guardado = usuarioService.guardar(usuario);
-        System.out.println("DEBUG: Nombre del usuario guardado: " + guardado.getNombre());
+
     }
 
     @GetMapping

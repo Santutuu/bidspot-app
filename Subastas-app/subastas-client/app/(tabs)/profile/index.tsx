@@ -152,7 +152,7 @@ export default function ProfileScreen() {
 
           <Pressable
             style={styles.primaryButton}
-            onPress={() => router.push("/medios-pago")}
+            onPress={() => router.push("/financial-setup/medios-pago")}
           >
             <Text style={styles.primaryButtonText}>
               Cargar cuenta y medio de pago

@@ -30,34 +30,14 @@ export default function TabsLayout() {
             style={styles.headerLeft}
             onPress={() => router.push("/(tabs)/profile")}
           >
-            <Ionicons
-              name="person-circle-outline"
-              size={38}
-              color="white"
-            />
+            <Ionicons name="person-circle-outline" size={38} color="white" />
           </Pressable>
         ),
 
         headerRight: () => (
           <View style={styles.headerRight}>
-            <Pressable
-              onPress={() => router.push("/(tabs)/notifications")}
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={34}
-                color="white"
-              />
-            </Pressable>
-
-            <Pressable
-              onPress={() => router.push("/mensajeria")}
-            >
-              <Ionicons
-                name="chatbox-outline"
-                size={34}
-                color="white"
-              />
+            <Pressable onPress={() => router.push("/(tabs)/notifications")}>
+              <Ionicons name="notifications-outline" size={34} color="white" />
             </Pressable>
           </View>
         ),
@@ -78,11 +58,7 @@ export default function TabsLayout() {
         options={{
           title: "Inicio",
           tabBarIcon: ({ color }) => (
-            <Ionicons
-              name="home-outline"
-              size={26}
-              color={color}
-            />
+            <Ionicons name="home-outline" size={26} color={color} />
           ),
         }}
       />
@@ -92,11 +68,7 @@ export default function TabsLayout() {
         options={{
           title: "Buscar",
           tabBarIcon: ({ color }) => (
-            <Ionicons
-              name="search-outline"
-              size={26}
-              color={color}
-            />
+            <Ionicons name="search-outline" size={26} color={color} />
           ),
         }}
       />
@@ -106,11 +78,7 @@ export default function TabsLayout() {
         options={{
           title: "Guardadas",
           tabBarIcon: ({ color }) => (
-            <Ionicons
-              name="bookmark-outline"
-              size={26}
-              color={color}
-            />
+            <Ionicons name="bookmark-outline" size={26} color={color} />
           ),
         }}
       />
@@ -120,13 +88,34 @@ export default function TabsLayout() {
         options={{
           title: "Perfil",
           tabBarIcon: ({ color }) => (
-            <Ionicons
-              name="person-outline"
-              size={26}
-              color={color}
-            />
+            <Ionicons name="person-outline" size={26} color={color} />
           ),
         }}
+      />
+
+      <Tabs.Screen name="notifications" options={{ href: null }} />
+
+      <Tabs.Screen name="auth/login" options={{ href: null }} />
+      <Tabs.Screen name="auth/register" options={{ href: null }} />
+      <Tabs.Screen name="auth/registration-status" options={{ href: null }} />
+      <Tabs.Screen name="auth/complete-registration" options={{ href: null }} />
+
+      <Tabs.Screen name="financial-setup/index" options={{ href: null }} />
+      <Tabs.Screen
+        name="financial-setup/cuenta-cobro"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="financial-setup/medios-pago"
+        options={{ href: null }}
+      />
+      <Tabs.Screen name="financial-setup/tarjeta" options={{ href: null }} />
+      <Tabs.Screen name="financial-setup/cheque" options={{ href: null }} />
+
+      <Tabs.Screen name="subastas/[id]" options={{ href: null }} />
+      <Tabs.Screen
+        name="subastas/category/[categoria]"
+        options={{ href: null }}
       />
     </Tabs>
   );

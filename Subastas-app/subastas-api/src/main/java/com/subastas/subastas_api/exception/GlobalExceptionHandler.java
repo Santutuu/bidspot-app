@@ -74,19 +74,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleGeneric(
+    public ResponseEntity<ApiErrorResponse> handleGeneralException(
             Exception ex,
             HttpServletRequest request
     ) {
-        ApiErrorResponse response = new ApiErrorResponse(
+        ex.printStackTrace();
+
+        ApiErrorResponse error = new ApiErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                "Error interno del servidor",
+                ex.getMessage(),
                 request.getRequestURI(),
                 null
         );
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(error);
     }
 }

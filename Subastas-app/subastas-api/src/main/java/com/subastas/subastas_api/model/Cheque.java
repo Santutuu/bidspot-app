@@ -6,10 +6,10 @@ import jakarta.persistence.*;
 @Entity
 public class Cheque extends MedioDePago {
 
-    private String identificacion;
-    private int nroCheque;
+    private int identificacion;
+    private String nroCheque;
     private String beneficiario;
-    private int cuilCuit;
+    private String cuilCuit;
     private float saldo;
 
     public Cheque() {
@@ -18,10 +18,10 @@ public class Cheque extends MedioDePago {
 
     public Cheque(
             Usuario usuario,
-            String identificacion,
-            int nroCheque,
+            int identificacion,
+            String nroCheque,
             String beneficiario,
-            int cuilCuit, float saldo) {
+            String cuilCuit, float saldo) {
 
         super(usuario);
 
@@ -34,19 +34,19 @@ public class Cheque extends MedioDePago {
 
 
 
-    public String getIdentificacion() {
+    public int getIdentificacion() {
         return identificacion;
     }
 
-    public void setIdentificacion(String identificacion) {
+    public void setIdentificacion(int identificacion) {
         this.identificacion = identificacion;
     }
 
-    public int getNroCheque() {
+    public String getNroCheque() {
         return nroCheque;
     }
 
-    public void setNroCheque(int nroCheque) {
+    public void setNroCheque(String nroCheque) {
         this.nroCheque = nroCheque;
     }
 
@@ -58,11 +58,11 @@ public class Cheque extends MedioDePago {
         this.beneficiario = beneficiario;
     }
 
-    public int getCuilCuit() {
+    public String getCuilCuit() {
         return cuilCuit;
     }
 
-    public void setCuilCuit(int cuilCuit) {
+    public void setCuilCuit(String cuilCuit) {
         this.cuilCuit = cuilCuit;
     }
 

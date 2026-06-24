@@ -3,11 +3,7 @@ export interface AuthResponseDTO {
   idUsuario: number;
   nombre: string;
   mail: string;
-  rol: "USER" | "ADMIN" | string;
-  estado:
-    | "PENDIENTE_VALIDACION"
-    | "VALIDADO"
-    | "RECHAZADO"
-    | "BLOQUEADO"
-    | string;
+  rol: string;
+  estado: string;
+  categoria: string | null;
 }

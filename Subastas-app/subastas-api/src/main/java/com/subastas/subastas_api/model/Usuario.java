@@ -12,17 +12,9 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idUsuario;
 
-    @Column(nullable = false)
-    private String nombre;
-
-    @Column(nullable = false)
-    private String apellido;
-
-    @Column(nullable = false, unique = true)
-    private String mail;
-
-    @Column(nullable = false)
-    private String password;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "persona_id", nullable = false, unique = true)
+    private Persona persona;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -32,12 +24,11 @@ public class Usuario {
     @Column(nullable = false)
     private EstadoUsuario estado = EstadoUsuario.PENDIENTE_VALIDACION;
 
-    private String frenteDNIUrl;
+    @Enumerated(EnumType.STRING)
+    private CategoriaUsuario categoria;
 
-    private String dorsoDNIUrl;
-
-    @Embedded
-    private Domicilio domicilio;
+    @Column(nullable = true)
+    private String password;
 
     @ManyToMany
     @JoinTable(
@@ -60,24 +51,18 @@ public class Usuario {
     public Usuario() {
     }
 
-    public Usuario(String nombre,
-                   String apellido,
-                   String mail,
+    public Usuario(Persona persona,
                    String password,
                    Rol rol,
-                   EstadoUsuario estado,
-                   String frenteDNIUrl,
-                   String dorsoDNIUrl,
-                   Domicilio domicilio) {
-        this.nombre = nombre;
-        this.apellido = apellido;
-        this.mail = mail;
+                   EstadoUsuario estado) {
+        this.persona = persona;
         this.password = password;
         this.rol = rol;
         this.estado = estado;
-        this.frenteDNIUrl = frenteDNIUrl;
-        this.dorsoDNIUrl = dorsoDNIUrl;
-        this.domicilio = domicilio;
+    }
+
+    public boolean tieneClaveGenerada() {
+        return password != null && !password.isBlank();
     }
 
     public void agregarMedioDePago(MedioDePago medioDePago) {
@@ -85,20 +70,25 @@ public class Usuario {
         medioDePago.setUsuario(this);
     }
 
+    public void eliminarMedioDePago(MedioDePago medioDePago) {
+        mediosDePago.remove(medioDePago);
+        medioDePago.setUsuario(null);
+    }
+
+    public void guardarSubasta(Subasta subasta) {
+        guardadas.add(subasta);
+    }
+
+    public void eliminarSubasta(Subasta subasta) {
+        guardadas.remove(subasta);
+    }
+
     public Long getIdUsuario() {
         return idUsuario;
     }
 
-    public String getNombre() {
-        return nombre;
-    }
-
-    public String getApellido() {
-        return apellido;
-    }
-
-    public String getMail() {
-        return mail;
+    public Persona getPersona() {
+        return persona;
     }
 
     public String getPassword() {
@@ -113,19 +103,39 @@ public class Usuario {
         return estado;
     }
 
-    public String getFrenteDNIUrl() {
-        return frenteDNIUrl;
+    public CategoriaUsuario getCategoria() {
+        return categoria;
     }
 
-    public String getDorsoDNIUrl() {
-        return dorsoDNIUrl;
+    public CuentaBanco getCuenta() {
+        return cuenta;
     }
 
-    public Domicilio getDomicilio() {
-        return domicilio;
+    public List<MedioDePago> getMediosDePago() {
+        return mediosDePago;
+    }
+
+    public List<Puja> getPujas() {
+        return pujas;
+    }
+
+    public List<Subasta> getGuardadas() {
+        return guardadas;
     }
 
     public void setEstado(EstadoUsuario estado) {
         this.estado = estado;
+    }
+
+    public void setCategoria(CategoriaUsuario categoria) {
+        this.categoria = categoria;
+    }
+
+    public void setCuenta(CuentaBanco cuenta) {
+        this.cuenta = cuenta;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

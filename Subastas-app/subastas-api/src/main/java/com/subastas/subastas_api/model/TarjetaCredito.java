@@ -5,20 +5,19 @@ import java.util.Date;
 @Entity
 public class TarjetaCredito extends MedioDePago {
 
-    private int numero;
+    private String numero;
     private String nombre;
-    private Date fechaVto;
-    private int cvv;
-    private boolean esPrincipal;
+    private String fechaVto;
+    private String cvv;
 
     public TarjetaCredito() {}
 
     public TarjetaCredito(Usuario usuario,
-                          int numero,
+                          String numero,
                           String nombre,
-                          Date fechaVto,
-                          int cvv,
-                          boolean esPrincipal) {
+                          String fechaVto,
+                          String cvv
+                         ) {
 
         super(usuario);
 
@@ -26,21 +25,19 @@ public class TarjetaCredito extends MedioDePago {
         this.nombre = nombre;
         this.fechaVto = fechaVto;
         this.cvv = cvv;
-        this.esPrincipal = esPrincipal;
     }
 
-    public int getNumero() { return numero; }
-    public void setNumero(int numero) { this.numero = numero; }
+    public String getNumero() { return numero; }
+    public void setNumero(String numero) { this.numero = numero; }
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
 
-    public Date getFechaVto() { return fechaVto; }
-    public void setFechaVto(Date fechaVto) { this.fechaVto = fechaVto; }
+    public String getFechaVto() { return fechaVto; }
+    public void setFechaVto(String fechaVto) { this.fechaVto = fechaVto; }
 
-    public int getCvv() { return cvv; }
-    public void setCvv(int cvv) { this.cvv = cvv; }
+    public String getCvv() { return cvv; }
+    public void setCvv(String cvv) { this.cvv = cvv; }
 
-    public boolean isEsPrincipal() { return esPrincipal; }
-    public void setEsPrincipal(boolean esPrincipal) { this.esPrincipal = esPrincipal; }
+
 }

@@ -39,25 +39,11 @@ export default function RootLayout() {
                   color="white"
                 />
               </Pressable>
-
-              <Pressable onPress={() => router.push("/mensajeria")}>
-                <Ionicons name="chatbox-outline" size={34} color="white" />
-              </Pressable>
             </View>
           ),
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
-        <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-
-        <Stack.Screen
-          name="subastas/category/[categoria]"
-          options={{ headerShown: true }}
-        />
-
-        <Stack.Screen name="subastas/[id]" options={{ headerShown: true }} />
       </Stack>
     </AuthProvider>
   );

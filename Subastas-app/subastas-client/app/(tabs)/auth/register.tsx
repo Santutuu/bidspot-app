@@ -1,6 +1,5 @@
-import { registerUser } from "@/src/api/authAPI";
+import { preRegisterUser } from "@/src/api/authAPI";
 import { uploadDniImage } from "@/src/api/uploadAPI";
-import { useAuth } from "@/src/context/authContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
@@ -22,16 +21,14 @@ import {
 type DocumentSide = "front" | "back";
 
 export default function RegisterScreen() {
-  const { login } = useAuth();
-
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [mail, setMail] = useState("");
-  const [password, setPassword] = useState("");
 
+  const [pais, setPais] = useState("");
   const [provincia, setProvincia] = useState("");
   const [ciudad, setCiudad] = useState("");
   const [cp, setCp] = useState("");
@@ -56,17 +53,15 @@ export default function RegisterScreen() {
       return;
     }
 
-    const passwordError = getPasswordError(password);
-
-    if (passwordError) {
-      Alert.alert("Contraseña inválida", passwordError);
-      return;
-    }
-
     setStep(2);
   }
 
   function validateAddress() {
+    if (!pais.trim()) {
+      Alert.alert("Campo obligatorio", "Ingresá tu país de origen.");
+      return;
+    }
+
     if (!provincia.trim()) {
       Alert.alert("Campo obligatorio", "Ingresá tu provincia.");
       return;
@@ -90,7 +85,7 @@ export default function RegisterScreen() {
     setStep(3);
   }
 
-  async function submitRegister() {
+  async function submitPreRegister() {
     if (!frontDniImage || !backDniImage) {
       Alert.alert("Documento incompleto", "Subí frente y dorso del DNI.");
       return;
@@ -102,14 +97,14 @@ export default function RegisterScreen() {
       const frenteDNIUrl = await uploadDniImage(frontDniImage);
       const dorsoDNIUrl = await uploadDniImage(backDniImage);
 
-      const response = await registerUser({
+      const response = await preRegisterUser({
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         mail: mail.trim().toLowerCase(),
-        password,
         frenteDNIUrl,
         dorsoDNIUrl,
         domicilio: {
+          pais: pais.trim(),
           provincia: provincia.trim(),
           ciudad: ciudad.trim(),
           cp: cp.trim(),
@@ -117,22 +112,20 @@ export default function RegisterScreen() {
         },
       });
 
-      await login(response);
+      Alert.alert("Solicitud enviada", response.mensaje);
 
-      Alert.alert("Solicitud enviada", "Tu cuenta quedó pendiente de validación.");
-      router.replace("/(tabs)/home");
+      router.replace({
+        pathname: "/auth/registration-status",
+        params: { mail: response.mail },
+      });
     } catch (error: any) {
       const data = error.response?.data;
+      const message =
+        data?.message ??
+        data?.error ??
+        "No se pudo completar el registro.";
 
-      const message = data?.message ?? "No se pudo completar el registro.";
-      const fieldErrors = data?.fieldErrors;
-
-      if (fieldErrors) {
-        const firstError = Object.values(fieldErrors)[0] as string;
-        Alert.alert(message, firstError);
-      } else {
-        Alert.alert("Error", message);
-      }
+      Alert.alert("Error", message);
     } finally {
       setLoading(false);
     }
@@ -198,11 +191,12 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.kicker}>Registro de postor</Text>
-        <Text style={styles.title}>Creá tu cuenta</Text>
+
+        <Text style={styles.title}>Solicitud inicial</Text>
 
         <Text style={styles.subtitle}>
-          Completá la solicitud en tres pasos. La empresa validará tus datos antes
-          de habilitarte para participar en subastas.
+          Completá tus datos. La empresa revisará tu identidad y, si te acepta,
+          te asignará una categoría para participar en subastas.
         </Text>
 
         <View style={styles.stepper}>
@@ -216,9 +210,12 @@ export default function RegisterScreen() {
         {step === 1 && (
           <View style={styles.panel}>
             <Text style={styles.sectionEmoji}>👤</Text>
+
             <Text style={styles.sectionTitle}>Datos personales</Text>
+
             <Text style={styles.sectionDescription}>
-              Usaremos estos datos para identificar tu cuenta.
+              En esta primera etapa no generás contraseña. Primero la empresa
+              debe validar tus datos.
             </Text>
 
             <TextInput
@@ -248,19 +245,6 @@ export default function RegisterScreen() {
               onChangeText={setMail}
             />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              placeholderTextColor="#9CA3AF"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-
-            <Text style={styles.passwordHint}>
-              Mínimo 8 caracteres, una mayúscula, un número y un carácter especial.
-            </Text>
-
             <Pressable style={styles.button} onPress={validatePersonalData}>
               <Text style={styles.buttonText}>Continuar</Text>
             </Pressable>
@@ -270,10 +254,20 @@ export default function RegisterScreen() {
         {step === 2 && (
           <View style={styles.panel}>
             <Text style={styles.sectionEmoji}>📍</Text>
+
             <Text style={styles.sectionTitle}>Domicilio legal</Text>
+
             <Text style={styles.sectionDescription}>
-              Indicá el domicilio asociado a tu documentación.
+              Indicá tu domicilio legal y país de origen.
             </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="País de origen"
+              placeholderTextColor="#9CA3AF"
+              value={pais}
+              onChangeText={setPais}
+            />
 
             <TextInput
               style={styles.input}
@@ -323,7 +317,9 @@ export default function RegisterScreen() {
         {step === 3 && (
           <View style={styles.panel}>
             <Text style={styles.sectionEmoji}>🪪</Text>
+
             <Text style={styles.sectionTitle}>Documento de identidad</Text>
+
             <Text style={styles.sectionDescription}>
               Subí imágenes claras del frente y dorso del DNI.
             </Text>
@@ -350,12 +346,12 @@ export default function RegisterScreen() {
               <Pressable
                 style={[styles.primarySmallButton, loading && styles.buttonDisabled]}
                 disabled={loading}
-                onPress={submitRegister}
+                onPress={submitPreRegister}
               >
                 {loading ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text style={styles.buttonText}>Enviar</Text>
+                  <Text style={styles.buttonText}>Enviar solicitud</Text>
                 )}
               </Pressable>
             </View>
@@ -363,7 +359,11 @@ export default function RegisterScreen() {
         )}
 
         <Pressable onPress={() => router.push("/auth/login")}>
-          <Text style={styles.link}>Ya tengo una cuenta</Text>
+          <Text style={styles.link}>Ya tengo una clave</Text>
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/auth/registration-status")}>
+          <Text style={styles.secondaryLink}>Consultar estado de solicitud</Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -384,6 +384,7 @@ function StepDot({
       <View style={[styles.dot, active && styles.dotActive, done && styles.dotDone]}>
         {done ? <Ionicons name="checkmark" size={14} color="white" /> : null}
       </View>
+
       <Text style={[styles.stepLabel, active && styles.stepLabelActive]}>
         {label}
       </Text>
@@ -405,12 +406,18 @@ function DocumentUploadBox({
   return (
     <View style={styles.uploadBox}>
       {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.previewImage}
+          resizeMode="cover"
+        />
       ) : (
         <View style={styles.emptyPreview}>
           <Ionicons name="document-text-outline" size={32} color="#4B5563" />
           <Text style={styles.uploadTitle}>{title}</Text>
-          <Text style={styles.uploadSubtitle}>Imagen clara, completa y legible.</Text>
+          <Text style={styles.uploadSubtitle}>
+            Imagen clara, completa y legible.
+          </Text>
         </View>
       )}
 
@@ -431,14 +438,6 @@ function DocumentUploadBox({
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-function getPasswordError(value: string) {
-  if (value.length < 8) return "La contraseña debe tener al menos 8 caracteres.";
-  if (!/[A-Z]/.test(value)) return "La contraseña debe tener al menos una mayúscula.";
-  if (!/\d/.test(value)) return "La contraseña debe tener al menos un número.";
-  if (!/[^A-Za-z0-9]/.test(value)) return "La contraseña debe tener al menos un carácter especial.";
-  return null;
 }
 
 const styles = StyleSheet.create({
@@ -570,14 +569,6 @@ const styles = StyleSheet.create({
     height: 55,
   },
 
-  passwordHint: {
-    fontSize: 12,
-    color: "#6B7280",
-    lineHeight: 17,
-    marginTop: -8,
-    marginBottom: 18,
-  },
-
   button: {
     backgroundColor: "#2F63F6",
     paddingVertical: 15,
@@ -694,5 +685,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     marginTop: 22,
+  },
+
+  secondaryLink: {
+    textAlign: "center",
+    color: "#6B7280",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 12,
   },
 });

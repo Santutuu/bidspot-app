@@ -1,9 +1,6 @@
 package com.subastas.subastas_api.controller;
 
-import com.subastas.subastas_api.DTO.auth.AuthResponseDTO;
-import com.subastas.subastas_api.DTO.auth.LoginRequestDTO;
-import com.subastas.subastas_api.DTO.auth.RegisterRequestDTO;
-import com.subastas.subastas_api.DTO.auth.UsuarioActualDTO;
+import com.subastas.subastas_api.DTO.auth.*;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.service.AuthService;
@@ -26,12 +23,28 @@ public class AuthController {
         this.usuarioRepository = usuarioRepository;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<AuthResponseDTO> register(
-            @RequestBody RegisterRequestDTO request
+    @PostMapping("/pre-register")
+    public ResponseEntity<PreRegisterResponseDTO> preRegister(
+            @RequestBody PreRegisterRequestDTO request
     ) {
-        AuthResponseDTO response = authService.register(request);
+        PreRegisterResponseDTO response = authService.preRegister(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/registration-status")
+    public ResponseEntity<RegistrationStatusDTO> registrationStatus(
+            @RequestParam String mail
+    ) {
+        RegistrationStatusDTO response = authService.obtenerEstadoRegistro(mail);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/complete-registration")
+    public ResponseEntity<AuthResponseDTO> completeRegistration(
+            @RequestBody CompleteRegistrationRequestDTO request
+    ) {
+        AuthResponseDTO response = authService.completarRegistro(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
@@ -59,13 +72,24 @@ public class AuthController {
                         "Usuario no autenticado"
                 ));
 
+        String categoria = usuario.getCategoria() != null
+                ? usuario.getCategoria().name()
+                : null;
+
+        boolean requiereMedioDePago =
+                usuario.getEstado().name().equals("VALIDADO")
+                        && usuario.getMediosDePago().isEmpty();
+
         UsuarioActualDTO response = new UsuarioActualDTO(
                 usuario.getIdUsuario(),
-                usuario.getNombre(),
-                usuario.getApellido(),
-                usuario.getMail(),
+                usuario.getPersona().getNombre(),
+                usuario.getPersona().getApellido(),
+                usuario.getPersona().getMail(),
                 usuario.getRol().name(),
-                usuario.getEstado().name()
+                usuario.getEstado().name(),
+                categoria,
+                usuario.tieneClaveGenerada(),
+                requiereMedioDePago
         );
 
         return ResponseEntity.ok(response);
