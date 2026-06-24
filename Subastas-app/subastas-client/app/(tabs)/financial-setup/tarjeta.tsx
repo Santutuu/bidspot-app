@@ -28,19 +28,29 @@ export default function TarjetaScreen() {
     try {
       setLoading(true);
 
-      await crearTarjeta({
+      const response = await crearTarjeta({
         numero: numero.trim(),
         nombre: nombre.trim(),
         fechaVto: fechaVto.trim(),
         cvv: cvv.trim(),
       });
 
-      Alert.alert("Tarjeta registrada", "Tu tarjeta fue guardada.");
-      router.replace("/financial-setup/medios-pago");
+      const successMessage =
+        (response as any)?.message ?? "La tarjeta se guardó correctamente.";
+
+      Alert.alert("Éxito", successMessage, [
+        {
+          text: "OK",
+          onPress: () =>
+            router.replace("/(tabs)/financial-setup/medios-pago" as any),
+        },
+      ]);
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error.response?.data?.message ?? "No pudimos guardar la tarjeta."
+        error.response?.data?.message ??
+          error.response?.data?.error ??
+          "No pudimos guardar la tarjeta.",
       );
     } finally {
       setLoading(false);
@@ -49,139 +59,158 @@ export default function TarjetaScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.kicker}>Medio de pago</Text>
-      <Text style={styles.title}>Tarjeta principal</Text>
+      <Pressable
+        style={styles.backButton}
+        onPress={() =>
+          router.replace("/(tabs)/financial-setup/medios-pago" as any)
+        }
+      >
+        <Text style={styles.backText}>‹</Text>
+      </Pressable>
 
-      <View style={styles.card}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nro tarjeta"
-          placeholderTextColor="#9CA3AF"
-          keyboardType="numeric"
-          value={numero}
-          onChangeText={setNumero}
-        />
+      <Text style={styles.title}>Tarjeta Principal</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre"
-          placeholderTextColor="#9CA3AF"
-          value={nombre}
-          onChangeText={setNombre}
-        />
+      <TextInput
+        style={styles.input}
+        placeholder="Nro tarjeta"
+        placeholderTextColor="#9CA3AF"
+        keyboardType="numeric"
+        value={numero}
+        onChangeText={setNumero}
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="F. vto. Ej: 05/29"
-          placeholderTextColor="#9CA3AF"
-          value={fechaVto}
-          onChangeText={setFechaVto}
-        />
+      <TextInput
+        style={styles.input}
+        placeholder="Nombre"
+        placeholderTextColor="#9CA3AF"
+        value={nombre}
+        onChangeText={setNombre}
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="CVV"
-          placeholderTextColor="#9CA3AF"
-          keyboardType="numeric"
-          secureTextEntry
-          value={cvv}
-          onChangeText={setCvv}
-        />
+      <TextInput
+        style={styles.smallInput}
+        placeholder="F vto"
+        placeholderTextColor="#9CA3AF"
+        value={fechaVto}
+        onChangeText={setFechaVto}
+      />
 
-        <View style={styles.actionsRow}>
-          <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-            <Text style={styles.secondaryButtonText}>Cancelar</Text>
-          </Pressable>
+      <TextInput
+        style={styles.smallInput}
+        placeholder="CVV"
+        placeholderTextColor="#9CA3AF"
+        keyboardType="numeric"
+        secureTextEntry
+        value={cvv}
+        onChangeText={setCvv}
+      />
 
-          <Pressable
-            style={[styles.primaryButton, loading && styles.disabled]}
-            onPress={guardarTarjeta}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Guardar</Text>
-            )}
-          </Pressable>
-        </View>
+      <View style={styles.actions}>
+        <Pressable
+          style={styles.cancelButton}
+          onPress={() =>
+            router.replace("/(tabs)/financial-setup/medios-pago" as any)
+          }
+        >
+          <Text style={styles.cancelIcon}>×</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.confirmButton}
+          onPress={guardarTarjeta}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#2F63F6" />
+          ) : (
+            <Text style={styles.confirmIcon}>✓</Text>
+          )}
+        </Pressable>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5F6FA" },
-  container: { paddingHorizontal: 22, paddingTop: 34, paddingBottom: 42 },
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
 
-  kicker: {
-    color: "#2F63F6",
-    fontSize: 13,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 8,
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 42,
+  },
+
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+
+  backText: {
+    fontSize: 38,
+    color: "#111827",
   },
 
   title: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: "900",
     color: "#111827",
-    marginBottom: 22,
-  },
-
-  card: {
-    backgroundColor: "white",
-    borderRadius: 22,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    marginBottom: 28,
   },
 
   input: {
-    backgroundColor: "#FAFAFA",
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    fontSize: 15,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    height: 48,
+    borderWidth: 1.3,
+    borderColor: "#111827",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
     color: "#111827",
-    height: 55,
   },
 
-  actionsRow: { flexDirection: "row", gap: 12, marginTop: 8 },
+  smallInput: {
+    width: 86,
+    height: 42,
+    borderWidth: 1.3,
+    borderColor: "#111827",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    color: "#111827",
+  },
 
-  secondaryButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    paddingVertical: 14,
-    borderRadius: 13,
+  actions: {
+    marginTop: 42,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  cancelButton: {
+    width: 58,
+    height: 58,
+    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
   },
 
-  primaryButton: {
-    flex: 1,
-    backgroundColor: "#2F63F6",
-    paddingVertical: 14,
-    borderRadius: 13,
+  confirmButton: {
+    width: 58,
+    height: 58,
+    borderWidth: 1.5,
+    borderColor: "#2F63F6",
+    justifyContent: "center",
     alignItems: "center",
   },
 
-  secondaryButtonText: {
-    color: "#1F2937",
-    fontSize: 15,
-    fontWeight: "800",
+  cancelIcon: {
+    fontSize: 52,
+    color: "#111827",
+    fontWeight: "200",
   },
 
-  primaryButtonText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "800",
+  confirmIcon: {
+    fontSize: 34,
+    color: "#2F63F6",
+    fontWeight: "700",
   },
-
-  disabled: { opacity: 0.7 },
 });

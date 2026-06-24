@@ -1,5 +1,7 @@
+import { getCurrentUser, getRegistrationStatus } from "@/src/api/authAPI";
 import { useAuth } from "@/src/context/authContext";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,43 +11,126 @@ import {
   View,
 } from "react-native";
 
-function formatEstado(estado: string) {
-  switch (estado) {
-    case "PENDIENTE_VALIDACION":
-      return "Pendiente de validación";
-    case "VALIDADO":
-      return "Cuenta activa";
-    case "RECHAZADO":
-      return "Solicitud rechazada";
-    case "BLOQUEADO":
-      return "Cuenta bloqueada";
-    default:
-      return estado;
-  }
-}
-
 export default function ProfileScreen() {
   const {
     user,
     loadingAuth,
     isAuthenticated,
     isValidated,
-    isBlocked,
-    isRejected,
+    requiresPaymentSetup,
+    pendingRegistrationMail,
     logout,
     refreshUser,
   } = useAuth();
 
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const refreshUserRef = useRef(refreshUser);
+
+  useEffect(() => {
+    refreshUserRef.current = refreshUser;
+  }, [refreshUser]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (loadingAuth) return;
+
+      let active = true;
+
+      async function evaluateProfileFlow() {
+        try {
+          setCheckingStatus(true);
+
+          if (isAuthenticated) {
+            const freshUser = await getCurrentUser();
+            await refreshUserRef.current();
+
+            if (!active) return;
+
+            if (
+              freshUser.estado === "VALIDADO" &&
+              freshUser.claveGenerada &&
+              freshUser.requiereMedioDePago
+            ) {
+              router.replace("/(tabs)/financial-setup" as any);
+              return;
+            }
+
+            if (freshUser.estado === "VALIDADO" && !freshUser.claveGenerada) {
+              router.replace({
+                pathname: "/(tabs)/auth/complete-registration" as any,
+                params: { mail: freshUser.mail },
+              });
+              return;
+            }
+
+            return;
+          }
+
+          if (!pendingRegistrationMail) return;
+
+          const response = await getRegistrationStatus(pendingRegistrationMail);
+
+          if (!active) return;
+
+          if (response.estado === "VALIDADO" && response.puedeGenerarClave) {
+            router.replace({
+              pathname: "/(tabs)/auth/complete-registration" as any,
+              params: { mail: response.mail },
+            });
+          }
+        } catch {
+          // En error de red mantenemos la UI actual para no romper la navegación.
+        } finally {
+          if (active) {
+            setCheckingStatus(false);
+          }
+        }
+      }
+
+      void evaluateProfileFlow();
+
+      return () => {
+        active = false;
+      };
+    }, [loadingAuth, isAuthenticated, pendingRegistrationMail]),
+  );
+
   async function handleLogout() {
     await logout();
-    router.replace("/auth/login");
+    router.replace("/(tabs)/profile");
   }
 
-  if (loadingAuth) {
+  if (loadingAuth || checkingStatus) {
     return (
       <View style={styles.stateContainer}>
-        <ActivityIndicator size="large" color="#2F63F6" />
-        <Text style={styles.stateText}>Cargando perfil...</Text>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+        <Text style={styles.pendingText}>Cargando...</Text>
+      </View>
+    );
+  }
+
+  if (!isAuthenticated && pendingRegistrationMail) {
+    return (
+      <View style={styles.pendingContainer}>
+        <Text style={styles.pendingTitle}>
+          Tu cuenta se encuentra en revisión
+        </Text>
+
+        <Text style={styles.pendingSubtitle}>
+          En breve nos pondremos en contacto. Cuando la empresa valide tu
+          cuenta, vas a poder generar tu clave personal.
+        </Text>
+
+        <Text style={styles.mailText}>{pendingRegistrationMail}</Text>
+
+        <Text style={styles.hourglass}>⌛</Text>
+
+        <Pressable
+          style={styles.transparentButton}
+          onPress={() => router.replace("/(tabs)/home")}
+        >
+          <Text style={styles.transparentButtonText}>Volver al inicio</Text>
+        </Pressable>
       </View>
     );
   }
@@ -53,12 +138,10 @@ export default function ProfileScreen() {
   if (!isAuthenticated || !user) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emoji}>👤</Text>
-
         <Text style={styles.title}>Tu perfil</Text>
 
         <Text style={styles.subtitle}>
-          Iniciá sesión para ver tu información y gestionar tu cuenta.
+          Iniciá sesión o registrate para participar en subastas.
         </Text>
 
         <Pressable
@@ -78,97 +161,63 @@ export default function ProfileScreen() {
     );
   }
 
+  if (isValidated && requiresPaymentSetup) {
+    return (
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.container}
+      >
+        <Text style={styles.title}>Hola {user.nombre}</Text>
+
+        <Text style={styles.subtitle}>
+          Agregá configuración financiera para completar tu registro.
+        </Text>
+
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Categoría</Text>
+          <Text style={styles.category}>{user.categoria ?? "PLATA"}</Text>
+        </View>
+
+        <Pressable
+          style={styles.optionCard}
+          onPress={() =>
+            router.push("/(tabs)/financial-setup/cuenta-cobro" as any)
+          }
+        >
+          <Text style={styles.optionTitle}>Cuenta de cobro</Text>
+          <Text style={styles.arrow}>→</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.optionCard}
+          onPress={() =>
+            router.push("/(tabs)/financial-setup/medios-pago" as any)
+          }
+        >
+          <Text style={styles.optionTitle}>Medios de pago</Text>
+          <Text style={styles.arrow}>→</Text>
+        </Pressable>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.emoji}>👤</Text>
-
       <Text style={styles.title}>Hola, {user.nombre}</Text>
       <Text style={styles.subtitle}>{user.mail}</Text>
 
       <View style={styles.card}>
         <Text style={styles.cardLabel}>Estado de cuenta</Text>
-
-        <Text
-          style={[
-            styles.status,
-            isValidated && styles.statusValid,
-            !isValidated && !isBlocked && !isRejected && styles.statusPending,
-            (isBlocked || isRejected) && styles.statusDanger,
-          ]}
-        >
-          {formatEstado(user.estado)}
+        <Text style={styles.status}>Cuenta activa</Text>
+        <Text style={styles.infoText}>
+          Tu cuenta está lista para operar dentro de la app.
         </Text>
-
-        {user.estado === "PENDIENTE_VALIDACION" && (
-          <Text style={styles.infoText}>
-            Tu cuenta está pendiente de validación. La empresa revisará tus datos
-            y, si te acepta, te habilitará para continuar el registro.
-          </Text>
-        )}
-
-        {isValidated && (
-          <Text style={styles.infoText}>
-            Tu cuenta ya fue validada por la empresa. Para participar en subastas,
-            debés cargar al menos un medio de pago.
-          </Text>
-        )}
-
-        {isBlocked && (
-          <Text style={styles.infoText}>
-            Tu cuenta se encuentra bloqueada. No podés operar dentro de la app.
-          </Text>
-        )}
-
-        {isRejected && (
-          <Text style={styles.infoText}>
-            Tu solicitud fue rechazada. No podés completar el registro.
-          </Text>
-        )}
       </View>
-
-      {isValidated && (
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Categoría de postor</Text>
-
-          <Text style={styles.category}>Tu categoría es: PLATA</Text>
-
-          <Text style={styles.infoText}>
-            Esta categoría determina en qué subastas podés participar. Las
-            categorías disponibles son común, especial, plata, oro y platino.
-          </Text>
-        </View>
-      )}
-
-      {isValidated && (
-        <View style={styles.paymentCard}>
-          <Text style={styles.cardLabel}>Registro pendiente</Text>
-
-          <Text style={styles.paymentTitle}>Cargá cuenta y medio de pago</Text>
-
-          <Text style={styles.infoText}>
-            Para completar tu registro debés cargar al menos un medio de pago:
-            cuenta bancaria, tarjeta de crédito o cheque certificado.
-          </Text>
-
-          <Pressable
-            style={styles.primaryButton}
-            onPress={() => router.push("/financial-setup/medios-pago")}
-          >
-            <Text style={styles.primaryButtonText}>
-              Cargar cuenta y medio de pago
-            </Text>
-          </Pressable>
-        </View>
-      )}
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Rol</Text>
-        <Text style={styles.cardValue}>{user.rol}</Text>
+        <Text style={styles.cardLabel}>Categoría de postor</Text>
+        <Text style={styles.category}>{user.categoria ?? "PLATA"}</Text>
       </View>
-
-      <Pressable style={styles.secondaryButton} onPress={refreshUser}>
-        <Text style={styles.secondaryButtonText}>Actualizar estado</Text>
-      </Pressable>
 
       <Pressable style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Cerrar sesión</Text>
@@ -178,10 +227,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F6FA",
-  },
+  screen: { flex: 1, backgroundColor: "#F5F6FA" },
 
   container: {
     flexGrow: 1,
@@ -192,28 +238,72 @@ const styles = StyleSheet.create({
 
   stateContainer: {
     flex: 1,
-    backgroundColor: "#F5F6FA",
+    backgroundColor: "#2F63F6",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
 
-  stateText: {
-    marginTop: 10,
-    fontSize: 15,
-    color: "#6B7280",
+  pendingContainer: {
+    flex: 1,
+    backgroundColor: "#27447F",
+    paddingHorizontal: 28,
+    paddingTop: 70,
+    paddingBottom: 34,
   },
 
-  emoji: {
-    fontSize: 34,
-    marginBottom: 10,
+  pendingTitle: {
+    color: "white",
+    fontSize: 27,
+    fontWeight: "800",
+    lineHeight: 36,
+    marginBottom: 28,
+  },
+
+  pendingSubtitle: {
+    color: "white",
+    fontSize: 25,
+    lineHeight: 34,
+    marginBottom: 26,
+  },
+
+  pendingText: {
+    marginTop: 10,
+    color: "white",
+    fontSize: 15,
+  },
+
+  mailText: {
+    color: "#DBEAFE",
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 38,
+  },
+
+  hourglass: {
+    color: "white",
+    fontSize: 78,
+    textAlign: "center",
+    marginBottom: 42,
+  },
+
+  transparentButton: {
+    paddingVertical: 15,
+    alignItems: "center",
+    marginTop: 12,
+  },
+
+  transparentButtonText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "800",
   },
 
   title: {
     fontSize: 30,
-    fontWeight: "800",
+    fontWeight: "900",
     color: "#111827",
-    marginBottom: 8,
+    marginBottom: 10,
   },
 
   subtitle: {
@@ -232,67 +322,56 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  paymentCard: {
-    backgroundColor: "#EFF6FF",
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-    marginBottom: 14,
-  },
-
   cardLabel: {
     fontSize: 12,
     color: "#6B7280",
-    fontWeight: "800",
+    fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
   },
 
-  cardValue: {
-    fontSize: 17,
-    color: "#111827",
-    fontWeight: "800",
-  },
-
   status: {
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-
-  statusValid: {
     color: "#16A34A",
-  },
-
-  statusPending: {
-    color: "#D97706",
-  },
-
-  statusDanger: {
-    color: "#B91C1C",
+    fontSize: 20,
+    fontWeight: "900",
+    marginBottom: 8,
   },
 
   category: {
-    fontSize: 20,
+    fontSize: 22,
     color: "#111827",
     fontWeight: "900",
-    marginBottom: 8,
-  },
-
-  paymentTitle: {
-    fontSize: 20,
-    color: "#111827",
-    fontWeight: "900",
-    marginBottom: 8,
   },
 
   infoText: {
     fontSize: 14,
     color: "#4B5563",
     lineHeight: 21,
-    marginBottom: 12,
+  },
+
+  optionCard: {
+    backgroundColor: "white",
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  optionTitle: {
+    fontSize: 18,
+    color: "#111827",
+    fontWeight: "900",
+  },
+
+  arrow: {
+    fontSize: 26,
+    color: "#2F63F6",
+    fontWeight: "900",
   },
 
   primaryButton: {
@@ -326,7 +405,6 @@ const styles = StyleSheet.create({
   },
 
   logoutButton: {
-    marginTop: 4,
     backgroundColor: "#111827",
     paddingVertical: 15,
     borderRadius: 14,

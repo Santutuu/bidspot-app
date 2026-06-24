@@ -5,6 +5,8 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,9 +17,9 @@ import {
 
 export default function CompleteRegistrationScreen() {
   const params = useLocalSearchParams<{ mail?: string }>();
-  const { login } = useAuth();
+  const { login, pendingRegistrationMail } = useAuth();
 
-  const [mail, setMail] = useState(params.mail ?? "");
+  const [mail, setMail] = useState(params.mail ?? pendingRegistrationMail ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,94 +53,78 @@ export default function CompleteRegistrationScreen() {
 
       await login(response);
 
-      Alert.alert(
-        "Registro completado",
-        "Tu clave fue generada correctamente. Ahora completá tu configuración financiera."
-      );
-
-      router.replace("/financial-setup");
+      router.replace("/(tabs)/financial-setup" as any);
     } catch (error: any) {
-      const message =
+      Alert.alert(
+        "Error",
         error.response?.data?.message ??
-        error.response?.data?.error ??
-        "No pudimos completar el registro.";
-
-      Alert.alert("Error", message);
+          error.response?.data?.error ??
+          "No pudimos completar el registro."
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.kicker}>Cuenta validada</Text>
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Generá tu clave</Text>
 
-      <Text style={styles.title}>Generá tu clave</Text>
+        <View style={styles.messageBox}>
+          <Text style={styles.messageTitle}>Cuenta validada exitosamente.</Text>
+          <Text style={styles.messageText}>Tu categoría es: PLATA.</Text>
+          <Text style={styles.messageText}>
+            Generá clave e ingresá medios de pago para completar registro.
+          </Text>
+        </View>
 
-      <Text style={styles.subtitle}>
-        Tu cuenta ya fue aceptada por la empresa. Ahora creá tu clave personal
-        para ingresar y finalizar el registro.
-      </Text>
+        <Text style={styles.mail}>{mail}</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.emoji}>🔐</Text>
-
-        <Text style={styles.cardTitle}>Clave personal</Text>
-
-        <Text style={styles.cardText}>
-          El email corresponde a tu solicitud validada. Completá tu clave y
-          confirmala para continuar con cuenta de cobro y medios de pago.
-        </Text>
-
-        <Text style={styles.label}>Mail</Text>
         <TextInput
           style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#9CA3AF"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={mail}
-          onChangeText={setMail}
-        />
-
-        <Text style={styles.label}>Contraseña</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          placeholderTextColor="#9CA3AF"
+          placeholder="Ingresá tu contraseña"
+          placeholderTextColor="#6B7280"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
         />
 
-        <Text style={styles.label}>Repetir contraseña</Text>
         <TextInput
           style={styles.input}
-          placeholder="Repetir contraseña"
-          placeholderTextColor="#9CA3AF"
+          placeholder="Confirmá contraseña"
+          placeholderTextColor="#6B7280"
           secureTextEntry
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
 
-        <Text style={styles.hint}>
-          Mínimo 8 caracteres, una mayúscula, un número y un carácter especial.
-        </Text>
+        <View style={styles.actionRow}>
+          <Pressable
+            style={styles.cancelButton}
+            onPress={() => router.replace("/(tabs)/home")}
+            disabled={loading}
+          >
+            <Text style={styles.cancelIcon}>×</Text>
+          </Pressable>
 
-        <Pressable
-          style={[styles.primaryButton, loading && styles.buttonDisabled]}
-          onPress={handleCompleteRegistration}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Guardar clave</Text>
-          )}
-        </Pressable>
-      </View>
-    </ScrollView>
+          <Pressable
+            style={[styles.confirmButton, loading && styles.disabled]}
+            onPress={handleCompleteRegistration}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#2F63F6" />
+            ) : (
+              <Text style={styles.confirmIcon}>✓</Text>
+            )}
+          </Pressable>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -154,110 +140,107 @@ function getPasswordError(value: string) {
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: {
+    flex: 1,
+  },
+
   screen: {
     flex: 1,
-    backgroundColor: "#F5F6FA",
+    backgroundColor: "#FFFFFF",
   },
 
   container: {
-    paddingHorizontal: 22,
-    paddingTop: 34,
+    flexGrow: 1,
+    paddingHorizontal: 26,
+    paddingTop: 48,
     paddingBottom: 42,
   },
 
-  kicker: {
-    color: "#2F63F6",
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-
   title: {
-    fontSize: 32,
+    fontSize: 31,
     fontWeight: "900",
     color: "#111827",
-    marginBottom: 10,
-  },
-
-  subtitle: {
-    fontSize: 15,
-    color: "#6B7280",
-    lineHeight: 22,
     marginBottom: 26,
   },
 
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 22,
+  messageBox: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#BFDBFE",
+    padding: 16,
+    marginBottom: 28,
   },
 
-  emoji: {
-    fontSize: 38,
-    marginBottom: 12,
-  },
-
-  cardTitle: {
-    fontSize: 23,
-    fontWeight: "900",
-    color: "#111827",
-    marginBottom: 10,
-  },
-
-  cardText: {
+  messageTitle: {
     fontSize: 15,
-    color: "#4B5563",
-    lineHeight: 23,
-    marginBottom: 20,
-  },
-
-  label: {
-    fontSize: 12,
-    color: "#6B7280",
+    color: "#111827",
     fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 1,
     marginBottom: 6,
   },
 
-  input: {
-    backgroundColor: "#FAFAFA",
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    fontSize: 15,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+  messageText: {
+    fontSize: 14,
+    color: "#374151",
+    lineHeight: 20,
+  },
+
+  mail: {
     color: "#111827",
-    height: 55,
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 24,
   },
 
-  hint: {
-    fontSize: 12,
-    color: "#6B7280",
-    lineHeight: 18,
-    marginBottom: 18,
+  input: {
+    height: 56,
+    borderWidth: 1.4,
+    borderColor: "#111827",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: "#111827",
+    marginBottom: 14,
+    backgroundColor: "#FFFFFF",
   },
 
-  primaryButton: {
-    backgroundColor: "#2F63F6",
-    paddingVertical: 15,
-    borderRadius: 14,
+  actionRow: {
+    marginTop: 32,
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
   },
 
-  primaryButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "800",
+  cancelButton: {
+    width: 58,
+    height: 58,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-  buttonDisabled: {
+  confirmButton: {
+    width: 58,
+    height: 58,
+    borderWidth: 1.5,
+    borderColor: "#2F63F6",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+
+  cancelIcon: {
+    fontSize: 52,
+    color: "#111827",
+    fontWeight: "200",
+  },
+
+  confirmIcon: {
+    fontSize: 34,
+    color: "#2F63F6",
+    fontWeight: "700",
+  },
+
+  disabled: {
     opacity: 0.7,
   },
 });

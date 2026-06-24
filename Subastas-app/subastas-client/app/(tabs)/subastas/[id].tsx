@@ -1,6 +1,5 @@
 import { useAuth } from "@/src/context/authContext";
 import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
-import { requireValidatedUser } from "@/src/utils/authGuards";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -49,11 +48,21 @@ function formatPrice(moneda: string, precio: number) {
 export default function DetalleSubastaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { loadingAuth, isAuthenticated, isValidated, isBlocked, isRejected } =
-    useAuth();
+  const {
+    loadingAuth,
+    isAuthenticated,
+    isValidated,
+    isBlocked,
+    isRejected,
+    requiresPaymentSetup,
+    pendingRegistrationMail,
+  } = useAuth();
+
+  const canLoadDetail =
+    isAuthenticated && isValidated && !isBlocked && !isRejected;
 
   const { detalle, loading, error, recargar } = useDetalleSubasta(
-    isAuthenticated ? id : undefined
+    canLoadDetail ? id : undefined
   );
 
   const listRef = useRef<FlatList>(null);
@@ -63,30 +72,43 @@ export default function DetalleSubastaScreen() {
   useEffect(() => {
     if (loadingAuth) return;
 
+    if (pendingRegistrationMail && !isAuthenticated) {
+      router.replace({
+        pathname: "/(tabs)/auth/registration-status" as any,
+        params: { mail: pendingRegistrationMail },
+      });
+      return;
+    }
+
     if (!isAuthenticated) {
       Alert.alert(
         "Iniciá sesión",
         "Necesitás iniciar sesión para ver el detalle de la subasta.",
         [
-          {
-            text: "Volver",
-            style: "cancel",
-            onPress: () => router.back(),
-          },
-          {
-            text: "Iniciar sesión",
-            onPress: () => router.replace("/auth/login"),
-          },
+          { text: "Volver", style: "cancel", onPress: () => router.back() },
+          { text: "Iniciar sesión", onPress: () => router.replace("/auth/login") },
         ]
       );
+      return;
     }
-  }, [loadingAuth, isAuthenticated]);
 
-  if (loadingAuth || !isAuthenticated) {
+    if (!isValidated || isBlocked || isRejected) {
+      router.replace("/(tabs)/profile");
+    }
+  }, [
+    loadingAuth,
+    pendingRegistrationMail,
+    isAuthenticated,
+    isValidated,
+    isBlocked,
+    isRejected,
+  ]);
+
+  if (loadingAuth || !canLoadDetail) {
     return (
       <View style={styles.stateContainer}>
         <ActivityIndicator size="large" color="#2F63F6" />
-        <Text style={styles.stateText}>Verificando sesión...</Text>
+        <Text style={styles.stateText}>Verificando cuenta...</Text>
       </View>
     );
   }
@@ -139,14 +161,20 @@ export default function DetalleSubastaScreen() {
   }
 
   function handleOffer() {
-    const allowed = requireValidatedUser({
-      isAuthenticated,
-      isValidated,
-      isBlocked,
-      isRejected,
-    });
-
-    if (!allowed) return;
+    if (requiresPaymentSetup) {
+      Alert.alert(
+        "Registro financiero pendiente",
+        "Para ofertar tenés que cargar una cuenta de cobro y al menos un medio de pago.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Completar",
+            onPress: () => router.push("/(tabs)/financial-setup" as any),
+          },
+        ]
+      );
+      return;
+    }
 
     if (!montoOferta.trim()) {
       Alert.alert("Monto obligatorio", "Ingresá el monto que querés ofertar.");
@@ -164,28 +192,15 @@ export default function DetalleSubastaScreen() {
   }
 
   function handleStreaming() {
-    const allowed = requireValidatedUser({
-      isAuthenticated,
-      isValidated,
-      isBlocked,
-      isRejected,
-    });
-
-    if (!allowed) return;
-
     Alert.alert("Streaming", "Después abrimos el link de streaming.");
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Ionicons name="chevron-back" size={34} color="#111827" />
+      </Pressable>
 
-      <Pressable 
-  onPress={() => router.back()} // Esto vuelve a la pantalla anterior
-  style={{ marginBottom: 30 }}
->
-  <Ionicons name="chevron-back" size={40} color="black" />
-</Pressable>
-      
       <View style={styles.carouselContainer}>
         <FlatList
           ref={listRef}
@@ -208,8 +223,6 @@ export default function DetalleSubastaScreen() {
             />
           )}
         />
-        
-        
 
         <Pressable
           style={[styles.arrowButton, styles.leftArrow]}
@@ -280,16 +293,18 @@ export default function DetalleSubastaScreen() {
 
       <View style={styles.auctioneerCard}>
         <Text style={styles.sectionLabel}>Martillero</Text>
-
         <Text style={styles.auctioneer}>{detalle.martillero}</Text>
       </View>
 
       {detalle.puedeOfertar && (
         <View style={styles.offerCard}>
           <Text style={styles.bidLabel}>Monto a ofertar</Text>
-          <Text style={styles.bidHint}>
-            Ingresá el monto para confirmar tu oferta.
-          </Text>
+
+          {requiresPaymentSetup && (
+            <Text style={styles.warningText}>
+              Para ofertar, primero completá cuenta de cobro y medios de pago.
+            </Text>
+          )}
 
           <TextInput
             style={styles.input}
@@ -316,15 +331,19 @@ export default function DetalleSubastaScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
 
   content: {
     paddingHorizontal: 18,
     paddingTop: 18,
     paddingBottom: 52,
+  },
+
+  backButton: {
+    marginBottom: 22,
+    width: 42,
+    height: 42,
+    justifyContent: "center",
   },
 
   carouselContainer: {
@@ -344,8 +363,6 @@ const styles = StyleSheet.create({
     height: 320,
   },
 
-
-
   arrowButton: {
     position: "absolute",
     top: "43%",
@@ -357,13 +374,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
 
-  leftArrow: {
-    left: 8,
-  },
-
-  rightArrow: {
-    right: 8,
-  },
+  leftArrow: { left: 8 },
+  rightArrow: { right: 8 },
 
   arrow: {
     fontSize: 36,
@@ -488,10 +500,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  bidHint: {
+  warningText: {
     fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 16,
+    color: "#B45309",
+    backgroundColor: "#FEF3C7",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 14,
+    lineHeight: 20,
   },
 
   input: {

@@ -35,7 +35,7 @@ export default function ChequeScreen() {
     try {
       setLoading(true);
 
-      await crearCheque({
+      const response = await crearCheque({
         identificacion: Number(identificacion),
         nroCheque: nroCheque.trim(),
         beneficiario: beneficiario.trim(),
@@ -43,14 +43,22 @@ export default function ChequeScreen() {
         saldo: Number(saldo),
       });
 
-      Alert.alert("Cheque registrado", "Tu cheque fue guardado.");
-      router.replace({ pathname: "/financial-setup"});
+      const successMessage =
+        (response as any)?.message ?? "El cheque se guardó correctamente.";
 
-      
+      Alert.alert("Éxito", successMessage, [
+        {
+          text: "OK",
+          onPress: () =>
+            router.replace("/(tabs)/financial-setup/medios-pago" as any),
+        },
+      ]);
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error.response?.data?.message ?? "No pudimos guardar el cheque."
+        error.response?.data?.message ??
+          error.response?.data?.error ??
+          "No pudimos guardar el cheque.",
       );
     } finally {
       setLoading(false);
@@ -59,146 +67,155 @@ export default function ChequeScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.kicker}>Medio de pago</Text>
+      <Pressable
+        style={styles.backButton}
+        onPress={() =>
+          router.replace("/(tabs)/financial-setup/medios-pago" as any)
+        }
+      >
+        <Text style={styles.backText}>‹</Text>
+      </Pressable>
+
       <Text style={styles.title}>Cheque certificado</Text>
 
-      <View style={styles.card}>
-        <TextInput
-          style={styles.input}
-          placeholder="Identificación"
-          placeholderTextColor="#9CA3AF"
-          keyboardType="numeric"
-          value={identificacion}
-          onChangeText={setIdentificacion}
-        />
+      <Text style={styles.label}>Identificación</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={identificacion}
+        onChangeText={setIdentificacion}
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Número cheque"
-          placeholderTextColor="#9CA3AF"
-          value={nroCheque}
-          onChangeText={setNroCheque}
-        />
+      <Text style={styles.label}>Número cheque</Text>
+      <TextInput
+        style={styles.input}
+        value={nroCheque}
+        onChangeText={setNroCheque}
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Beneficiario"
-          placeholderTextColor="#9CA3AF"
-          value={beneficiario}
-          onChangeText={setBeneficiario}
-        />
+      <Text style={styles.label}>Beneficiario</Text>
+      <TextInput
+        style={styles.input}
+        value={beneficiario}
+        onChangeText={setBeneficiario}
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="CUIL/CUIT"
-          placeholderTextColor="#9CA3AF"
-          value={cuilCuit}
-          onChangeText={setCuilCuit}
-        />
+      <Text style={styles.label}>CUIL/CUIT</Text>
+      <TextInput
+        style={styles.input}
+        value={cuilCuit}
+        onChangeText={setCuilCuit}
+      />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Saldo"
-          placeholderTextColor="#9CA3AF"
-          keyboardType="numeric"
-          value={saldo}
-          onChangeText={setSaldo}
-        />
+      <Text style={styles.label}>Saldo</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={saldo}
+        onChangeText={setSaldo}
+      />
 
-        <View style={styles.actionsRow}>
-          <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-            <Text style={styles.secondaryButtonText}>Cancelar</Text>
-          </Pressable>
+      <View style={styles.actions}>
+        <Pressable
+          style={styles.cancelButton}
+          onPress={() =>
+            router.replace("/(tabs)/financial-setup/medios-pago" as any)
+          }
+        >
+          <Text style={styles.cancelIcon}>×</Text>
+        </Pressable>
 
-          <Pressable
-            style={[styles.primaryButton, loading && styles.disabled]}
-            onPress={guardarCheque}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Guardar</Text>
-            )}
-          </Pressable>
-        </View>
+        <Pressable
+          style={styles.confirmButton}
+          onPress={guardarCheque}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#2F63F6" />
+          ) : (
+            <Text style={styles.confirmIcon}>✓</Text>
+          )}
+        </Pressable>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5F6FA" },
-  container: { paddingHorizontal: 22, paddingTop: 34, paddingBottom: 42 },
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
 
-  kicker: {
-    color: "#2F63F6",
-    fontSize: 13,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 8,
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 42,
+  },
+
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+
+  backText: {
+    fontSize: 38,
+    color: "#111827",
   },
 
   title: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: "900",
     color: "#111827",
-    marginBottom: 22,
+    marginBottom: 24,
   },
 
-  card: {
-    backgroundColor: "white",
-    borderRadius: 22,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+  label: {
+    color: "#111827",
+    fontSize: 12,
+    fontWeight: "900",
+    marginBottom: 4,
   },
 
   input: {
-    backgroundColor: "#FAFAFA",
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    fontSize: 15,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    height: 43,
+    borderWidth: 1.3,
+    borderColor: "#111827",
+    paddingHorizontal: 10,
+    marginBottom: 10,
     color: "#111827",
-    height: 55,
   },
 
-  actionsRow: { flexDirection: "row", gap: 12, marginTop: 8 },
-
-  secondaryButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    paddingVertical: 14,
-    borderRadius: 13,
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
+  actions: {
+    marginTop: 34,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 
-  primaryButton: {
-    flex: 1,
-    backgroundColor: "#2F63F6",
-    paddingVertical: 14,
-    borderRadius: 13,
+  cancelButton: {
+    width: 58,
+    height: 58,
+    justifyContent: "center",
     alignItems: "center",
   },
 
-  secondaryButtonText: {
-    color: "#1F2937",
-    fontSize: 15,
-    fontWeight: "800",
+  confirmButton: {
+    width: 58,
+    height: 58,
+    borderWidth: 1.5,
+    borderColor: "#2F63F6",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-  primaryButtonText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "800",
+  cancelIcon: {
+    fontSize: 52,
+    color: "#111827",
+    fontWeight: "200",
   },
 
-  disabled: { opacity: 0.7 },
+  confirmIcon: {
+    fontSize: 34,
+    color: "#2F63F6",
+    fontWeight: "700",
+  },
 });

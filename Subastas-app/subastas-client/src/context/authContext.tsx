@@ -7,23 +7,32 @@ import {
   getStoredUser,
   saveAuthData,
 } from "@/src/storage/authStorage";
+import {
+  clearPendingRegistrationMail,
+  getPendingRegistrationMail,
+  savePendingRegistrationMail,
+} from "@/src/storage/registrationFlowStorage";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 type AuthContextType = {
   user: AuthUser | null;
   token: string | null;
   loadingAuth: boolean;
+  pendingRegistrationMail: string | null;
 
   isAuthenticated: boolean;
   isValidated: boolean;
   isBlocked: boolean;
   isRejected: boolean;
   isAdmin: boolean;
+  hasGeneratedPassword: boolean;
   requiresPaymentSetup: boolean;
 
   login: (response: AuthResponseDTO) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  setPendingMail: (mail: string) => Promise<void>;
+  clearPendingMail: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -31,11 +40,16 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [pendingRegistrationMail, setPendingRegistrationMail] =
+    useState<string | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
     async function loadAuth() {
       try {
+        const savedPendingMail = await getPendingRegistrationMail();
+        setPendingRegistrationMail(savedPendingMail);
+
         const savedToken = await getStoredToken();
         const savedUser = await getStoredUser();
 
@@ -73,11 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       rol: response.rol,
       estado: response.estado,
       categoria: response.categoria ?? null,
+      claveGenerada: true,
+      requiereMedioDePago: response.requiereMedioDePago ?? true,
     };
 
     setToken(response.token);
     setUser(authUser);
+    setPendingRegistrationMail(null);
 
+    await clearPendingRegistrationMail();
     await saveAuthData(response.token, authUser);
   }
 
@@ -98,11 +116,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function setPendingMail(mail: string) {
+    const normalized = mail.trim().toLowerCase();
+    setPendingRegistrationMail(normalized);
+    await savePendingRegistrationMail(normalized);
+  }
+
+  async function clearPendingMail() {
+    setPendingRegistrationMail(null);
+    await clearPendingRegistrationMail();
+  }
+
   const isAuthenticated = !!token && !!user;
   const isValidated = user?.estado === "VALIDADO";
   const isBlocked = user?.estado === "BLOQUEADO";
   const isRejected = user?.estado === "RECHAZADO";
   const isAdmin = user?.rol === "ADMIN";
+  const hasGeneratedPassword = !!user?.claveGenerada || isAuthenticated;
   const requiresPaymentSetup = !!user?.requiereMedioDePago;
 
   return (
@@ -111,15 +141,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         token,
         loadingAuth,
+        pendingRegistrationMail,
         isAuthenticated,
         isValidated,
         isBlocked,
         isRejected,
         isAdmin,
+        hasGeneratedPassword,
         requiresPaymentSetup,
         login,
         logout,
         refreshUser,
+        setPendingMail,
+        clearPendingMail,
       }}
     >
       {children}
