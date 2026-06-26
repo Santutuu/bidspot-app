@@ -1,12 +1,8 @@
 package com.subastas.subastas_api.model;
 
 import jakarta.persistence.*;
-import org.springframework.cglib.core.Local;
-
 
 import java.time.LocalDateTime;
-import java.util.Date;
-
 
 @Entity
 public class Puja {
@@ -16,37 +12,49 @@ public class Puja {
     private Long idPuja;
 
     @ManyToOne
-    @JoinColumn(name = "usuario_id")
+    @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
     @ManyToOne
-    @JoinColumn(name = "subasta_id")
-    private Subasta subasta;
+    @JoinColumn(name = "item_catalogo_id", nullable = false)
+    private ItemCatalogo itemCatalogo;
 
-    private LocalDateTime fechaHora;
-
+    @Column(nullable = false)
     private float monto;
 
-    public Puja() {}
+    @Column(nullable = false)
+    private LocalDateTime fechaHora;
 
-    public Puja(Usuario usuario, Subasta subasta, LocalDateTime fechaHora, float monto) {
-        this.usuario = usuario;
-        this.subasta = subasta;
-        this.fechaHora = fechaHora;
-        this.monto = monto;
+    public Puja() {
     }
 
-    public Long getIdPuja() { return idPuja; }
+    public Puja(Usuario usuario, float monto) {
+        this.usuario = usuario;
+        this.monto = monto;
+        this.fechaHora = LocalDateTime.now();
+    }
 
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+    public Long getIdPuja() {
+        return idPuja;
+    }
 
-    public Subasta getSubasta() { return subasta; }
-    public void setSubasta(Subasta subasta) { this.subasta = subasta; }
+    public Usuario getUsuario() {
+        return usuario;
+    }
 
-    public LocalDateTime getFechaHora() { return fechaHora; }
-    public void setFecha(Date fecha) { this.fechaHora = fechaHora; }
+    public ItemCatalogo getItemCatalogo() {
+        return itemCatalogo;
+    }
 
-    public float getMonto() { return monto; }
-    public void setMonto(float monto) { this.monto = monto; }
+    public float getMonto() {
+        return monto;
+    }
+
+    public LocalDateTime getFechaHora() {
+        return fechaHora;
+    }
+
+    public void setItemCatalogo(ItemCatalogo itemCatalogo) {
+        this.itemCatalogo = itemCatalogo;
+    }
 }

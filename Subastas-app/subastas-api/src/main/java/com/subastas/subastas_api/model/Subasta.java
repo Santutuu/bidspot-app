@@ -2,8 +2,7 @@ package com.subastas.subastas_api.model;
 
 import jakarta.persistence.*;
 
-import java.util.Date;
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 public class Subasta {
@@ -12,156 +11,101 @@ public class Subasta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idSubasta;
 
-    @ManyToOne
-    @JoinColumn(name = "duenio_id")
-    private Usuario duenio;
-
-    @OneToOne
-    private Item item;
-
-    @ManyToOne
-    private Rematador rematador;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date fechaInicio;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date horaInicio;
-
-    private float precioInicial;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EstadoSubasta estadoSubasta = EstadoSubasta.PROGRAMADA;
 
     @Enumerated(EnumType.STRING)
-    private Moneda moneda;
-
-    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private CategoriaUsuario categoriaMin;
 
-    @OneToOne
-    private Puja pujaActual;
-
-    @OneToMany(mappedBy = "subasta", cascade = CascadeType.ALL)
-    private List<Puja> pujas;
-
     @Enumerated(EnumType.STRING)
-    private EstadoSubasta estadoSubasta;
+    @Column(nullable = false)
+    private Moneda moneda;
+
+    private String ubicacion;
+
+    private String linkVivo;
+
+    @ManyToOne
+    @JoinColumn(name = "rematador_id")
+    private Rematador rematador;
+
+    @Column(nullable = false)
+    private LocalDateTime fechaInicio;
+
+    @OneToOne(mappedBy = "subasta", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Catalogo catalogo;
 
     public Subasta() {
     }
 
-    public Subasta(Usuario duenio,
-                   Item item,
-                   Rematador rematador,
-                   Date fechaInicio,
-                   Date horaInicio,
-                   float precioInicial,
+    public Subasta(CategoriaUsuario categoriaMin,
                    Moneda moneda,
-                   CategoriaUsuario categoriaMin,
-                   Puja pujaActual,
-                   List<Puja> pujas,
-                   EstadoSubasta estadoSubasta) {
-
-        this.duenio = duenio;
-        this.item = item;
+                   String ubicacion,
+                   String linkVivo,
+                   Rematador rematador,
+                   LocalDateTime fechaInicio) {
+        this.categoriaMin = categoriaMin;
+        this.moneda = moneda;
+        this.ubicacion = ubicacion;
+        this.linkVivo = linkVivo;
         this.rematador = rematador;
         this.fechaInicio = fechaInicio;
-        this.horaInicio = horaInicio;
-        this.precioInicial = precioInicial;
-        this.moneda = moneda;
-        this.categoriaMin = categoriaMin;
-        this.pujaActual = pujaActual;
-        this.pujas = pujas;
-        this.estadoSubasta = estadoSubasta;
+        this.estadoSubasta = EstadoSubasta.PROGRAMADA;
     }
 
     public Long getIdSubasta() {
         return idSubasta;
     }
 
-    public Usuario getDuenio() {
-        return duenio;
-    }
-
-    public void setDuenio(Usuario duenio) {
-        this.duenio = duenio;
-    }
-
-    public Item getItem() {
-        return item;
-    }
-
-    public void setItem(Item item) {
-        this.item = item;
-    }
-
-    public Rematador getRematador() {
-        return rematador;
-    }
-
-    public void setRematador(Rematador rematador) {
-        this.rematador = rematador;
-    }
-
-    public Date getFechaInicio() {
-        return fechaInicio;
-    }
-
-    public void setFechaInicio(Date fechaInicio) {
-        this.fechaInicio = fechaInicio;
-    }
-
-    public Date getHoraInicio() {
-        return horaInicio;
-    }
-
-    public void setHoraInicio(Date horaInicio) {
-        this.horaInicio = horaInicio;
-    }
-
-    public float getPrecioInicial() {
-        return precioInicial;
-    }
-
-    public void setPrecioInicial(float precioInicial) {
-        this.precioInicial = precioInicial;
-    }
-
-    public Moneda getMoneda() {
-        return moneda;
-    }
-
-    public void setMoneda(Moneda moneda) {
-        this.moneda = moneda;
+    public EstadoSubasta getEstadoSubasta() {
+        return estadoSubasta;
     }
 
     public CategoriaUsuario getCategoriaMin() {
         return categoriaMin;
     }
 
-    public void setCategoriaMin(CategoriaUsuario categoriaMin) {
-        this.categoriaMin = categoriaMin;
+    public Moneda getMoneda() {
+        return moneda;
     }
 
-    public Puja getPujaActual() {
-        return pujaActual;
+    public String getUbicacion() {
+        return ubicacion;
     }
 
-    public void setPujaActual(Puja pujaActual) {
-        this.pujaActual = pujaActual;
+    public String getLinkVivo() {
+        return linkVivo;
     }
 
-    public List<Puja> getPujas() {
-        return pujas;
+    public Rematador getRematador() {
+        return rematador;
     }
 
-    public void setPujas(List<Puja> pujas) {
-        this.pujas = pujas;
+    public LocalDateTime getFechaInicio() {
+        return fechaInicio;
     }
 
-    public EstadoSubasta getEstadoSubasta() {
-        return estadoSubasta;
+    public Catalogo getCatalogo() {
+        return catalogo;
     }
 
-    public void setEstadoSubasta(EstadoSubasta estadoSubasta) {
-        this.estadoSubasta = estadoSubasta;
+    public void setCatalogo(Catalogo catalogo) {
+        this.catalogo = catalogo;
+        catalogo.setSubasta(this);
+    }
+
+
+    public void iniciarSubasta() {
+        this.estadoSubasta = EstadoSubasta.ACTIVA;
+    }
+
+    public void finalizarSubasta() {
+        this.estadoSubasta = EstadoSubasta.FINALIZADA;
+    }
+
+    public void cancelarSubasta() {
+        this.estadoSubasta = EstadoSubasta.CANCELADA;
     }
 }

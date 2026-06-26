@@ -2,7 +2,7 @@
 package com.subastas.subastas_api.model;
 
 public enum EstadoSubasta {
-    CREADA,
+    PROGRAMADA,
     ACTIVA,
     FINALIZADA,
     CANCELADA
