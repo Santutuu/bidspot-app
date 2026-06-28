@@ -1,11 +1,11 @@
 package com.subastas.subastas_api.service;
 
-import com.subastas.subastas_api.DTO.CategoriaSubastasDTO;
-import com.subastas.subastas_api.DTO.SubastaHomeDTO;
+import com.subastas.subastas_api.DTO.subasta.CategoriaSubastasDTO;
+import com.subastas.subastas_api.DTO.subasta.SubastaHomeDTO;
+import com.subastas.subastas_api.mapper.SubastaMapper;
 import com.subastas.subastas_api.model.Categoria;
 import com.subastas.subastas_api.model.EstadoSubasta;
 import com.subastas.subastas_api.model.Subasta;
-import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.SubastaRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +15,17 @@ import java.util.List;
 public class CategoriaService {
 
     private final SubastaRepository subastaRepository;
+    private final SubastaMapper subastaMapper;
 
-    public CategoriaService(SubastaRepository subastaRepository) {
+    public CategoriaService(SubastaRepository subastaRepository,
+                            SubastaMapper subastaMapper) {
         this.subastaRepository = subastaRepository;
+        this.subastaMapper = subastaMapper;
     }
 
-    public CategoriaSubastasDTO obtenerSubastasPorCategoria(Categoria categoria,
-                                                            Usuario usuarioActual) {
+    public CategoriaSubastasDTO obtenerSubastasPorCategoria(Categoria categoria) {
 
-        List<Subasta> tiempoReal =
+        List<Subasta> activas =
                 subastaRepository.findByItemCategoriaAndEstadoSubasta(
                         categoria,
                         EstadoSubasta.ACTIVA
@@ -32,31 +34,20 @@ public class CategoriaService {
         List<Subasta> programadas =
                 subastaRepository.findByItemCategoriaAndEstadoSubasta(
                         categoria,
-                        EstadoSubasta.CREADA
+                        EstadoSubasta.PROGRAMADA
                 );
 
-        boolean usuarioAutenticado = usuarioActual != null;
-
-        List<SubastaHomeDTO> tiempoRealDTO = tiempoReal.stream()
-                .filter(subasta -> noEsPropia(subasta, usuarioActual))
-                .map(subasta -> SubastaHomeDTO.fromEntity(subasta, usuarioAutenticado))
+        List<SubastaHomeDTO> activasDTO = activas.stream()
+                .map(subastaMapper::toHomeDTO)
                 .toList();
 
         List<SubastaHomeDTO> programadasDTO = programadas.stream()
-                .filter(subasta -> noEsPropia(subasta, usuarioActual))
-                .map(subasta -> SubastaHomeDTO.fromEntity(subasta, usuarioAutenticado))
+                .map(subastaMapper::toHomeDTO)
                 .toList();
 
         return new CategoriaSubastasDTO(
-                categoria.toString(),
-                tiempoRealDTO,
+                activasDTO,
                 programadasDTO
         );
-    }
-
-    private boolean noEsPropia(Subasta subasta, Usuario usuarioActual) {
-        return usuarioActual == null
-                || subasta.getDuenio() == null
-                || !subasta.getDuenio().getIdUsuario().equals(usuarioActual.getIdUsuario());
     }
 }

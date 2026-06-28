@@ -16,16 +16,31 @@ public interface SubastaRepository extends JpaRepository<Subasta, Long> {
             value = """
                     SELECT *
                     FROM subasta
-                    WHERE estado_subasta IN ('CREADA', 'ACTIVA')
+                    WHERE estado_subasta IN ('PROGRAMADA', 'ACTIVA')
                     ORDER BY RANDOM()
                     """,
             nativeQuery = true
     )
     List<Subasta> findRandomActivas(Pageable pageable);
 
+    @Query("""
+            SELECT s
+            FROM Subasta s
+            JOIN s.catalogo c
+            JOIN c.items ic
+            WHERE ic.item.idItem = :idItem
+            """)
     Subasta findByItemIdItem(Long idItem);
 
 
+    @Query("""
+            SELECT DISTINCT s
+            FROM Subasta s
+            JOIN s.catalogo c
+            JOIN c.items ic
+            WHERE ic.item.categoria = :categoria
+              AND s.estadoSubasta = :estadoSubasta
+            """)
     List<Subasta> findByItemCategoriaAndEstadoSubasta(
             Categoria categoria,
             EstadoSubasta estadoSubasta

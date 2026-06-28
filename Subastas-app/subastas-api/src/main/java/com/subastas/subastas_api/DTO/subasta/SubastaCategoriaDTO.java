@@ -1,4 +1,4 @@
-package com.subastas.subastas_api.DTO;
+package com.subastas.subastas_api.DTO.subasta;
 
 public class SubastaCategoriaDTO {
 
