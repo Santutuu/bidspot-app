@@ -6,11 +6,15 @@ public class UsuarioActualDTO {
     private String nombre;
     private String apellido;
     private String mail;
+
     private String rol;
     private String estado;
     private String categoria;
+
     private boolean claveGenerada;
-    private boolean requiereMedioDePago;
+    private boolean tieneCuentaBanco;
+    private boolean tieneMedioPago;
+    private boolean configuracionFinancieraCompleta;
 
     public UsuarioActualDTO(Long idUsuario,
                             String nombre,
@@ -20,7 +24,9 @@ public class UsuarioActualDTO {
                             String estado,
                             String categoria,
                             boolean claveGenerada,
-                            boolean requiereMedioDePago) {
+                            boolean tieneCuentaBanco,
+                            boolean tieneMedioPago,
+                            boolean configuracionFinancieraCompleta) {
         this.idUsuario = idUsuario;
         this.nombre = nombre;
         this.apellido = apellido;
@@ -29,7 +35,9 @@ public class UsuarioActualDTO {
         this.estado = estado;
         this.categoria = categoria;
         this.claveGenerada = claveGenerada;
-        this.requiereMedioDePago = requiereMedioDePago;
+        this.tieneCuentaBanco = tieneCuentaBanco;
+        this.tieneMedioPago = tieneMedioPago;
+        this.configuracionFinancieraCompleta = configuracionFinancieraCompleta;
     }
 
     public Long getIdUsuario() {
@@ -64,7 +72,15 @@ public class UsuarioActualDTO {
         return claveGenerada;
     }
 
-    public boolean isRequiereMedioDePago() {
-        return requiereMedioDePago;
+    public boolean isTieneCuentaBanco() {
+        return tieneCuentaBanco;
+    }
+
+    public boolean isTieneMedioPago() {
+        return tieneMedioPago;
+    }
+
+    public boolean isConfiguracionFinancieraCompleta() {
+        return configuracionFinancieraCompleta;
     }
 }
