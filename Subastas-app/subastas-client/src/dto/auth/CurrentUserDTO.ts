@@ -7,5 +7,8 @@ export interface CurrentUserDTO {
   estado: string;
   categoria: string | null;
   claveGenerada: boolean;
-  requiereMedioDePago: boolean;
+  requiereMedioDePago?: boolean;
+  tieneCuentaBanco?: boolean;
+  tieneMedioPago?: boolean;
+  configuracionFinancieraCompleta?: boolean;
 }

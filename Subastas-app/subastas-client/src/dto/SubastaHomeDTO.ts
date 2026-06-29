@@ -1,8 +1,10 @@
 export interface SubastaHomeDTO {
-  id: number;
+  idSubasta: number;
   titulo: string;
-  moneda: string;
-  precioActual: number | null;
-  precioVisible: boolean;
   imagenUrl: string | null;
+  precio: number | null;
+  moneda: string;
+  estadoSubasta: "PROGRAMADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA";
+  categoriaMin: string;
+  fechaInicio: string | null;
 }

@@ -1,6 +1,12 @@
 package com.subastas.subastas_api.controller;
 
-import com.subastas.subastas_api.DTO.auth.*;
+import com.subastas.subastas_api.DTO.auth.AuthResponseDTO;
+import com.subastas.subastas_api.DTO.auth.CompleteRegistrationRequestDTO;
+import com.subastas.subastas_api.DTO.auth.LoginRequestDTO;
+import com.subastas.subastas_api.DTO.auth.PreRegisterRequestDTO;
+import com.subastas.subastas_api.DTO.auth.PreRegisterResponseDTO;
+import com.subastas.subastas_api.DTO.auth.RegistrationStatusDTO;
+import com.subastas.subastas_api.DTO.auth.UsuarioActualDTO;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.service.AuthService;
@@ -76,9 +82,14 @@ public class AuthController {
                 ? usuario.getCategoria().name()
                 : null;
 
-        boolean requiereMedioDePago =
-                usuario.getEstado().name().equals("VALIDADO")
-                        && usuario.getMediosDePago().isEmpty();
+        boolean tieneCuentaBanco = usuario.getCuenta() != null;
+
+        boolean tieneMedioPago =
+                usuario.getMediosDePago() != null
+                        && !usuario.getMediosDePago().isEmpty();
+
+        boolean configuracionFinancieraCompleta =
+                tieneCuentaBanco && tieneMedioPago;
 
         UsuarioActualDTO response = new UsuarioActualDTO(
                 usuario.getIdUsuario(),
@@ -89,7 +100,9 @@ public class AuthController {
                 usuario.getEstado().name(),
                 categoria,
                 usuario.tieneClaveGenerada(),
-                requiereMedioDePago
+                tieneCuentaBanco,
+                tieneMedioPago,
+                configuracionFinancieraCompleta
         );
 
         return ResponseEntity.ok(response);

@@ -5,7 +5,7 @@ import { Image, Pressable, StyleSheet, View } from "react-native";
 export default function TabsLayout() {
   return (
     <Tabs
-      initialRouteName="home"
+      initialRouteName="home/index"
       screenOptions={{
         headerShown: true,
         headerTitle: () => (

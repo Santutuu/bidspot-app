@@ -4,16 +4,16 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
@@ -21,7 +21,7 @@ const IMAGE_WIDTH = 360;
 
 function getEstadoTexto(estado: string) {
   switch (estado) {
-    case "CREADA":
+    case "PROGRAMADA":
       return "Subasta programada";
     case "ACTIVA":
       return "Subasta en vivo";
@@ -40,9 +40,42 @@ function getPrecioLabel(tipoPrecio: string) {
   return "Precio final";
 }
 
-function formatPrice(moneda: string, precio: number) {
-  const symbol = moneda === "DOLARES" ? "USD" : "$";
-  return `${symbol} ${precio}`;
+function formatPrice(moneda: string, precio: number | null) {
+  if (precio === null) return "Precio no disponible";
+
+  const currencyCode = moneda === "DOLARES" || moneda === "USD" ? "USD" : "ARS";
+  return `${currencyCode} ${precio}`;
+}
+
+function formatRematador(rematador: unknown) {
+  if (!rematador) return "";
+  if (typeof rematador === "string") return rematador;
+
+  const value = rematador as { nombre?: string; apellido?: string };
+  return [value.nombre, value.apellido].filter(Boolean).join(" ");
+}
+
+function getDescripcionItem(item: unknown) {
+  if (item && typeof item === "object" && "descripcion" in item) {
+    return String((item as { descripcion?: string }).descripcion ?? "");
+  }
+
+  return "";
+}
+
+function splitFechaHora(fechaInicio: string | null) {
+  if (!fechaInicio) return { fecha: null, hora: null };
+
+  const fecha = new Date(fechaInicio);
+  if (Number.isNaN(fecha.getTime())) return { fecha: fechaInicio, hora: null };
+
+  return {
+    fecha: fecha.toLocaleDateString("es-AR"),
+    hora: fecha.toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
 }
 
 export default function DetalleSubastaScreen() {
@@ -62,7 +95,7 @@ export default function DetalleSubastaScreen() {
     isAuthenticated && isValidated && !isBlocked && !isRejected;
 
   const { detalle, loading, error, recargar } = useDetalleSubasta(
-    canLoadDetail ? id : undefined
+    canLoadDetail ? id : undefined,
   );
 
   const listRef = useRef<FlatList>(null);
@@ -86,8 +119,11 @@ export default function DetalleSubastaScreen() {
         "Necesitás iniciar sesión para ver el detalle de la subasta.",
         [
           { text: "Volver", style: "cancel", onPress: () => router.back() },
-          { text: "Iniciar sesión", onPress: () => router.replace("/auth/login") },
-        ]
+          {
+            text: "Iniciar sesión",
+            onPress: () => router.replace("/auth/login"),
+          },
+        ],
       );
       return;
     }
@@ -136,14 +172,37 @@ export default function DetalleSubastaScreen() {
     );
   }
 
+  const subasta = detalle.subasta;
+  const catalogo = detalle.catalogo ?? [];
+  const proximosLotes = detalle.proximosLotes ?? [];
+  const itemActual =
+    subasta.estadoSubasta === "ACTIVA"
+      ? detalle.itemActual
+      : (detalle.itemActual ?? catalogo[0] ?? null);
+  const precioMostrado =
+    subasta.estadoSubasta === "ACTIVA" && detalle.itemActual?.precioActual
+      ? detalle.itemActual.precioActual
+      : (itemActual?.precioBase ?? null);
+  const tipoPrecio =
+    subasta.estadoSubasta === "ACTIVA" ? "PRECIO_ACTUAL" : "PRECIO_INICIAL";
+  const puedeOfertar =
+    subasta.estadoSubasta === "ACTIVA" && !!detalle.itemActual;
+  const lotesMostrados =
+    subasta.estadoSubasta === "PROGRAMADA" ? catalogo : proximosLotes;
+  const { fecha, hora } = splitFechaHora(subasta.fechaInicio);
+
   const baseImages =
-    detalle.imagenesUrl && detalle.imagenesUrl.length > 0
-      ? detalle.imagenesUrl
-      : [null];
+    itemActual &&
+    "imagenesUrl" in itemActual &&
+    itemActual.imagenesUrl.length > 0
+      ? itemActual.imagenesUrl
+      : itemActual && "imagenUrl" in itemActual && itemActual.imagenUrl
+        ? [itemActual.imagenUrl]
+        : [null];
 
   const carouselImages = Array.from(
     { length: 4 },
-    (_, index) => baseImages[index] ?? baseImages[0]
+    (_, index) => baseImages[index] ?? baseImages[0],
   );
 
   function goToImage(direction: "prev" | "next") {
@@ -171,7 +230,7 @@ export default function DetalleSubastaScreen() {
             text: "Completar",
             onPress: () => router.push("/(tabs)/financial-setup" as any),
           },
-        ]
+        ],
       );
       return;
     }
@@ -192,7 +251,10 @@ export default function DetalleSubastaScreen() {
   }
 
   function handleStreaming() {
-    Alert.alert("Streaming", "Después abrimos el link de streaming.");
+    Alert.alert(
+      "Streaming",
+      subasta.linkVivo ?? "Después abrimos el link de streaming.",
+    );
   }
 
   return (
@@ -211,7 +273,7 @@ export default function DetalleSubastaScreen() {
           keyExtractor={(_, index) => index.toString()}
           onMomentumScrollEnd={(event) => {
             const index = Math.round(
-              event.nativeEvent.contentOffset.x / IMAGE_WIDTH
+              event.nativeEvent.contentOffset.x / IMAGE_WIDTH,
             );
             setCurrentIndex(index);
           }}
@@ -262,15 +324,15 @@ export default function DetalleSubastaScreen() {
       </View>
 
       <View style={styles.infoCard}>
-        <Text style={styles.title}>{detalle.titulo}</Text>
+        <Text style={styles.title}>{itemActual?.titulo ?? subasta.titulo}</Text>
 
-        <Text style={styles.label}>{getPrecioLabel(detalle.tipoPrecio)}</Text>
+        <Text style={styles.label}>{getPrecioLabel(tipoPrecio)}</Text>
 
         <Text style={styles.price}>
-          {formatPrice(detalle.moneda, detalle.precioMostrado)}
+          {formatPrice(subasta.moneda, precioMostrado)}
         </Text>
 
-        <Text style={styles.description}>{detalle.descripcion}</Text>
+        <Text style={styles.description}>{getDescripcionItem(itemActual)}</Text>
       </View>
 
       <View style={styles.separator} />
@@ -279,12 +341,12 @@ export default function DetalleSubastaScreen() {
         <Text style={styles.sectionLabel}>Estado de la subasta</Text>
 
         <Text style={styles.status}>
-          {getEstadoTexto(detalle.estadoSubasta)}
+          {getEstadoTexto(subasta.estadoSubasta)}
         </Text>
 
-        {detalle.estadoSubasta === "CREADA" && (
+        {subasta.estadoSubasta === "PROGRAMADA" && (
           <Text style={styles.dateText}>
-            Inicia el {detalle.fechaInicio} a las {detalle.horaInicio} hs
+            Inicia el {fecha} {hora ? `a las ${hora} hs` : ""}
           </Text>
         )}
       </View>
@@ -293,10 +355,12 @@ export default function DetalleSubastaScreen() {
 
       <View style={styles.auctioneerCard}>
         <Text style={styles.sectionLabel}>Martillero</Text>
-        <Text style={styles.auctioneer}>{detalle.martillero}</Text>
+        <Text style={styles.auctioneer}>
+          {formatRematador(subasta.rematador)}
+        </Text>
       </View>
 
-      {detalle.puedeOfertar && (
+      {puedeOfertar && (
         <View style={styles.offerCard}>
           <Text style={styles.bidLabel}>Monto a ofertar</Text>
 
@@ -321,10 +385,26 @@ export default function DetalleSubastaScreen() {
         </View>
       )}
 
-      {detalle.estadoSubasta === "ACTIVA" && (
+      {subasta.estadoSubasta === "ACTIVA" && subasta.linkVivo && (
         <Pressable onPress={handleStreaming} style={styles.streamingCard}>
           <Text style={styles.streamingLink}>Link streaming subasta</Text>
         </Pressable>
+      )}
+
+      {lotesMostrados.length > 0 && (
+        <View style={styles.metaCard}>
+          <Text style={styles.sectionLabel}>
+            {subasta.estadoSubasta === "PROGRAMADA"
+              ? "Catálogo"
+              : "Próximos lotes"}
+          </Text>
+
+          {lotesMostrados.map((lote) => (
+            <Text key={lote.idItemCatalogo} style={styles.dateText}>
+              Lote #{lote.numeroLote} - {lote.titulo}
+            </Text>
+          ))}
+        </View>
       )}
     </ScrollView>
   );

@@ -3,26 +3,22 @@ import { useSubastasPorCategoria } from "@/src/hooks/useSubastasPorCategoria";
 
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
-function formatPrice(
-  precioActual: number | null,
-  precioVisible: boolean,
-  moneda: string
-) {
-  if (!precioVisible || precioActual === null) {
+function formatPrice(precio: number | null, moneda: string) {
+  if (precio === null) {
     return "Precio no disponible";
   }
 
-  const symbol = moneda === "DOLARES" ? "USD" : "$";
+  const currencyCode = moneda === "DOLARES" || moneda === "USD" ? "USD" : "ARS";
 
-  return `${symbol} ${precioActual}`;
+  return `${currencyCode} ${precio}`;
 }
 
 function formatCategoryName(category?: string | string[]) {
@@ -36,8 +32,7 @@ function formatCategoryName(category?: string | string[]) {
 export default function CategoryScreen() {
   const { categoria } = useLocalSearchParams<{ categoria: string }>();
 
-  const { data, loading, error, recargar } =
-    useSubastasPorCategoria(categoria);
+  const { data, loading, error, recargar } = useSubastasPorCategoria(categoria);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -64,26 +59,22 @@ export default function CategoryScreen() {
         <>
           <Text style={styles.sectionTitle}>En tiempo real</Text>
 
-          {data.tiempoReal.length === 0 ? (
+          {data.activas.length === 0 ? (
             <Text style={styles.emptyText}>
               No hay subastas en tiempo real para esta categoría.
             </Text>
           ) : (
             <View style={styles.cardsGrid}>
-              {data.tiempoReal.map((subasta) => (
+              {data.activas.map((subasta) => (
                 <AuctionCard
-                  key={subasta.id}
+                  key={subasta.idSubasta}
                   title={subasta.titulo}
-                  currentPrice={formatPrice(
-                    subasta.precioActual,
-                    subasta.precioVisible,
-                    subasta.moneda
-                  )}
+                  currentPrice={formatPrice(subasta.precio, subasta.moneda)}
                   imageUrl={subasta.imagenUrl}
                   onPress={() =>
                     router.push({
                       pathname: "/subastas/[id]",
-                      params: { id: String(subasta.id) },
+                      params: { id: String(subasta.idSubasta) },
                     })
                   }
                 />
@@ -101,18 +92,14 @@ export default function CategoryScreen() {
             <View style={styles.cardsGrid}>
               {data.programadas.map((subasta) => (
                 <AuctionCard
-                  key={subasta.id}
+                  key={subasta.idSubasta}
                   title={subasta.titulo}
-                  currentPrice={formatPrice(
-                    subasta.precioActual,
-                    subasta.precioVisible,
-                    subasta.moneda
-                  )}
+                  currentPrice={formatPrice(subasta.precio, subasta.moneda)}
                   imageUrl={subasta.imagenUrl}
                   onPress={() =>
                     router.push({
                       pathname: "/subastas/[id]",
-                      params: { id: String(subasta.id) },
+                      params: { id: String(subasta.idSubasta) },
                     })
                   }
                 />

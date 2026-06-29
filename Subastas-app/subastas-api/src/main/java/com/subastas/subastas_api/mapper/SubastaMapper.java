@@ -1,7 +1,16 @@
 package com.subastas.subastas_api.mapper;
 
-import com.subastas.subastas_api.DTO.subasta.*;
-import com.subastas.subastas_api.model.*;
+import com.subastas.subastas_api.DTO.subasta.DetalleSubastaDTO;
+import com.subastas.subastas_api.DTO.subasta.ItemActualDTO;
+import com.subastas.subastas_api.DTO.subasta.ItemCatalogoPreviewDTO;
+import com.subastas.subastas_api.DTO.subasta.SubastaHomeDTO;
+import com.subastas.subastas_api.DTO.subasta.SubastaInfoDTO;
+import com.subastas.subastas_api.model.EstadoItemCatalogo;
+import com.subastas.subastas_api.model.EstadoSubasta;
+import com.subastas.subastas_api.model.Item;
+import com.subastas.subastas_api.model.ItemCatalogo;
+import com.subastas.subastas_api.model.Subasta;
+import com.subastas.subastas_api.model.Usuario;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -15,7 +24,7 @@ public class SubastaMapper {
 
         return new SubastaHomeDTO(
                 subasta.getIdSubasta(),
-                obtenerTituloCard(subasta, itemVisible),
+                obtenerTituloCard(subasta),
                 obtenerImagenPrincipal(itemVisible),
                 obtenerPrecioMostrado(itemVisible),
                 subasta.getMoneda() != null ? subasta.getMoneda().toString() : null,
@@ -25,8 +34,8 @@ public class SubastaMapper {
         );
     }
 
-    public DetalleSubastaDTO toDetalleDTO(Subasta subasta) {
-        SubastaInfoDTO subastaInfo = toSubastaInfoDTO(subasta);
+    public DetalleSubastaDTO toDetalleDTO(Subasta subasta, Usuario usuarioActual) {
+        SubastaInfoDTO subastaInfo = toSubastaInfoDTO(subasta, usuarioActual);
 
         if (subasta.getEstadoSubasta() == EstadoSubasta.ACTIVA) {
             ItemCatalogo itemActual = obtenerItemActual(subasta);
@@ -76,13 +85,13 @@ public class SubastaMapper {
                 obtenerNumeroLote(itemCatalogo),
                 item != null ? item.getTitulo() : null,
                 item != null ? item.getDescripcion() : null,
-                item != null ? item.getImagenesUrl() : List.of(),
+                item != null ? obtenerImagenesItem(item) : List.of(),
                 itemCatalogo.getPrecioBase(),
                 obtenerPrecioMostrado(itemCatalogo)
         );
     }
 
-    private SubastaInfoDTO toSubastaInfoDTO(Subasta subasta) {
+    private SubastaInfoDTO toSubastaInfoDTO(Subasta subasta, Usuario usuarioActual) {
         return new SubastaInfoDTO(
                 subasta.getIdSubasta(),
                 obtenerTituloSubasta(subasta),
@@ -92,7 +101,8 @@ public class SubastaMapper {
                 subasta.getFechaInicio(),
                 subasta.getUbicacion(),
                 obtenerNombreRematador(subasta),
-                subasta.getEstadoSubasta() == EstadoSubasta.ACTIVA ? subasta.getLinkVivo() : null
+                subasta.getEstadoSubasta() == EstadoSubasta.ACTIVA ? subasta.getLinkVivo() : null,
+                estaGuardada(subasta, usuarioActual)
         );
     }
 
@@ -121,7 +131,9 @@ public class SubastaMapper {
     }
 
     private ItemCatalogo obtenerPrimerItem(Subasta subasta) {
-        if (subasta.getCatalogo() == null || subasta.getCatalogo().getItems() == null || subasta.getCatalogo().getItems().isEmpty()) {
+        if (subasta.getCatalogo() == null
+                || subasta.getCatalogo().getItems() == null
+                || subasta.getCatalogo().getItems().isEmpty()) {
             return null;
         }
 
@@ -173,17 +185,29 @@ public class SubastaMapper {
         return itemCatalogo.getItem().getPrimeraImagen();
     }
 
-    private String obtenerTituloCard(Subasta subasta, ItemCatalogo itemVisible) {
-        if (subasta.getCatalogo() != null &&
-                subasta.getCatalogo().getDescripcion() != null &&
-                !subasta.getCatalogo().getDescripcion().isBlank()) {
-            return subasta.getCatalogo().getDescripcion();
+    private List<String> obtenerImagenesItem(Item item) {
+        if (item.getImagenesUrl() != null && !item.getImagenesUrl().isEmpty()) {
+            return item.getImagenesUrl();
         }
 
+        if (item.getImagenUrl() != null && !item.getImagenUrl().isBlank()) {
+            return List.of(item.getImagenUrl());
+        }
+
+        return List.of();
+    }
+
+    private String obtenerTituloCard(Subasta subasta) {
         return obtenerTituloSubasta(subasta);
     }
 
     private String obtenerTituloSubasta(Subasta subasta) {
+        if (subasta.getCatalogo() != null
+                && subasta.getCatalogo().getDescripcion() != null
+                && !subasta.getCatalogo().getDescripcion().isBlank()) {
+            return subasta.getCatalogo().getDescripcion();
+        }
+
         return "Subasta #" + subasta.getIdSubasta();
     }
 
@@ -196,12 +220,24 @@ public class SubastaMapper {
     }
 
     private Integer obtenerNumeroLote(ItemCatalogo itemCatalogo) {
-        if (itemCatalogo == null || itemCatalogo.getCatalogo() == null || itemCatalogo.getCatalogo().getItems() == null) {
+        if (itemCatalogo == null
+                || itemCatalogo.getCatalogo() == null
+                || itemCatalogo.getCatalogo().getItems() == null) {
             return null;
         }
 
         List<ItemCatalogo> items = new ArrayList<>(itemCatalogo.getCatalogo().getItems());
 
         return items.indexOf(itemCatalogo) + 1;
+    }
+
+    private boolean estaGuardada(Subasta subasta, Usuario usuarioActual) {
+        if (usuarioActual == null || usuarioActual.getGuardadas() == null) {
+            return false;
+        }
+
+        return usuarioActual.getGuardadas()
+                .stream()
+                .anyMatch(guardada -> guardada.getIdSubasta().equals(subasta.getIdSubasta()));
     }
 }

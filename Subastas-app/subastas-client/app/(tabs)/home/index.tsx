@@ -1,18 +1,18 @@
-import { useAuth } from "@/src/context/authContext";
 import AuctionCard from "@/src/components/home/AuctionCard";
 import CategoryCircle from "@/src/components/home/CategoryCircle";
 import HomeCarousel from "@/src/components/home/homeCarrousel";
+import { useAuth } from "@/src/context/authContext";
 import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 const categories = [
@@ -23,15 +23,11 @@ const categories = [
   { label: "Otros", value: "OTROS" },
 ];
 
-function formatPrice(
-  precioActual: number | null,
-  precioVisible: boolean,
-  moneda: string
-) {
-  if (!precioVisible || precioActual === null) return "Precio no disponible";
+function formatPrice(precio: number | null, moneda: string) {
+  if (precio === null) return "Precio no disponible";
 
-  const symbol = moneda === "DOLARES" ? "USD" : "$";
-  return `${symbol} ${precioActual}`;
+  const currencyCode = moneda === "DOLARES" || moneda === "USD" ? "USD" : "ARS";
+  return `${currencyCode} ${precio}`;
 }
 
 export default function HomeScreen() {
@@ -123,15 +119,11 @@ export default function HomeScreen() {
         <View style={styles.cardsGrid}>
           {subastas.map((subasta) => (
             <AuctionCard
-              key={subasta.id}
+              key={subasta.idSubasta}
               title={subasta.titulo}
-              currentPrice={formatPrice(
-                subasta.precioActual,
-                subasta.precioVisible,
-                subasta.moneda
-              )}
+              currentPrice={formatPrice(subasta.precio, subasta.moneda)}
               imageUrl={subasta.imagenUrl}
-              onPress={() => handleAuctionPress(subasta.id)}
+              onPress={() => handleAuctionPress(subasta.idSubasta)}
             />
           ))}
         </View>

@@ -6,4 +6,7 @@ export interface AuthResponseDTO {
   rol: string;
   estado: string;
   categoria: string | null;
+  requiereMedioDePago?: boolean;
+  configuracionFinancieraCompleta?: boolean;
+  tieneMedioPago?: boolean;
 }

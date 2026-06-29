@@ -16,6 +16,7 @@ public class SubastaInfoDTO {
     private String ubicacion;
     private String rematador;
     private String linkVivo;
+    private boolean guardada;
 
     public SubastaInfoDTO(Long idSubasta,
                           String titulo,
@@ -25,7 +26,8 @@ public class SubastaInfoDTO {
                           LocalDateTime fechaInicio,
                           String ubicacion,
                           String rematador,
-                          String linkVivo) {
+                          String linkVivo,
+                          boolean guardada) {
         this.idSubasta = idSubasta;
         this.titulo = titulo;
         this.estadoSubasta = estadoSubasta;
@@ -35,6 +37,7 @@ public class SubastaInfoDTO {
         this.ubicacion = ubicacion;
         this.rematador = rematador;
         this.linkVivo = linkVivo;
+        this.guardada = guardada;
     }
 
     public Long getIdSubasta() {
@@ -71,5 +74,9 @@ public class SubastaInfoDTO {
 
     public String getLinkVivo() {
         return linkVivo;
+    }
+
+    public boolean isGuardada() {
+        return guardada;
     }
 }

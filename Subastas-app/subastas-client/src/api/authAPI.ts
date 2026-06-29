@@ -63,6 +63,12 @@ export async function getCurrentUser(): Promise<AuthUser> {
     estado: response.data.estado,
     categoria: response.data.categoria ?? null,
     claveGenerada: response.data.claveGenerada,
-    requiereMedioDePago: response.data.requiereMedioDePago,
+    requiereMedioDePago:
+      response.data.requiereMedioDePago ??
+      !(
+        response.data.configuracionFinancieraCompleta ??
+        response.data.tieneMedioPago ??
+        false
+      ),
   };
 }

@@ -35,7 +35,7 @@ public class DetalleSubastaService {
         validarSubastaVisible(subasta);
         validarAccesoDetalle(subasta, usuarioActual);
 
-        return subastaMapper.toDetalleDTO(subasta);
+        return subastaMapper.toDetalleDTO(subasta, usuarioActual);
     }
 
     private void validarSubastaVisible(Subasta subasta) {

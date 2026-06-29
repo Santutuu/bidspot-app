@@ -88,7 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       estado: response.estado,
       categoria: response.categoria ?? null,
       claveGenerada: true,
-      requiereMedioDePago: response.requiereMedioDePago ?? true,
+      requiereMedioDePago:
+        response.requiereMedioDePago ??
+        !(
+          response.configuracionFinancieraCompleta ??
+          response.tieneMedioPago ??
+          false
+        ),
     };
 
     setToken(response.token);

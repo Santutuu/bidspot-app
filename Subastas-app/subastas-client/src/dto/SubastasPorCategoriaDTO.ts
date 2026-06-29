@@ -1,7 +1,6 @@
 import { SubastaHomeDTO } from "./SubastaHomeDTO";
 
 export interface SubastasPorCategoriaDTO {
-  nombreCategoria: string;
-  tiempoReal: SubastaHomeDTO[];
+  activas: SubastaHomeDTO[];
   programadas: SubastaHomeDTO[];
 }

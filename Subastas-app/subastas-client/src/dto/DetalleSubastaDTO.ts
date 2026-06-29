@@ -1,24 +1,42 @@
-export interface DetalleSubastaDTO {
-  idArticulo: number;
-  idSubasta: number;
+export type EstadoSubasta =
+  | "PROGRAMADA"
+  | "ACTIVA"
+  | "FINALIZADA"
+  | "CANCELADA";
 
+export interface SubastaDetalleInfoDTO {
+  idSubasta: number;
+  titulo: string;
+  estadoSubasta: EstadoSubasta;
+  categoriaMin: string;
+  moneda: string;
+  fechaInicio: string | null;
+  ubicacion: string | null;
+  rematador: string | { nombre?: string; apellido?: string } | null;
+  linkVivo: string | null;
+}
+
+export interface ItemActualDTO {
+  idItemCatalogo: number;
+  numeroLote: number;
   titulo: string;
   descripcion: string;
   imagenesUrl: string[];
-
-  moneda: string;
-
+  precioBase: number;
   precioActual: number | null;
-  precioInicial: number;
-  precioMostrado: number;
-  tipoPrecio: "PRECIO_ACTUAL" | "PRECIO_INICIAL" | "PRECIO_FINAL";
+}
 
-  estadoSubasta: "CREADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA";
-  puedeOfertar: boolean;
+export interface LoteCatalogoDTO {
+  idItemCatalogo: number;
+  numeroLote: number;
+  titulo: string;
+  imagenUrl: string | null;
+  precioBase: number;
+}
 
-  fechaInicio: string | null;
-  horaInicio: string | null;
-
-  martillero: string;
-  linkStreaming: string;
+export interface DetalleSubastaDTO {
+  subasta: SubastaDetalleInfoDTO;
+  itemActual: ItemActualDTO | null;
+  catalogo: LoteCatalogoDTO[];
+  proximosLotes: LoteCatalogoDTO[];
 }
