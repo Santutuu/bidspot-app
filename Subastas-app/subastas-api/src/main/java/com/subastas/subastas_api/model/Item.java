@@ -17,11 +17,9 @@ public class Item {
     @Column(length = 2000)
     private String descripcion;
 
-    // Compatibilidad con los datos actuales de la BD
     @Column(name = "imagen_url")
     private String imagenUrl;
 
-    // Preparado para soportar múltiples imágenes en el futuro
     @ElementCollection
     @CollectionTable(
             name = "item_imagenes",
@@ -31,16 +29,18 @@ public class Item {
     private List<String> imagenesUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Categoria categoria;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private EstadoItem estado = EstadoItem.PROPUESTO;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "poliza_id")
+    private Poliza poliza;
 
     public Item() {
     }
@@ -51,7 +51,6 @@ public class Item {
                 List<String> imagenesUrl,
                 Categoria categoria,
                 Usuario usuario) {
-
         this.titulo = titulo;
         this.descripcion = descripcion;
         this.imagenUrl = imagenUrl;
@@ -93,11 +92,10 @@ public class Item {
         return usuario;
     }
 
-    /**
-     * Devuelve la primera imagen disponible.
-     * Si existen múltiples imágenes utiliza la primera.
-     * Si todavía no fueron migradas, utiliza la columna imagen_url.
-     */
+    public Poliza getPoliza() {
+        return poliza;
+    }
+
     public String getPrimeraImagen() {
         if (imagenesUrl != null && !imagenesUrl.isEmpty()) {
             return imagenesUrl.get(0);
@@ -108,6 +106,10 @@ public class Item {
 
     public void setEstado(EstadoItem estado) {
         this.estado = estado;
+    }
+
+    public void setPoliza(Poliza poliza) {
+        this.poliza = poliza;
     }
 
     public void marcarComoVendido() {

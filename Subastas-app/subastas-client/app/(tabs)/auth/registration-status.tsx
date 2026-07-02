@@ -3,12 +3,12 @@ import { useAuth } from "@/src/context/authContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 export default function RegistrationStatusScreen() {
@@ -25,11 +25,17 @@ export default function RegistrationStatusScreen() {
     }
   }, []);
 
-  async function handleCheckStatus(mailParam?: string, showPendingAlert = true) {
+  async function handleCheckStatus(
+    mailParam?: string,
+    showPendingAlert = true,
+  ) {
     const mailToCheck = (mailParam ?? mail).trim().toLowerCase();
 
     if (!mailToCheck) {
-      Alert.alert("Email requerido", "Volvé al registro o ingresá con tu cuenta.");
+      Alert.alert(
+        "Email requerido",
+        "Volvé al registro o ingresá con tu cuenta.",
+      );
       return;
     }
 
@@ -63,7 +69,7 @@ export default function RegistrationStatusScreen() {
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error.response?.data?.message ?? "No pudimos consultar tu estado."
+        error.response?.data?.message ?? "No pudimos consultar tu estado.",
       );
     } finally {
       setLoading(false);

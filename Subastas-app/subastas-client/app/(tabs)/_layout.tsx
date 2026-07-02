@@ -106,6 +106,15 @@ export default function TabsLayout() {
       <Tabs.Screen name="financial-setup/tarjeta" options={{ href: null }} />
       <Tabs.Screen name="financial-setup/cheque" options={{ href: null }} />
 
+      <Tabs.Screen name="profile/publicaciones/index" options={{ href: null }} />
+      <Tabs.Screen name="profile/publicaciones/[id]/index" options={{ href: null }} />
+      <Tabs.Screen
+        name="profile/publicaciones/[id]/accion/index"
+        options={{ href: null }}
+      />
+      <Tabs.Screen name="profile/publicar/categoria" options={{ href: null }} />
+      <Tabs.Screen name="profile/publicar/detalle" options={{ href: null }} />
+
       <Tabs.Screen name="subastas/[id]" options={{ href: null }} />
       <Tabs.Screen
         name="subastas/category/[categoria]"

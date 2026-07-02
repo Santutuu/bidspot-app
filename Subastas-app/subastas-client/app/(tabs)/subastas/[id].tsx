@@ -1,19 +1,20 @@
 import { useAuth } from "@/src/context/authContext";
+import { LoteCatalogoDTO } from "@/src/dto/DetalleSubastaDTO";
 import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
@@ -63,6 +64,12 @@ function getDescripcionItem(item: unknown) {
   return "";
 }
 
+function getImagenLote(lote: LoteCatalogoDTO) {
+  return lote.imagenUrl && lote.imagenUrl.trim().length > 0
+    ? { uri: lote.imagenUrl }
+    : defaultImage;
+}
+
 function splitFechaHora(fechaInicio: string | null) {
   if (!fechaInicio) return { fecha: null, hora: null };
 
@@ -101,6 +108,7 @@ export default function DetalleSubastaScreen() {
   const listRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [montoOferta, setMontoOferta] = useState("");
+  const [subastaGuardada, setSubastaGuardada] = useState(false);
 
   useEffect(() => {
     if (loadingAuth) return;
@@ -173,23 +181,20 @@ export default function DetalleSubastaScreen() {
   }
 
   const subasta = detalle.subasta;
+  const esActiva = subasta.estadoSubasta === "ACTIVA";
+  const esProgramada = subasta.estadoSubasta === "PROGRAMADA";
   const catalogo = detalle.catalogo ?? [];
   const proximosLotes = detalle.proximosLotes ?? [];
-  const itemActual =
-    subasta.estadoSubasta === "ACTIVA"
-      ? detalle.itemActual
-      : (detalle.itemActual ?? catalogo[0] ?? null);
+  const itemActual = esActiva ? detalle.itemActual : null;
   const precioMostrado =
-    subasta.estadoSubasta === "ACTIVA" && detalle.itemActual?.precioActual
+    esActiva && detalle.itemActual?.precioActual
       ? detalle.itemActual.precioActual
       : (itemActual?.precioBase ?? null);
-  const tipoPrecio =
-    subasta.estadoSubasta === "ACTIVA" ? "PRECIO_ACTUAL" : "PRECIO_INICIAL";
-  const puedeOfertar =
-    subasta.estadoSubasta === "ACTIVA" && !!detalle.itemActual;
-  const lotesMostrados =
-    subasta.estadoSubasta === "PROGRAMADA" ? catalogo : proximosLotes;
+  const tipoPrecio = esActiva ? "PRECIO_ACTUAL" : "PRECIO_INICIAL";
+  const puedeOfertar = esActiva && !!detalle.itemActual;
+  const lotesMostrados = esProgramada ? catalogo : proximosLotes;
   const { fecha, hora } = splitFechaHora(subasta.fechaInicio);
+  const guardada = subastaGuardada || !!subasta.guardada;
 
   const baseImages =
     itemActual &&
@@ -257,108 +262,125 @@ export default function DetalleSubastaScreen() {
     );
   }
 
+  function handleGuardarSubasta() {
+    setSubastaGuardada((current) => !current);
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="chevron-back" size={34} color="#111827" />
-      </Pressable>
-
-      <View style={styles.carouselContainer}>
-        <FlatList
-          ref={listRef}
-          data={carouselImages}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(_, index) => index.toString()}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(
-              event.nativeEvent.contentOffset.x / IMAGE_WIDTH,
-            );
-            setCurrentIndex(index);
-          }}
-          renderItem={({ item }) => (
-            <Image
-              source={item ? { uri: item } : defaultImage}
-              style={styles.mainImage}
-              resizeMode="cover"
-            />
-          )}
-        />
-
-        <Pressable
-          style={[styles.arrowButton, styles.leftArrow]}
-          onPress={() => goToImage("prev")}
-        >
-          <Text style={styles.arrow}>‹</Text>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={34} color="#111827" />
         </Pressable>
 
-        <Pressable
-          style={[styles.arrowButton, styles.rightArrow]}
-          onPress={() => goToImage("next")}
-        >
-          <Text style={styles.arrow}>›</Text>
+        <Pressable onPress={handleGuardarSubasta} style={styles.saveButton}>
+          <Ionicons
+            name={guardada ? "heart" : "heart-outline"}
+            size={28}
+            color={guardada ? "#DC2626" : "#111827"}
+          />
         </Pressable>
       </View>
 
-      <View style={styles.thumbnailRow}>
-        {carouselImages.map((image, index) => (
-          <Pressable
-            key={index}
-            style={styles.thumbnailButton}
-            onPress={() => {
-              setCurrentIndex(index);
-              listRef.current?.scrollToIndex({ index, animated: true });
-            }}
-          >
-            <Image
-              source={image ? { uri: image } : defaultImage}
-              style={[
-                styles.thumbnail,
-                currentIndex === index && styles.thumbnailActive,
-              ]}
-              resizeMode="cover"
-            />
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={styles.infoCard}>
-        <Text style={styles.title}>{itemActual?.titulo ?? subasta.titulo}</Text>
-
-        <Text style={styles.label}>{getPrecioLabel(tipoPrecio)}</Text>
-
-        <Text style={styles.price}>
-          {formatPrice(subasta.moneda, precioMostrado)}
-        </Text>
-
-        <Text style={styles.description}>{getDescripcionItem(itemActual)}</Text>
-      </View>
-
-      <View style={styles.separator} />
-
-      <View style={styles.metaCard}>
-        <Text style={styles.sectionLabel}>Estado de la subasta</Text>
-
+      <View style={styles.auctionHeader}>
+        <Text style={styles.auctionTitle}>{subasta.titulo}</Text>
         <Text style={styles.status}>
           {getEstadoTexto(subasta.estadoSubasta)}
         </Text>
-
-        {subasta.estadoSubasta === "PROGRAMADA" && (
-          <Text style={styles.dateText}>
-            Inicia el {fecha} {hora ? `a las ${hora} hs` : ""}
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.separator} />
-
-      <View style={styles.auctioneerCard}>
-        <Text style={styles.sectionLabel}>Martillero</Text>
-        <Text style={styles.auctioneer}>
-          {formatRematador(subasta.rematador)}
+        <Text style={styles.dateText}>
+          Fecha: {fecha ?? "Sin fecha"} {hora ? `- ${hora}` : ""}
         </Text>
+        {subasta.ubicacion && (
+          <Text style={styles.dateText}>Dirección: {subasta.ubicacion}</Text>
+        )}
+        <Text style={styles.dateText}>Categoría: {subasta.categoriaMin}</Text>
+        <Text style={styles.dateText}>
+          Martillero: {formatRematador(subasta.rematador)}
+        </Text>
+        <Text style={styles.dateText}>Subasta en {subasta.moneda}</Text>
       </View>
+
+      {esActiva && itemActual && (
+        <>
+          <View style={styles.carouselContainer}>
+            <FlatList
+              ref={listRef}
+              data={carouselImages}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(_, index) => index.toString()}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x / IMAGE_WIDTH,
+                );
+                setCurrentIndex(index);
+              }}
+              renderItem={({ item }) => (
+                <Image
+                  source={item ? { uri: item } : defaultImage}
+                  style={styles.mainImage}
+                  resizeMode="cover"
+                />
+              )}
+            />
+
+            <Pressable
+              style={[styles.arrowButton, styles.leftArrow]}
+              onPress={() => goToImage("prev")}
+            >
+              <Text style={styles.arrow}>‹</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.arrowButton, styles.rightArrow]}
+              onPress={() => goToImage("next")}
+            >
+              <Text style={styles.arrow}>›</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.thumbnailRow}>
+            {carouselImages.map((image, index) => (
+              <Pressable
+                key={index}
+                style={styles.thumbnailButton}
+                onPress={() => {
+                  setCurrentIndex(index);
+                  listRef.current?.scrollToIndex({ index, animated: true });
+                }}
+              >
+                <Image
+                  source={image ? { uri: image } : defaultImage}
+                  style={[
+                    styles.thumbnail,
+                    currentIndex === index && styles.thumbnailActive,
+                  ]}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.infoCard}>
+            <Text style={styles.title}>
+              {itemActual?.titulo ?? subasta.titulo}
+            </Text>
+
+            <Text style={styles.label}>{getPrecioLabel(tipoPrecio)}</Text>
+
+            <Text style={styles.price}>
+              {formatPrice(subasta.moneda, precioMostrado)}
+            </Text>
+
+            <Text style={styles.description}>
+              {getDescripcionItem(itemActual)}
+            </Text>
+          </View>
+
+          <View style={styles.separator} />
+        </>
+      )}
 
       {puedeOfertar && (
         <View style={styles.offerCard}>
@@ -400,9 +422,23 @@ export default function DetalleSubastaScreen() {
           </Text>
 
           {lotesMostrados.map((lote) => (
-            <Text key={lote.idItemCatalogo} style={styles.dateText}>
-              Lote #{lote.numeroLote} - {lote.titulo}
-            </Text>
+            <View key={lote.idItemCatalogo} style={styles.loteRow}>
+              {esProgramada && (
+                <Image
+                  source={getImagenLote(lote)}
+                  style={styles.loteImage}
+                  resizeMode="cover"
+                />
+              )}
+
+              <View style={styles.loteInfo}>
+                <Text style={styles.dateText}>Lote #{lote.numeroLote}</Text>
+                <Text style={styles.loteTitle}>{lote.titulo}</Text>
+                <Text style={styles.dateText}>
+                  {formatPrice(subasta.moneda, lote.precioBase)}
+                </Text>
+              </View>
+            </View>
           ))}
         </View>
       )}
@@ -419,11 +455,36 @@ const styles = StyleSheet.create({
     paddingBottom: 52,
   },
 
-  backButton: {
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 22,
+  },
+
+  backButton: {
     width: 42,
     height: 42,
     justifyContent: "center",
+  },
+
+  saveButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  auctionHeader: {
+    marginBottom: 26,
+  },
+
+  auctionTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
+    lineHeight: 30,
+    marginBottom: 12,
   },
 
   carouselContainer: {
@@ -565,6 +626,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#4B5563",
     lineHeight: 24,
+  },
+
+  loteRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 18,
+  },
+
+  loteImage: {
+    width: 86,
+    height: 74,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+    backgroundColor: "#F3F4F6",
+  },
+
+  loteInfo: {
+    flex: 1,
+  },
+
+  loteTitle: {
+    fontSize: 16,
+    color: "#111827",
+    fontWeight: "700",
+    lineHeight: 22,
   },
 
   auctioneer: {

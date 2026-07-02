@@ -47,30 +47,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function loadAuth() {
       try {
-        const savedPendingMail = await getPendingRegistrationMail();
-        setPendingRegistrationMail(savedPendingMail);
-
         const savedToken = await getStoredToken();
         const savedUser = await getStoredUser();
 
-        if (!savedToken || !savedUser) {
-          setToken(null);
-          setUser(null);
+        if (savedToken && savedUser) {
+          setToken(savedToken);
+          setUser(savedUser);
+
+          try {
+            const freshUser = await getCurrentUser();
+            setUser(freshUser);
+            await saveAuthData(savedToken, freshUser);
+          } catch {
+            await clearAuthData();
+            setToken(null);
+            setUser(null);
+          }
+
           return;
         }
 
-        setToken(savedToken);
-        setUser(savedUser);
+        setToken(null);
+        setUser(null);
 
-        try {
-          const freshUser = await getCurrentUser();
-          setUser(freshUser);
-          await saveAuthData(savedToken, freshUser);
-        } catch {
-          await clearAuthData();
-          setToken(null);
-          setUser(null);
-        }
+        const savedPendingMail = await getPendingRegistrationMail();
+        setPendingRegistrationMail(savedPendingMail);
       } finally {
         setLoadingAuth(false);
       }
@@ -108,7 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function logout() {
     setToken(null);
     setUser(null);
+    setPendingRegistrationMail(null);
+
     await clearAuthData();
+    await clearPendingRegistrationMail();
   }
 
   async function refreshUser() {
@@ -124,7 +128,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function setPendingMail(mail: string) {
     const normalized = mail.trim().toLowerCase();
+
+    setToken(null);
+    setUser(null);
     setPendingRegistrationMail(normalized);
+
+    await clearAuthData();
     await savePendingRegistrationMail(normalized);
   }
 

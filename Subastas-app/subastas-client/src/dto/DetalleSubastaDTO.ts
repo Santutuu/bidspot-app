@@ -14,6 +14,7 @@ export interface SubastaDetalleInfoDTO {
   ubicacion: string | null;
   rematador: string | { nombre?: string; apellido?: string } | null;
   linkVivo: string | null;
+  guardada?: boolean;
 }
 
 export interface ItemActualDTO {
