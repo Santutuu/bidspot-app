@@ -4,8 +4,8 @@ import HomeCarousel from "@/src/components/home/homeCarrousel";
 import { useAuth } from "@/src/context/authContext";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -42,13 +42,27 @@ function formatPrice(precio: number | null, moneda: string) {
 export default function HomeScreen() {
   const { pendingRegistrationMail, isAuthenticated, isValidated, user } =
     useAuth();
-  const { subastas, loading, error, recargar } = useSubastasRecomendadas();
+  const { subastas, loading, error, recargar, recargarSilencioso } =
+    useSubastasRecomendadas();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1600);
     return () => clearTimeout(timer);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (showSplash) return;
+
+      void recargarSilencioso();
+      const interval = setInterval(() => {
+        void recargarSilencioso();
+      }, 8000);
+
+      return () => clearInterval(interval);
+    }, [recargarSilencioso, showSplash]),
+  );
 
   function canAccessAuction(categoriaMin: string | null) {
     if (!user?.categoria || !categoriaMin) return false;
@@ -134,7 +148,7 @@ export default function HomeScreen() {
       ) : error ? (
         <View style={styles.stateContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={recargar}>
+          <Pressable style={styles.retryButton} onPress={() => recargar()}>
             <Text style={styles.retryText}>Reintentar</Text>
           </Pressable>
         </View>

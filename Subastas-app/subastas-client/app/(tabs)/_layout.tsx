@@ -2,6 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs, router } from "expo-router";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 
+import NotificationsBellButton from "../../src/components/ui/NotificationsBellButton";
+
 export default function TabsLayout() {
   return (
     <Tabs
@@ -31,11 +33,7 @@ export default function TabsLayout() {
         ),
         headerRight: () => (
           <View style={styles.headerRight}>
-            <Pressable
-              onPress={() => router.push("/(tabs)/notifications" as any)}
-            >
-              <Ionicons name="notifications-outline" size={34} color="white" />
-            </Pressable>
+            <NotificationsBellButton />
           </View>
         ),
         tabBarShowLabel: false,
@@ -134,8 +132,14 @@ export default function TabsLayout() {
         options={{ href: null }}
       />
 
-      <Tabs.Screen name="profile/publicaciones/index" options={{ href: null }} />
-      <Tabs.Screen name="profile/publicaciones/[id]/index" options={{ href: null }} />
+      <Tabs.Screen
+        name="profile/publicaciones/index"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="profile/publicaciones/[id]/index"
+        options={{ href: null }}
+      />
       <Tabs.Screen
         name="profile/publicaciones/[id]/accion/index"
         options={{ href: null }}

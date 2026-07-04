@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getDetalleSubasta } from "@/src/api/subastaAPI";
 import { DetalleSubastaDTO } from "@/src/dto/DetalleSubastaDTO";
 import { router } from "expo-router";
@@ -8,11 +8,11 @@ export function useDetalleSubasta(id?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function cargarDetalle() {
+  const cargarDetalle = useCallback(async (silent = false) => {
     if (!id) return;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
 
       const data = await getDetalleSubasta(id);
@@ -37,16 +37,22 @@ export function useDetalleSubasta(id?: string) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     cargarDetalle();
-  }, [id]);
+  }, [cargarDetalle]);
+
+  const recargarSilencioso = useCallback(
+    () => cargarDetalle(true),
+    [cargarDetalle],
+  );
 
   return {
     detalle,
     loading,
     error,
     recargar: cargarDetalle,
+    recargarSilencioso,
   };
 }

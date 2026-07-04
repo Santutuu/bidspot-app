@@ -1,9 +1,12 @@
 import { useAuth } from "@/src/context/authContext";
+import { useNotifications } from "@/src/context/notificationsContext";
 import { LoteCatalogoDTO } from "@/src/dto/DetalleSubastaDTO";
 import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
+import { useEstadoPuja } from "@/src/hooks/useEstadoPuja";
+import { useRealizarPuja } from "@/src/hooks/useRealizarPuja";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -101,14 +104,51 @@ export default function DetalleSubastaScreen() {
   const canLoadDetail =
     isAuthenticated && isValidated && !isBlocked && !isRejected;
 
-  const { detalle, loading, error, recargar } = useDetalleSubasta(
-    canLoadDetail ? id : undefined,
-  );
+  const { detalle, loading, error, recargar, recargarSilencioso } =
+    useDetalleSubasta(canLoadDetail ? id : undefined);
+  const {
+    estadoPuja,
+    loadingEstadoPuja,
+    errorEstadoPuja,
+    cargarEstadoPuja,
+    cargarEstadoPujaSilencioso,
+  } = useEstadoPuja(canLoadDetail ? id : undefined);
+  const {
+    submittingPuja,
+    errorPuja,
+    successPuja,
+    setErrorPuja,
+    setSuccessPuja,
+    enviarPuja,
+  } = useRealizarPuja(canLoadDetail ? id : undefined);
+  const { addLocalNotification, watchBidNotification } = useNotifications();
 
   const listRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [montoOferta, setMontoOferta] = useState("");
   const [subastaGuardada, setSubastaGuardada] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (canLoadDetail) {
+        void cargarEstadoPuja();
+        void recargarSilencioso();
+      }
+      const interval = setInterval(() => {
+        if (canLoadDetail) {
+          void cargarEstadoPujaSilencioso();
+          void recargarSilencioso();
+        }
+      }, 6000);
+
+      return () => clearInterval(interval);
+    }, [
+      canLoadDetail,
+      cargarEstadoPuja,
+      cargarEstadoPujaSilencioso,
+      recargarSilencioso,
+    ]),
+  );
 
   useEffect(() => {
     if (loadingAuth) return;
@@ -173,7 +213,7 @@ export default function DetalleSubastaScreen() {
           {error ?? "No pudimos cargar el detalle de la subasta."}
         </Text>
 
-        <Pressable style={styles.retryButton} onPress={recargar}>
+        <Pressable style={styles.retryButton} onPress={() => recargar()}>
           <Text style={styles.retryText}>Reintentar</Text>
         </Pressable>
       </View>
@@ -224,7 +264,13 @@ export default function DetalleSubastaScreen() {
     });
   }
 
-  function handleOffer() {
+  function handleAmountChange(value: string) {
+    setMontoOferta(value.replace(/[^\d.]/g, ""));
+    setErrorPuja(null);
+    setSuccessPuja(null);
+  }
+
+  async function handleOffer() {
     if (requiresPaymentSetup) {
       Alert.alert(
         "Registro financiero pendiente",
@@ -252,7 +298,56 @@ export default function DetalleSubastaScreen() {
       return;
     }
 
-    Alert.alert("Oferta lista", "Después conectamos el endpoint de puja.");
+    if (estadoPuja && monto < estadoPuja.ofertaMinimaPermitida) {
+      setErrorPuja(
+        `La oferta debe ser al menos ${formatPrice(estadoPuja.moneda, estadoPuja.ofertaMinimaPermitida)}.`,
+      );
+      return;
+    }
+
+    if (
+      estadoPuja?.ofertaMaximaPermitida !== null &&
+      estadoPuja?.ofertaMaximaPermitida !== undefined &&
+      monto > estadoPuja.ofertaMaximaPermitida
+    ) {
+      setErrorPuja(
+        `La oferta no puede superar ${formatPrice(estadoPuja.moneda, estadoPuja.ofertaMaximaPermitida)}.`,
+      );
+      return;
+    }
+
+    const response = await enviarPuja(monto);
+
+    if (!response) return;
+
+    setMontoOferta("");
+    await watchBidNotification({
+      subastaId: subasta.idSubasta,
+      amount: response.monto,
+      title: itemActual?.titulo ?? subasta.titulo,
+    });
+    await cargarEstadoPuja();
+    await recargar();
+
+    if (response.estado === "SUPERADA") {
+      await addLocalNotification({
+        kind: "PUJA_SUPERADA",
+        title: "Oferta superada",
+        body: `Tu oferta en ${itemActual?.titulo ?? subasta.titulo} fue sobrepasada por otra persona. Realizá otra puja antes de que se acabe el tiempo.`,
+        subastaId: subasta.idSubasta,
+        actionLabel: "Volver a subasta",
+      });
+    }
+
+    if (response.estado === "GANADORA") {
+      await addLocalNotification({
+        kind: "SUBASTA_GANADA",
+        title: "Subasta ganada",
+        body: `Felicitaciones, ganaste el artículo ${itemActual?.titulo ?? subasta.titulo}. Por favor, revisá los detalles en mensajería y completá el pago.`,
+        subastaId: subasta.idSubasta,
+        actionLabel: "Ir a mensajería",
+      });
+    }
   }
 
   function handleStreaming() {
@@ -265,6 +360,17 @@ export default function DetalleSubastaScreen() {
   function handleGuardarSubasta() {
     setSubastaGuardada((current) => !current);
   }
+
+  const amountNumber = Number(montoOferta);
+  const bidAmountInvalid =
+    !montoOferta.trim() ||
+    Number.isNaN(amountNumber) ||
+    amountNumber <= 0 ||
+    (estadoPuja ? amountNumber < estadoPuja.ofertaMinimaPermitida : false) ||
+    (estadoPuja?.ofertaMaximaPermitida !== null &&
+    estadoPuja?.ofertaMaximaPermitida !== undefined
+      ? amountNumber > estadoPuja.ofertaMaximaPermitida
+      : false);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -384,7 +490,36 @@ export default function DetalleSubastaScreen() {
 
       {puedeOfertar && (
         <View style={styles.offerCard}>
-          <Text style={styles.bidLabel}>Monto a ofertar</Text>
+          <View style={styles.bidHeaderRow}>
+            <View>
+              <Text style={styles.bidLabel}>Pujar</Text>
+              <Text style={styles.bidSubtitle}>Precio actual</Text>
+            </View>
+
+            <Text style={styles.bidCurrentPrice}>
+              {formatPrice(
+                estadoPuja?.moneda ?? subasta.moneda,
+                estadoPuja?.mejorOferta ?? precioMostrado,
+              )}
+            </Text>
+          </View>
+
+          {loadingEstadoPuja ? (
+            <Text style={styles.bidHelperText}>Actualizando valores...</Text>
+          ) : errorEstadoPuja ? (
+            <Text style={styles.bidErrorText}>{errorEstadoPuja}</Text>
+          ) : estadoPuja ? (
+            <View style={styles.bidLimitsRow}>
+              <Text style={styles.bidLimitText}>
+                Mín. {formatPrice(estadoPuja.moneda, estadoPuja.ofertaMinimaPermitida)}
+              </Text>
+              {estadoPuja.ofertaMaximaPermitida !== null && (
+                <Text style={styles.bidLimitText}>
+                  Máx. {formatPrice(estadoPuja.moneda, estadoPuja.ofertaMaximaPermitida)}
+                </Text>
+              )}
+            </View>
+          ) : null}
 
           {requiresPaymentSetup && (
             <Text style={styles.warningText}>
@@ -398,11 +533,25 @@ export default function DetalleSubastaScreen() {
             placeholderTextColor="#888"
             keyboardType="numeric"
             value={montoOferta}
-            onChangeText={setMontoOferta}
+            onChangeText={handleAmountChange}
           />
 
-          <Pressable style={styles.bidButton} onPress={handleOffer}>
-            <Text style={styles.bidButtonText}>Ofertar</Text>
+          {successPuja && <Text style={styles.bidSuccessText}>{successPuja}</Text>}
+          {errorPuja && <Text style={styles.bidErrorText}>{errorPuja}</Text>}
+
+          <Pressable
+            style={[
+              styles.bidButton,
+              (submittingPuja || bidAmountInvalid) && styles.bidButtonDisabled,
+            ]}
+            onPress={handleOffer}
+            disabled={submittingPuja || bidAmountInvalid}
+          >
+            {submittingPuja ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.bidButtonText}>Pujar</Text>
+            )}
           </Pressable>
         </View>
       )}
@@ -667,6 +816,70 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  bidHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 10,
+  },
+
+  bidSubtitle: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "700",
+  },
+
+  bidCurrentPrice: {
+    fontSize: 20,
+    color: "#111827",
+    fontWeight: "900",
+  },
+
+  bidLimitsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+
+  bidLimitText: {
+    fontSize: 12,
+    color: "#374151",
+    fontWeight: "800",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+
+  bidHelperText: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+
+  bidSuccessText: {
+    fontSize: 13,
+    color: "#15803D",
+    backgroundColor: "#DCFCE7",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 12,
+    fontWeight: "800",
+  },
+
+  bidErrorText: {
+    fontSize: 13,
+    color: "#B91C1C",
+    backgroundColor: "#FEE2E2",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 12,
+    fontWeight: "800",
+  },
+
   warningText: {
     fontSize: 14,
     color: "#B45309",
@@ -692,6 +905,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 14,
     marginBottom: 4,
+  },
+
+  bidButtonDisabled: {
+    opacity: 0.55,
   },
 
   bidButtonText: {

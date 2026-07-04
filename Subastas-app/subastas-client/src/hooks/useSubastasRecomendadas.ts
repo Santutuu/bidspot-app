@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getSubastasRecomendadas } from "@/src/api/subastaAPI";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 
@@ -7,9 +7,9 @@ export function useSubastasRecomendadas() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function cargarSubastas() {
+  const cargarSubastas = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
 
       const data = await getSubastasRecomendadas();
@@ -21,16 +21,22 @@ export function useSubastasRecomendadas() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     cargarSubastas();
-  }, []);
+  }, [cargarSubastas]);
+
+  const recargarSilencioso = useCallback(
+    () => cargarSubastas(true),
+    [cargarSubastas],
+  );
 
   return {
     subastas,
     loading,
     error,
     recargar: cargarSubastas,
+    recargarSilencioso,
   };
 }
