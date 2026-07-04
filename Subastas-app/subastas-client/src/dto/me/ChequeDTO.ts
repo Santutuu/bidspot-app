@@ -1,5 +1,5 @@
 export interface ChequeRequestDTO {
-  identificacion: number;
+  identificacion: string;
   nroCheque: string;
   beneficiario: string;
   cuilCuit: string;
@@ -7,11 +7,13 @@ export interface ChequeRequestDTO {
 }
 
 export interface ChequeResponseDTO {
-  idMedioPago: number;
-  tipo: "CHEQUE" | string;
-  identificacion: number;
+  idCheque: number;
+  idMedioPago?: number;
+  tipo?: "CHEQUE" | string;
+  identificacion: string;
   nroCheque: string;
   beneficiario: string;
   cuilCuit: string;
   saldo: number;
+  estado?: string;
 }

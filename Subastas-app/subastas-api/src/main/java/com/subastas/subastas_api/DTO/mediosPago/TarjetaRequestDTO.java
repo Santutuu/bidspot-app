@@ -1,7 +1,5 @@
 package com.subastas.subastas_api.DTO.mediosPago;
 
-import java.util.Date;
-
 public class TarjetaRequestDTO {
 
     private String numero;
@@ -24,6 +22,4 @@ public class TarjetaRequestDTO {
     public String getCvv() {
         return cvv;
     }
-
-
 }

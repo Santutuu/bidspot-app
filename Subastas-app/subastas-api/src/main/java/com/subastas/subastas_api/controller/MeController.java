@@ -1,7 +1,7 @@
 package com.subastas.subastas_api.controller;
 
-import com.subastas.subastas_api.DTO.cuenta.CuentaCobroRequestDTO;
-import com.subastas.subastas_api.DTO.cuenta.CuentaCobroResponseDTO;
+import com.subastas.subastas_api.DTO.cuenta.CuentaBancoRequestDTO;
+import com.subastas.subastas_api.DTO.cuenta.CuentaBancoResponseDTO;
 import com.subastas.subastas_api.DTO.mediosPago.*;
 import com.subastas.subastas_api.service.MeService;
 import org.springframework.http.HttpStatus;
@@ -22,10 +22,10 @@ public class MeController {
     }
 
     @GetMapping("/cuenta-cobro")
-    public ResponseEntity<CuentaCobroResponseDTO> obtenerCuentaCobro(
+    public ResponseEntity<CuentaBancoResponseDTO> obtenerCuentaCobro(
             Authentication authentication
     ) {
-        CuentaCobroResponseDTO response = meService.obtenerCuentaCobro(
+        CuentaBancoResponseDTO response = meService.obtenerCuentaCobro(
                 authentication.getName()
         );
 
@@ -33,11 +33,11 @@ public class MeController {
     }
 
     @PostMapping("/cuenta-cobro")
-    public ResponseEntity<CuentaCobroResponseDTO> crearCuentaCobro(
+    public ResponseEntity<CuentaBancoResponseDTO> crearCuentaCobro(
             Authentication authentication,
-            @RequestBody CuentaCobroRequestDTO request
+            @RequestBody CuentaBancoRequestDTO request
     ) {
-        CuentaCobroResponseDTO response = meService.crearCuentaCobro(
+        CuentaBancoResponseDTO response = meService.crearCuentaCobro(
                 authentication.getName(),
                 request
         );
@@ -80,6 +80,16 @@ public class MeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @DeleteMapping("/medios-pago/tarjetas/{idTarjeta}")
+    public ResponseEntity<Void> eliminarTarjeta(
+            Authentication authentication,
+            @PathVariable Long idTarjeta
+    ) {
+        meService.eliminarTarjeta(authentication.getName(), idTarjeta);
+
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/medios-pago/cheques")
     public ResponseEntity<List<ChequeResponseDTO>> obtenerCheques(
             Authentication authentication
@@ -102,5 +112,15 @@ public class MeController {
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @DeleteMapping("/medios-pago/cheques/{idCheque}")
+    public ResponseEntity<Void> eliminarCheque(
+            Authentication authentication,
+            @PathVariable Long idCheque
+    ) {
+        meService.eliminarCheque(authentication.getName(), idCheque);
+
+        return ResponseEntity.noContent().build();
     }
 }

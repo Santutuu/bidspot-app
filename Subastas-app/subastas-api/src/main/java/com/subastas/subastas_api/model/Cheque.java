@@ -1,30 +1,33 @@
 package com.subastas.subastas_api.model;
 
-import jakarta.persistence.Entity;
 import jakarta.persistence.*;
 
 @Entity
 public class Cheque extends MedioDePago {
 
-    private int identificacion;
+    @Column(nullable = false)
+    private String identificacion;
+
+    @Column(nullable = false)
     private String nroCheque;
+
+    @Column(nullable = false)
     private String beneficiario;
+
+    @Column(nullable = false)
     private String cuilCuit;
-    private float saldo;
+
+    @Column(nullable = false)
+    private Float saldo;
 
     public Cheque() {
-        super();
     }
 
-    public Cheque(
-            Usuario usuario,
-            int identificacion,
-            String nroCheque,
-            String beneficiario,
-            String cuilCuit, float saldo) {
-
-        super(usuario);
-
+    public Cheque(String identificacion,
+                  String nroCheque,
+                  String beneficiario,
+                  String cuilCuit,
+                  Float saldo) {
         this.identificacion = identificacion;
         this.nroCheque = nroCheque;
         this.beneficiario = beneficiario;
@@ -32,45 +35,23 @@ public class Cheque extends MedioDePago {
         this.saldo = saldo;
     }
 
-
-
-    public int getIdentificacion() {
+    public String getIdentificacion() {
         return identificacion;
-    }
-
-    public void setIdentificacion(int identificacion) {
-        this.identificacion = identificacion;
     }
 
     public String getNroCheque() {
         return nroCheque;
     }
 
-    public void setNroCheque(String nroCheque) {
-        this.nroCheque = nroCheque;
-    }
-
     public String getBeneficiario() {
         return beneficiario;
-    }
-
-    public void setBeneficiario(String beneficiario) {
-        this.beneficiario = beneficiario;
     }
 
     public String getCuilCuit() {
         return cuilCuit;
     }
 
-    public void setCuilCuit(String cuilCuit) {
-        this.cuilCuit = cuilCuit;
-    }
-
-    public float getSaldo() {
+    public Float getSaldo() {
         return saldo;
-    }
-
-    public void setSaldo(float saldo) {
-        this.saldo = saldo;
     }
 }

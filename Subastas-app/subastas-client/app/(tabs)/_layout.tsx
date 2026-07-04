@@ -38,7 +38,7 @@ export default function TabsLayout() {
             </Pressable>
           </View>
         ),
-        tabBarShowLabel: true,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: "#2F63F6",
         tabBarInactiveTintColor: "#111",
         tabBarStyle: styles.tabBar,
@@ -48,46 +48,62 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="home"
+        name="home/index"
         options={{
           title: "Inicio",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home-outline" size={26} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "home" : "home-outline"}
+              size={27}
+              color={color}
+            />
           ),
         }}
       />
 
       <Tabs.Screen
-        name="saved"
+        name="saved/index"
         options={{
           title: "Guardadas",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="bookmark-outline" size={26} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "bookmark" : "bookmark-outline"}
+              size={27}
+              color={color}
+            />
           ),
         }}
       />
 
       <Tabs.Screen
-        name="search"
+        name="search/index"
         options={{
           title: "Buscar",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="search-outline" size={26} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "search" : "search-outline"}
+              size={27}
+              color={color}
+            />
           ),
         }}
       />
 
       <Tabs.Screen
-        name="profile"
+        name="profile/index"
         options={{
           title: "Perfil",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person-outline" size={26} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "person-circle" : "person-circle-outline"}
+              size={31}
+              color={color}
+            />
           ),
         }}
       />
 
-      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="notifications/index" options={{ href: null }} />
 
       <Tabs.Screen name="auth/login" options={{ href: null }} />
       <Tabs.Screen name="auth/register" options={{ href: null }} />
@@ -100,11 +116,23 @@ export default function TabsLayout() {
         options={{ href: null }}
       />
       <Tabs.Screen
+        name="financial-setup/cuenta-form"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="financial-setup/medios-pago"
         options={{ href: null }}
       />
       <Tabs.Screen name="financial-setup/tarjeta" options={{ href: null }} />
+      <Tabs.Screen
+        name="financial-setup/tarjeta-form"
+        options={{ href: null }}
+      />
       <Tabs.Screen name="financial-setup/cheque" options={{ href: null }} />
+      <Tabs.Screen
+        name="financial-setup/cheque-form"
+        options={{ href: null }}
+      />
 
       <Tabs.Screen name="profile/publicaciones/index" options={{ href: null }} />
       <Tabs.Screen name="profile/publicaciones/[id]/index" options={{ href: null }} />
@@ -142,17 +170,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   tabBar: {
-    height: 90,
+    height: 100,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#DDD",
-    paddingBottom: 8,
+    paddingBottom: 10,
+    paddingTop: 8,
   },
   tabBarItem: {
     justifyContent: "center",
     alignItems: "center",
   },
-  tabBarIcon: { marginTop: 4 },
+  tabBarIcon: { marginTop: 0 },
   tabBarLabel: {
     fontSize: 12,
     fontWeight: "600",

@@ -2,13 +2,13 @@ package com.subastas.subastas_api.DTO.mediosPago;
 
 public class ChequeRequestDTO {
 
-    private int identificacion;
+    private String identificacion;
     private String nroCheque;
     private String beneficiario;
     private String cuilCuit;
-    private float saldo;
+    private Float saldo;
 
-    public int getIdentificacion() {
+    public String getIdentificacion() {
         return identificacion;
     }
 
@@ -24,7 +24,7 @@ public class ChequeRequestDTO {
         return cuilCuit;
     }
 
-    public float getSaldo() {
+    public Float getSaldo() {
         return saldo;
     }
 }

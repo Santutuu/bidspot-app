@@ -1,9 +1,15 @@
-import { AccionRequeridaMock } from "@/src/types/publicaciones";
+import { AccionRequerida } from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
-  action: AccionRequeridaMock;
+  action: {
+    id: string;
+    tipo: AccionRequerida;
+    titulo: string;
+    descripcion: string;
+    estado: "PENDIENTE" | "RESPONDIDA";
+  };
   onPress?: () => void;
 };
 

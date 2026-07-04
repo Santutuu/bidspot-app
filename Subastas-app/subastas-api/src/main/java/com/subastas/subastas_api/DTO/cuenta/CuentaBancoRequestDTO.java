@@ -1,6 +1,6 @@
 package com.subastas.subastas_api.DTO.cuenta;
 
-public class CuentaCobroRequestDTO {
+public class CuentaBancoRequestDTO {
 
     private String cbu;
     private String banco;

@@ -26,7 +26,10 @@ export function useDetalleSubasta(id?: string) {
       }
 
       if (err.response?.status === 403) {
-        setError("No tenés categoría suficiente para acceder a esta subasta.");
+        setError(
+          err.response?.data?.message ??
+            "No tenes categoria suficiente para acceder a esta subasta.",
+        );
         return;
       }
 

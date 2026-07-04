@@ -3,11 +3,11 @@ import { StyleSheet, Text, View } from "react-native";
 type Props = {
   auction?: {
     titulo: string;
-    fecha: string;
-    hora: string;
+    fecha?: string | null;
+    hora?: string | null;
     lugar: string;
-    valorBase: number;
-    comision: string;
+    valorBase?: number;
+    comision?: string;
   };
 };
 
@@ -24,12 +24,16 @@ export default function AuctionInfoCard({ auction }: Props) {
   return (
     <View style={styles.card}>
       <Text style={styles.title}>{auction.titulo}</Text>
-      <Text style={styles.text}>
-        {auction.fecha} - {auction.hora}
-      </Text>
+      {(auction.fecha || auction.hora) && (
+        <Text style={styles.text}>
+          {auction.fecha} {auction.hora ? `- ${auction.hora}` : ""}
+        </Text>
+      )}
       <Text style={styles.text}>{auction.lugar}</Text>
-      <Text style={styles.text}>Valor base: ARS {auction.valorBase}</Text>
-      <Text style={styles.text}>Comisión: {auction.comision}</Text>
+      {auction.valorBase !== undefined && (
+        <Text style={styles.text}>Valor base: ARS {auction.valorBase}</Text>
+      )}
+      {auction.comision && <Text style={styles.text}>Comisión: {auction.comision}</Text>}
     </View>
   );
 }

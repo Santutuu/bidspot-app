@@ -1,50 +1,45 @@
+import { Categoria } from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-const categorias = [
-  "Arte",
-  "Joyas",
-  "Vehículos",
-  "Ropa",
-  "Vehículos clásicos",
-  "Otros",
+const categorias: { label: string; value: Categoria }[] = [
+  { label: "Arte", value: "ARTE" },
+  { label: "Joyas", value: "JOYAS" },
+  { label: "Vehiculos", value: "VEHICULOS" },
+  { label: "Ropa", value: "ROPA" },
+  { label: "Otros", value: "OTROS" },
 ];
 
 export default function PublicarCategoriaScreen() {
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("");
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<{
+    label: string;
+    value: Categoria;
+  } | null>(null);
   const [open, setOpen] = useState(false);
-
-  function handleBack() {
-    router.replace("/(tabs)/profile" as any);
-  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.step}>Paso 1 de 2</Text>
-        <Text style={styles.title}>Elegí la categoría del item</Text>
+        <Text style={styles.title}>Elegi la categoria del item</Text>
         <Text style={styles.subtitle}>
-          Esta información ayuda a clasificar la publicación antes de la
-          revisión.
+          Esta informacion ayuda a clasificar la publicacion antes de la revision.
         </Text>
       </View>
 
       <View style={styles.formCard}>
-        <Text style={styles.label}>Categoría</Text>
+        <Text style={styles.label}>Categoria</Text>
 
-        <Pressable
-          style={styles.selectBox}
-          onPress={() => setOpen((value) => !value)}
-        >
+        <Pressable style={styles.selectBox} onPress={() => setOpen((value) => !value)}>
           <Text
             style={[
               styles.selectText,
               !categoriaSeleccionada && styles.placeholderText,
             ]}
           >
-            {categoriaSeleccionada || "Seleccionar categoría"}
+            {categoriaSeleccionada?.label || "Seleccionar categoria"}
           </Text>
           <Ionicons
             name={open ? "chevron-up" : "chevron-down"}
@@ -57,15 +52,15 @@ export default function PublicarCategoriaScreen() {
           <View style={styles.dropdown}>
             {categorias.map((categoria) => (
               <Pressable
-                key={categoria}
+                key={categoria.value}
                 style={styles.dropdownOption}
                 onPress={() => {
                   setCategoriaSeleccionada(categoria);
                   setOpen(false);
                 }}
               >
-                <Text style={styles.dropdownText}>{categoria}</Text>
-                {categoriaSeleccionada === categoria && (
+                <Text style={styles.dropdownText}>{categoria.label}</Text>
+                {categoriaSeleccionada?.value === categoria.value && (
                   <Ionicons name="checkmark" size={20} color="#2F63F6" />
                 )}
               </Pressable>
@@ -75,13 +70,18 @@ export default function PublicarCategoriaScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Pressable onPress={handleBack} style={styles.secondaryButton}>
+        <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
           <Ionicons name="chevron-back" size={18} color="#111827" />
           <Text style={styles.secondaryButtonText}>Volver</Text>
         </Pressable>
 
         <Pressable
-          onPress={() => router.push("/(tabs)/profile/publicar/detalle" as any)}
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/profile/publicar/detalle" as any,
+              params: { categoria: categoriaSeleccionada?.value },
+            })
+          }
           style={[
             styles.primaryButton,
             !categoriaSeleccionada && styles.disabledButton,

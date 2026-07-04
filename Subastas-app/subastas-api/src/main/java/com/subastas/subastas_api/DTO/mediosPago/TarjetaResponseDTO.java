@@ -1,39 +1,28 @@
 package com.subastas.subastas_api.DTO.mediosPago;
 
-import java.util.Date;
-
 public class TarjetaResponseDTO {
 
-    private Long idMedioPago;
-    private String tipo;
-    private String numero;
+    private Long idTarjeta;
+    private String numeroEnmascarado;
     private String nombre;
     private String fechaVto;
 
-
-    public TarjetaResponseDTO(Long idMedioPago,
-                              String numero,
+    public TarjetaResponseDTO(Long idTarjeta,
+                              String numeroEnmascarado,
                               String nombre,
-                              String fechaVto
-                             ) {
-        this.idMedioPago = idMedioPago;
-        this.tipo = "TARJETA";
-        this.numero = numero;
+                              String fechaVto) {
+        this.idTarjeta = idTarjeta;
+        this.numeroEnmascarado = numeroEnmascarado;
         this.nombre = nombre;
         this.fechaVto = fechaVto;
-
     }
 
-    public Long getIdMedioPago() {
-        return idMedioPago;
+    public Long getIdTarjeta() {
+        return idTarjeta;
     }
 
-    public String getTipo() {
-        return tipo;
-    }
-
-    public String getNumero() {
-        return numero;
+    public String getNumeroEnmascarado() {
+        return numeroEnmascarado;
     }
 
     public String getNombre() {
@@ -43,5 +32,4 @@ public class TarjetaResponseDTO {
     public String getFechaVto() {
         return fechaVto;
     }
-
 }

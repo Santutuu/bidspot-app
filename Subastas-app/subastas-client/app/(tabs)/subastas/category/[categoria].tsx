@@ -1,15 +1,25 @@
 import AuctionCard from "@/src/components/home/AuctionCard";
+import { useAuth } from "@/src/context/authContext";
+import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useSubastasPorCategoria } from "@/src/hooks/useSubastasPorCategoria";
 
 import { router, useLocalSearchParams } from "expo-router";
 import {
     ActivityIndicator,
+    Alert,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     View,
 } from "react-native";
+
+const categoryRank = {
+  COMUN: 0,
+  PLATA: 1,
+  ORO: 2,
+  PLATINO: 3,
+};
 
 function formatPrice(precio: number | null, moneda: string) {
   if (precio === null) {
@@ -31,8 +41,38 @@ function formatCategoryName(category?: string | string[]) {
 
 export default function CategoryScreen() {
   const { categoria } = useLocalSearchParams<{ categoria: string }>();
+  const { isAuthenticated, isValidated, user } = useAuth();
 
   const { data, loading, error, recargar } = useSubastasPorCategoria(categoria);
+
+  function canAccessAuction(categoriaMin: string | null) {
+    if (!user?.categoria || !categoriaMin) return false;
+
+    return (
+      categoryRank[user.categoria as keyof typeof categoryRank] >=
+      categoryRank[categoriaMin as keyof typeof categoryRank]
+    );
+  }
+
+  function handleAuctionPress(subasta: SubastaHomeDTO) {
+    if (!isAuthenticated || !isValidated) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (!canAccessAuction(subasta.categoriaMin)) {
+      Alert.alert(
+        "Categoria insuficiente",
+        "Tu categoria de usuario no permite acceder a esta subasta.",
+      );
+      return;
+    }
+
+    router.push({
+      pathname: "/subastas/[id]",
+      params: { id: String(subasta.idSubasta) },
+    });
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -70,13 +110,12 @@ export default function CategoryScreen() {
                   key={subasta.idSubasta}
                   title={subasta.titulo}
                   currentPrice={formatPrice(subasta.precio, subasta.moneda)}
+                  showPrice={isAuthenticated}
+                  estadoSubasta={subasta.estadoSubasta}
+                  fechaInicio={subasta.fechaInicio}
+                  categoriaMin={subasta.categoriaMin}
                   imageUrl={subasta.imagenUrl}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/subastas/[id]",
-                      params: { id: String(subasta.idSubasta) },
-                    })
-                  }
+                  onPress={() => handleAuctionPress(subasta)}
                 />
               ))}
             </View>
@@ -95,13 +134,12 @@ export default function CategoryScreen() {
                   key={subasta.idSubasta}
                   title={subasta.titulo}
                   currentPrice={formatPrice(subasta.precio, subasta.moneda)}
+                  showPrice={isAuthenticated}
+                  estadoSubasta={subasta.estadoSubasta}
+                  fechaInicio={subasta.fechaInicio}
+                  categoriaMin={subasta.categoriaMin}
                   imageUrl={subasta.imagenUrl}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/subastas/[id]",
-                      params: { id: String(subasta.idSubasta) },
-                    })
-                  }
+                  onPress={() => handleAuctionPress(subasta)}
                 />
               ))}
             </View>

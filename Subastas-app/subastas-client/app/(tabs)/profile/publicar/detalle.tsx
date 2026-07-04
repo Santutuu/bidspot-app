@@ -1,10 +1,14 @@
+import { uploadSubastaImages } from "@/src/api/uploadAPI";
+import { useCrearSolicitudPublicacion } from "@/src/hooks/useSolicitudesPublicacion";
+import { Categoria } from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
-    Image,
+  ActivityIndicator,
+  Alert,
+  Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -14,8 +18,13 @@ import {
 } from "react-native";
 
 export default function PublicarDetalleScreen() {
+  const { categoria } = useLocalSearchParams<{ categoria?: Categoria }>();
   const [imagenes, setImagenes] = useState<string[]>([]);
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [declaraPropiedad, setDeclaraPropiedad] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const { crear, loading: creando } = useCrearSolicitudPublicacion();
 
   function handleBack() {
     router.replace("/(tabs)/profile/publicar/categoria" as any);
@@ -35,18 +44,61 @@ export default function PublicarDetalleScreen() {
     setImagenes((current) => [...current, ...nuevasImagenes].slice(0, 6));
   }
 
-  function handlePublicar() {
-    Alert.alert(
-      "Publicación preparada",
-      "Más adelante conectamos este flujo con el backend.",
-      [
-        {
-          text: "Aceptar",
-          onPress: () => router.replace("/(tabs)/profile/publicaciones" as any),
-        },
-      ],
-    );
+  async function handlePublicar() {
+    if (!categoria) {
+      Alert.alert("Categoria requerida", "Volvé y seleccioná una categoría.");
+      return;
+    }
+
+    if (!titulo.trim()) {
+      Alert.alert("Título requerido", "Ingresá un título para el producto.");
+      return;
+    }
+
+    if (!descripcion.trim()) {
+      Alert.alert("Descripción requerida", "Ingresá una descripción.");
+      return;
+    }
+
+    if (imagenes.length < 6) {
+      Alert.alert("Fotos requeridas", "Agregá al menos 6 fotos del producto.");
+      return;
+    }
+
+    if (!declaraPropiedad) {
+      Alert.alert(
+        "Declaración requerida",
+        "Tenés que declarar que sos propietario del producto.",
+      );
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const imagenesUrl = await uploadSubastaImages(imagenes);
+
+      await crear({
+        categoria,
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim(),
+        imagenesUrl,
+        declaracionPropiedad: true,
+      });
+
+      router.replace("/(tabs)/profile/publicaciones" as any);
+    } catch (error: any) {
+      Alert.alert(
+        "No pudimos publicar",
+        error.response?.data?.message ??
+          error.response?.data?.error ??
+          "Revisá los datos e intentá nuevamente.",
+      );
+    } finally {
+      setUploading(false);
+    }
   }
+
+  const submitting = uploading || creando;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -59,7 +111,7 @@ export default function PublicarDetalleScreen() {
         <View style={styles.photoHeader}>
           <View>
             <Text style={styles.label}>Fotos</Text>
-            <Text style={styles.helperText}>{imagenes.length}/6 agregadas</Text>
+          <Text style={styles.helperText}>{imagenes.length}/6 agregadas</Text>
           </View>
 
           <Pressable
@@ -68,7 +120,7 @@ export default function PublicarDetalleScreen() {
               imagenes.length >= 6 && styles.disabledButton,
             ]}
             onPress={handleAgregarFotos}
-            disabled={imagenes.length >= 6}
+          disabled={imagenes.length >= 6}
           >
             <Ionicons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.addPhotoText}>Agregar</Text>
@@ -106,6 +158,8 @@ export default function PublicarDetalleScreen() {
           style={styles.titleInput}
           placeholder="Ej: Reloj antiguo de bolsillo"
           placeholderTextColor="#94A3B8"
+          value={titulo}
+          onChangeText={setTitulo}
         />
 
         <Text style={styles.label}>Descripción</Text>
@@ -114,6 +168,8 @@ export default function PublicarDetalleScreen() {
           placeholder="Describí estado, procedencia, medidas y detalles relevantes."
           placeholderTextColor="#94A3B8"
           multiline
+          value={descripcion}
+          onChangeText={setDescripcion}
         />
 
         <Pressable
@@ -146,12 +202,18 @@ export default function PublicarDetalleScreen() {
           onPress={handlePublicar}
           style={[
             styles.primaryButton,
-            !declaraPropiedad && styles.disabledButton,
+            (!declaraPropiedad || submitting) && styles.disabledButton,
           ]}
-          disabled={!declaraPropiedad}
+          disabled={!declaraPropiedad || submitting}
         >
-          <Text style={styles.primaryButtonText}>Publicar</Text>
-          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          {submitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Text style={styles.primaryButtonText}>Publicar</Text>
+              <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+            </>
+          )}
         </Pressable>
       </View>
     </ScrollView>

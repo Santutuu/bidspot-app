@@ -1,18 +1,34 @@
 import PublicationStatusBadge from "@/src/components/publicaciones/PublicationStatusBadge";
-import { PublicacionMock } from "@/src/types/publicaciones";
+import { EstadoSolicitud } from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
-  publicacion: PublicacionMock;
+  publicacion: {
+    id?: string;
+    idSolicitud?: number;
+    titulo: string;
+    categoria: string;
+    estado: EstadoSolicitud;
+    imagenes?: number[];
+    imagenUrl?: string | null;
+    precioInicial?: number;
+    precioFinal?: number;
+  };
   onPress: () => void;
 };
 
+const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
+
 export default function PublicationCard({ publicacion, onPress }: Props) {
+  const imageSource = publicacion.imagenUrl
+    ? { uri: publicacion.imagenUrl }
+    : publicacion.imagenes?.[0] ?? defaultImage;
+
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <Image
-        source={publicacion.imagenes[0]}
+        source={imageSource}
         style={styles.image}
         resizeMode="cover"
       />

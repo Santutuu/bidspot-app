@@ -1,57 +1,82 @@
 import PublicationCard from "@/src/components/publicaciones/PublicationCard";
-import { publicacionesMock } from "@/src/mocks/publicacionesMock";
+import { useMisSolicitudesPublicacion } from "@/src/hooks/useSolicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 export default function MisPublicacionesScreen() {
-  const activas = publicacionesMock.filter((item) => item.estado !== "VENDIDA");
-  const vendidas = publicacionesMock.filter(
-    (item) => item.estado === "VENDIDA",
-  );
-
-  function handleBack() {
-    router.replace("/(tabs)/profile" as any);
-  }
+  const { solicitudes, loading, error, recargar } = useMisSolicitudesPublicacion();
+  const activas = solicitudes.filter((item) => item.estado !== "CANCELADA");
+  const cerradas = solicitudes.filter((item) => item.estado === "CANCELADA");
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={recargar} />
+      }
+    >
       <View style={styles.headerRow}>
-        <Pressable onPress={handleBack} style={styles.iconButton}>
+        <Pressable onPress={() => router.back()} style={styles.iconButton}>
           <Ionicons name="chevron-back" size={30} color="#111827" />
         </Pressable>
         <Text style={styles.title}>Mis publicaciones</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Activos</Text>
-      {activas.length === 0 ? (
+      {loading && solicitudes.length === 0 && (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>No tenés publicaciones activas.</Text>
+          <ActivityIndicator color="#2F63F6" />
+          <Text style={styles.emptyText}>Cargando publicaciones...</Text>
+        </View>
+      )}
+
+      {!loading && error && (
+        <View style={styles.emptyCard}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.retryButton} onPress={recargar}>
+            <Text style={styles.retryText}>Reintentar</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <Text style={styles.sectionTitle}>Activos</Text>
+      {!loading && !error && activas.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>No tenes publicaciones activas.</Text>
         </View>
       ) : (
         activas.map((publicacion) => (
           <PublicationCard
-            key={publicacion.id}
+            key={publicacion.idSolicitud}
             publicacion={publicacion}
             onPress={() =>
               router.push({
                 pathname: "/(tabs)/profile/publicaciones/[id]" as any,
-                params: { id: publicacion.id },
+                params: { id: String(publicacion.idSolicitud) },
               })
             }
           />
         ))
       )}
 
-      <Text style={styles.sectionTitle}>Vendidos</Text>
-      {vendidas.map((publicacion) => (
+      {cerradas.length > 0 && <Text style={styles.sectionTitle}>Cerradas</Text>}
+      {cerradas.map((publicacion) => (
         <PublicationCard
-          key={publicacion.id}
+          key={publicacion.idSolicitud}
           publicacion={publicacion}
           onPress={() =>
             router.push({
               pathname: "/(tabs)/profile/publicaciones/[id]" as any,
-              params: { id: publicacion.id },
+              params: { id: String(publicacion.idSolicitud) },
             })
           }
         />
@@ -97,10 +122,27 @@ const styles = StyleSheet.create({
     borderColor: "#DCE3F0",
     padding: 18,
     marginBottom: 18,
+    gap: 10,
   },
   emptyText: {
     fontSize: 14,
     color: "#64748B",
     fontWeight: "700",
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#B91C1C",
+    fontWeight: "800",
+  },
+  retryButton: {
+    alignSelf: "flex-start",
+    backgroundColor: "#2F63F6",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  retryText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
   },
 });

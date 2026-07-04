@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/uploads")
 public class UploadController {
@@ -23,5 +25,14 @@ public class UploadController {
         String url = fileStorageService.saveDniImage(file);
 
         return ResponseEntity.ok(new UploadResponseDTO(url));
+    }
+
+    @PostMapping("/subastas")
+    public ResponseEntity<List<String>> uploadSubastaImages(
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        List<String> urls = fileStorageService.saveSubastaImages(files);
+
+        return ResponseEntity.ok(urls);
     }
 }

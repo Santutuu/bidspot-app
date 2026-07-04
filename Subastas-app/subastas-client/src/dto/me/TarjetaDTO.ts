@@ -3,12 +3,16 @@ export interface TarjetaRequestDTO {
   nombre: string;
   fechaVto: string;
   cvv: string;
+  principal?: boolean;
 }
 
 export interface TarjetaResponseDTO {
-  idMedioPago: number;
-  tipo: "TARJETA" | string;
-  numero: string;
+  idTarjeta: number;
+  idMedioPago?: number;
+  tipo?: "TARJETA" | string;
+  numeroEnmascarado: string;
+  numero?: string;
   nombre: string;
   fechaVto: string;
+  principal?: boolean;
 }

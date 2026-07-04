@@ -36,7 +36,7 @@ export default function ChequeScreen() {
       setLoading(true);
 
       await crearCheque({
-        identificacion: Number(identificacion),
+        identificacion: identificacion.trim(),
         nroCheque: nroCheque.trim(),
         beneficiario: beneficiario.trim(),
         cuilCuit: cuilCuit.trim(),

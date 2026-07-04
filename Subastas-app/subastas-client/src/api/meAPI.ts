@@ -52,6 +52,10 @@ export async function obtenerTarjetas(): Promise<TarjetaResponseDTO[]> {
   return response.data;
 }
 
+export async function eliminarTarjeta(idTarjeta: number): Promise<void> {
+  await api.delete(`/me/medios-pago/tarjetas/${idTarjeta}`);
+}
+
 export async function crearCheque(
   request: ChequeRequestDTO
 ): Promise<ChequeResponseDTO> {
@@ -69,6 +73,10 @@ export async function obtenerCheques(): Promise<ChequeResponseDTO[]> {
   );
 
   return response.data;
+}
+
+export async function eliminarCheque(idCheque: number): Promise<void> {
+  await api.delete(`/me/medios-pago/cheques/${idCheque}`);
 }
 
 export async function obtenerMediosPago(): Promise<MedioPagoResponseDTO[]> {

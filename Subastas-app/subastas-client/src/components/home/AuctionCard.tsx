@@ -2,16 +2,48 @@ import { Image, Pressable, StyleSheet, Text } from "react-native";
 
 type Props = {
   title: string;
-  currentPrice: string;
+  currentPrice?: string;
+  showPrice?: boolean;
+  estadoSubasta?: "PROGRAMADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA";
+  fechaInicio?: string | null;
+  categoriaMin?: string | null;
   imageUrl?: string | null;
   onPress?: () => void;
 };
 
 const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
 
+function formatAuctionStatus(
+  estadoSubasta?: Props["estadoSubasta"],
+  fechaInicio?: string | null
+) {
+  if (estadoSubasta === "PROGRAMADA") {
+    if (!fechaInicio) return "Programada";
+
+    const fecha = new Date(fechaInicio);
+    if (Number.isNaN(fecha.getTime())) return fechaInicio;
+
+    return `Inicia ${fecha.toLocaleDateString("es-AR")}`;
+  }
+
+  if (estadoSubasta === "ACTIVA") return "En vivo";
+
+  return null;
+}
+
+function formatCategory(categoriaMin?: string | null) {
+  if (!categoriaMin) return null;
+
+  return categoriaMin.charAt(0).toUpperCase() + categoriaMin.slice(1).toLowerCase();
+}
+
 export default function AuctionCard({
   title,
   currentPrice,
+  showPrice = true,
+  estadoSubasta,
+  fechaInicio,
+  categoriaMin,
   imageUrl,
   onPress,
 }: Props) {
@@ -19,6 +51,8 @@ export default function AuctionCard({
     imageUrl && imageUrl.trim().length > 0
       ? { uri: imageUrl }
       : defaultImage;
+  const statusText = formatAuctionStatus(estadoSubasta, fechaInicio);
+  const categoryText = formatCategory(categoriaMin);
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -28,7 +62,15 @@ export default function AuctionCard({
         {title}
       </Text>
 
-      <Text style={styles.price}>{currentPrice}</Text>
+      {statusText ? <Text style={styles.status}>{statusText}</Text> : null}
+
+      {showPrice && currentPrice ? (
+        <Text style={styles.price}>{currentPrice}</Text>
+      ) : null}
+
+      {categoryText ? (
+        <Text style={styles.categoryBadge}>Categoria {categoryText}</Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -62,5 +104,24 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontSize: 14,
     color: "#555",
+  },
+
+  status: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2F63F6",
+  },
+
+  categoryBadge: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: "#EEF2FF",
+    color: "#3730A3",
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

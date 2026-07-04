@@ -1,6 +1,7 @@
 package com.subastas.subastas_api.service;
 
 import com.subastas.subastas_api.DTO.subasta.DetalleSubastaDTO;
+import com.subastas.subastas_api.exception.InsufficientUserCategoryException;
 import com.subastas.subastas_api.mapper.SubastaMapper;
 import com.subastas.subastas_api.model.EstadoSubasta;
 import com.subastas.subastas_api.model.EstadoUsuario;
@@ -72,10 +73,7 @@ public class DetalleSubastaService {
 
         if (usuarioActual.getCategoria() == null ||
                 usuarioActual.getCategoria().ordinal() < subasta.getCategoriaMin().ordinal()) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "La categoría del usuario no permite acceder a esta subasta"
-            );
+            throw new InsufficientUserCategoryException();
         }
     }
 }

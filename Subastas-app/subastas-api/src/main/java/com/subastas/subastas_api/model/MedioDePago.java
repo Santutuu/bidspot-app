@@ -1,6 +1,6 @@
 package com.subastas.subastas_api.model;
-import jakarta.persistence.*;
 
+import jakarta.persistence.*;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -14,16 +14,9 @@ public abstract class MedioDePago {
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
 
-    protected MedioDePago() {
-    }
-
-    public MedioDePago(Usuario usuario) {
-        this.usuario = usuario;
-    }
     public Long getIdMedioPago() {
         return idMedioPago;
     }
-
 
     public Usuario getUsuario() {
         return usuario;
@@ -33,4 +26,3 @@ public abstract class MedioDePago {
         this.usuario = usuario;
     }
 }
-

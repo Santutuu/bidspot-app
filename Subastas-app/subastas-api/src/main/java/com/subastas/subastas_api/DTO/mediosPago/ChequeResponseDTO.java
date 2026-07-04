@@ -1,25 +1,21 @@
-
-
 package com.subastas.subastas_api.DTO.mediosPago;
 
 public class ChequeResponseDTO {
 
-    private Long idMedioPago;
-    private String tipo;
-    private int identificacion;
+    private Long idCheque;
+    private String identificacion;
     private String nroCheque;
     private String beneficiario;
     private String cuilCuit;
-    private float saldo;
+    private Float saldo;
 
-    public ChequeResponseDTO(Long idMedioPago,
-                             int identificacion,
+    public ChequeResponseDTO(Long idCheque,
+                             String identificacion,
                              String nroCheque,
                              String beneficiario,
                              String cuilCuit,
-                             float saldo) {
-        this.idMedioPago = idMedioPago;
-        this.tipo = "CHEQUE";
+                             Float saldo) {
+        this.idCheque = idCheque;
         this.identificacion = identificacion;
         this.nroCheque = nroCheque;
         this.beneficiario = beneficiario;
@@ -27,15 +23,11 @@ public class ChequeResponseDTO {
         this.saldo = saldo;
     }
 
-    public Long getIdMedioPago() {
-        return idMedioPago;
+    public Long getIdCheque() {
+        return idCheque;
     }
 
-    public String getTipo() {
-        return tipo;
-    }
-
-    public int getIdentificacion() {
+    public String getIdentificacion() {
         return identificacion;
     }
 
@@ -51,7 +43,7 @@ public class ChequeResponseDTO {
         return cuilCuit;
     }
 
-    public float getSaldo() {
+    public Float getSaldo() {
         return saldo;
     }
 }

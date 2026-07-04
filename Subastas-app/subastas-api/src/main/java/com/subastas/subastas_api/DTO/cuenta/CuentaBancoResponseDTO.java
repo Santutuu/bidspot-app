@@ -1,13 +1,13 @@
 package com.subastas.subastas_api.DTO.cuenta;
 
-public class CuentaCobroResponseDTO {
+public class CuentaBancoResponseDTO {
 
     private Long idCuentaBanco;
     private String cbu;
     private String banco;
     private String titular;
 
-    public CuentaCobroResponseDTO(Long idCuentaBanco,
+    public CuentaBancoResponseDTO(Long idCuentaBanco,
                                   String cbu,
                                   String banco,
                                   String titular) {

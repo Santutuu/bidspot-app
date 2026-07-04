@@ -5,13 +5,13 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 type BadgeConfig = {
@@ -64,7 +64,7 @@ function formatCardPreview(numero: string | null | undefined) {
 
   const digits = numero.replace(/\D/g, "");
   const last4 = digits.slice(-4);
-  return last4 || "••••";
+  return last4 ? `•••• ${last4}` : numero;
 }
 
 function formatCbuPreview(cbu: string | null | undefined) {
@@ -186,7 +186,11 @@ export default function ProfileScreen() {
 
           if (!active) return;
 
-          setTarjetaPreview(formatCardPreview(tarjetas[0]?.numero));
+          setTarjetaPreview(
+            formatCardPreview(
+              tarjetas[0]?.numeroEnmascarado ?? tarjetas[0]?.numero,
+            ),
+          );
           setCuentaPreview(formatCbuPreview(cuenta?.cbu));
         } catch {
           if (!active) return;
@@ -310,7 +314,7 @@ export default function ProfileScreen() {
             size={16}
             color={badge.accentColor}
           />
-          <Text style={[styles.medalText, { color: badge.accentColor }]}> 
+          <Text style={[styles.medalText, { color: badge.accentColor }]}>
             {badge.label}
           </Text>
         </Pressable>
@@ -400,7 +404,9 @@ export default function ProfileScreen() {
           <View style={styles.quickInfoRow}>
             <Pressable
               style={styles.quickInfoChip}
-              onPress={() => showComingSoon("Tarjeta")}
+              onPress={() =>
+                router.push("/(tabs)/financial-setup/tarjeta" as any)
+              }
             >
               <Ionicons name="card-outline" size={14} color="#0F172A" />
               <Text style={styles.quickInfoText}>Tarjeta {tarjetaPreview}</Text>
@@ -408,7 +414,9 @@ export default function ProfileScreen() {
 
             <Pressable
               style={styles.quickInfoChip}
-              onPress={() => showComingSoon("Cuenta de cobro")}
+              onPress={() =>
+                router.push("/(tabs)/financial-setup/cuenta-cobro" as any)
+              }
             >
               <Ionicons name="wallet-outline" size={14} color="#0F172A" />
               <Text style={styles.quickInfoText}>{cuentaPreview}</Text>
@@ -425,7 +433,9 @@ export default function ProfileScreen() {
         <View style={styles.menuCard}>
           <Pressable
             style={styles.menuRowButton}
-            onPress={() => showComingSoon("Medios de pago")}
+            onPress={() =>
+              router.push("/(tabs)/financial-setup/medios-pago" as any)
+            }
           >
             <Text style={styles.menuText}>Medios de pago</Text>
             <Ionicons name="chevron-forward" size={18} color="#334155" />
@@ -433,7 +443,9 @@ export default function ProfileScreen() {
 
           <Pressable
             style={styles.menuRowButton}
-            onPress={() => showComingSoon("Cuenta de cobro")}
+            onPress={() =>
+              router.push("/(tabs)/financial-setup/cuenta-cobro" as any)
+            }
           >
             <Text style={styles.menuText}>Cuenta de cobro</Text>
             <Ionicons name="chevron-forward" size={18} color="#334155" />
@@ -444,6 +456,14 @@ export default function ProfileScreen() {
             onPress={() => router.push("/(tabs)/profile/publicaciones" as any)}
           >
             <Text style={styles.menuText}>Mis publicaciones</Text>
+            <Ionicons name="chevron-forward" size={18} color="#334155" />
+          </Pressable>
+
+          <Pressable
+            style={styles.menuRowButton}
+            onPress={() => showComingSoon("Mis participaciones")}
+          >
+            <Text style={styles.menuText}>Mis participaciones</Text>
             <Ionicons name="chevron-forward" size={18} color="#334155" />
           </Pressable>
 
@@ -492,7 +512,7 @@ export default function ProfileScreen() {
         onPress={() => showComingSoon("Insignia")}
       >
         <Ionicons name={badge.medalIcon} size={16} color={badge.accentColor} />
-        <Text style={[styles.medalText, { color: badge.accentColor }]}> 
+        <Text style={[styles.medalText, { color: badge.accentColor }]}>
           {badge.label}
         </Text>
       </Pressable>
@@ -827,6 +847,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     marginTop: 8,
+    marginBottom: 12,
   },
 
   primaryButtonText: {
