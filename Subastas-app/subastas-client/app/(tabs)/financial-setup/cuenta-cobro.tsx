@@ -3,13 +3,13 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 export default function CuentaCobroScreen() {
@@ -30,7 +30,10 @@ export default function CuentaCobroScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={refrescar} />
       }
     >
-      <Pressable style={styles.backButton} onPress={() => router.back()}>
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/(tabs)/financial-setup" as any)}
+      >
         <Ionicons name="chevron-back" size={28} color="#111827" />
       </Pressable>
 

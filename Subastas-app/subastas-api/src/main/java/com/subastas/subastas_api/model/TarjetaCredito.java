@@ -17,6 +17,7 @@ public class TarjetaCredito extends MedioDePago {
     @Column(nullable = false)
     private String cvv;
 
+    @Transient
     private boolean principal;
 
     public TarjetaCredito() {

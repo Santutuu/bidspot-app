@@ -156,14 +156,21 @@ public class MeService {
         validarTarjeta(request);
 
         TarjetaCredito tarjeta = new TarjetaCredito(
-                usuario,
                 request.getNumero().trim(),
                 request.getNombre().trim(),
                 request.getFechaVto().trim(),
-                request.getCvv().trim()
+                request.getCvv().trim(),
+                false
         );
+        usuario.agregarMedioDePago(tarjeta);
 
-        TarjetaCredito guardada = tarjetaCreditoRepository.save(tarjeta);
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+        TarjetaCredito guardada = usuarioGuardado.getMediosDePago()
+                .stream()
+                .filter(TarjetaCredito.class::isInstance)
+                .map(TarjetaCredito.class::cast)
+                .reduce((primera, segunda) -> segunda)
+                .orElse(tarjeta);
 
         return new TarjetaResponseDTO(
                 guardada.getIdMedioPago(),
@@ -187,15 +194,21 @@ public class MeService {
         validarCheque(request);
 
         Cheque cheque = new Cheque(
-                usuario,
                 request.getIdentificacion().trim(),
                 request.getNroCheque().trim(),
                 request.getBeneficiario().trim(),
                 request.getCuilCuit().trim(),
                 request.getSaldo()
         );
+        usuario.agregarMedioDePago(cheque);
 
-        Cheque guardado = chequeRepository.save(cheque);
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+        Cheque guardado = usuarioGuardado.getMediosDePago()
+                .stream()
+                .filter(Cheque.class::isInstance)
+                .map(Cheque.class::cast)
+                .reduce((primero, segundo) -> segundo)
+                .orElse(cheque);
 
         return new ChequeResponseDTO(
                 guardado.getIdMedioPago(),

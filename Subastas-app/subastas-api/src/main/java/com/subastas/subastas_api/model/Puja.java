@@ -72,6 +72,10 @@ public class Puja {
         return fechaHora;
     }
 
+    public void setItemCatalogo(ItemCatalogo itemCatalogo) {
+        this.itemCatalogo = itemCatalogo;
+    }
+
     public EstadoPuja getEstado() {
         return estado;
     }

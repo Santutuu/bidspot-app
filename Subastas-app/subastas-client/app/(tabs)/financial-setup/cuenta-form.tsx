@@ -3,14 +3,14 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 function getErrorMessage(error: any) {
@@ -71,7 +71,10 @@ export default function CuentaFormScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Pressable style={styles.backButton} onPress={() => router.back()}>
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/(tabs)/financial-setup" as any)}
+      >
         <Ionicons name="chevron-back" size={28} color="#111827" />
       </Pressable>
 
