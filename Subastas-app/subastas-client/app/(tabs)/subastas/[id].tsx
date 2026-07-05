@@ -1,5 +1,6 @@
 import { useAuth } from "@/src/context/authContext";
 import { useNotifications } from "@/src/context/notificationsContext";
+import { useRealtime } from "@/src/context/realtimeContext";
 import { useSubastasGuardadas } from "@/src/context/subastasGuardadasContext";
 import { LoteCatalogoDTO } from "@/src/dto/DetalleSubastaDTO";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
@@ -118,7 +119,6 @@ export default function DetalleSubastaScreen() {
     loadingEstadoPuja,
     errorEstadoPuja,
     cargarEstadoPuja,
-    cargarEstadoPujaSilencioso,
   } = useEstadoPuja(canLoadDetail ? id : undefined);
   const {
     submittingPuja,
@@ -128,6 +128,7 @@ export default function DetalleSubastaScreen() {
     setSuccessPuja,
     enviarPuja,
   } = useRealizarPuja(canLoadDetail ? id : undefined);
+  const { subscribeToAuctionBids, onReconnect } = useRealtime();
   const { mediosPago, loadingMediosPago, errorMediosPago, cargarMediosPago } =
     useMediosPago(canLoadDetail);
   const { addLocalNotification, watchBidNotification } = useNotifications();
@@ -151,23 +152,29 @@ export default function DetalleSubastaScreen() {
         void recargarGuardadas();
         void cargarMediosPago();
       }
-      const interval = setInterval(() => {
+      return onReconnect(() => {
         if (canLoadDetail) {
-          void cargarEstadoPujaSilencioso();
+          void cargarEstadoPuja();
           void recargarSilencioso();
         }
-      }, 6000);
-
-      return () => clearInterval(interval);
+      });
     }, [
       canLoadDetail,
       cargarEstadoPuja,
-      cargarEstadoPujaSilencioso,
       cargarMediosPago,
+      onReconnect,
       recargarGuardadas,
       recargarSilencioso,
     ]),
   );
+
+  useEffect(() => {
+    if (!canLoadDetail || !id) return;
+
+    return subscribeToAuctionBids(Number(id), () => {
+      void cargarEstadoPuja();
+    });
+  }, [canLoadDetail, cargarEstadoPuja, id, subscribeToAuctionBids]);
 
   useEffect(() => {
     if (loadingAuth) return;
@@ -246,8 +253,10 @@ export default function DetalleSubastaScreen() {
   const proximosLotes = detalle.proximosLotes ?? [];
   const itemActual = esActiva ? detalle.itemActual : null;
   const precioMostrado =
-    esActiva && detalle.itemActual?.precioActual
-      ? detalle.itemActual.precioActual
+    esActiva && estadoPuja?.mejorOferta
+      ? estadoPuja.mejorOferta
+      : esActiva && detalle.itemActual?.precioActual
+        ? detalle.itemActual.precioActual
       : (itemActual?.precioBase ?? null);
   const tipoPrecio = esActiva ? "PRECIO_ACTUAL" : "PRECIO_INICIAL";
   const puedeOfertar = esActiva && !!detalle.itemActual;

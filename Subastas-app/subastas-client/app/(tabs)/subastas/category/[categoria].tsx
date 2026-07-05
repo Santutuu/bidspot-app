@@ -1,10 +1,12 @@
 import AuctionCard from "@/src/components/home/AuctionCard";
 import { useAuth } from "@/src/context/authContext";
+import { useRealtime } from "@/src/context/realtimeContext";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useSubastasPorCategoria } from "@/src/hooks/useSubastasPorCategoria";
 import { getCurrencyCode } from "@/src/utils/moneda";
 
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -42,7 +44,33 @@ export default function CategoryScreen() {
   const { categoria } = useLocalSearchParams<{ categoria: string }>();
   const { isAuthenticated, isValidated, user } = useAuth();
 
-  const { data, loading, error, recargar } = useSubastasPorCategoria(categoria);
+  const { subscribeToAuctionBids, onReconnect } = useRealtime();
+  const { data, loading, error, recargar, actualizarPrecioSubasta } =
+    useSubastasPorCategoria(categoria);
+  const visibleSubastas = useMemo(
+    () => [...(data?.activas ?? []), ...(data?.programadas ?? [])],
+    [data],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      return onReconnect(() => {
+        void recargar();
+      });
+    }, [onReconnect, recargar]),
+  );
+
+  useEffect(() => {
+    const unsubscribers = visibleSubastas.map((subasta) =>
+      subscribeToAuctionBids(subasta.idSubasta, (event) => {
+        actualizarPrecioSubasta(event.idSubasta, event.monto);
+      }),
+    );
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [actualizarPrecioSubasta, subscribeToAuctionBids, visibleSubastas]);
 
   function canAccessAuction(categoriaMin: string | null) {
     if (!user?.categoria || !categoriaMin) return false;

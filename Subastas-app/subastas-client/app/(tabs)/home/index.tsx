@@ -2,6 +2,7 @@ import AuctionCard from "@/src/components/home/AuctionCard";
 import CategoryCircle from "@/src/components/home/CategoryCircle";
 import HomeCarousel from "@/src/components/home/homeCarrousel";
 import { useAuth } from "@/src/context/authContext";
+import { useRealtime } from "@/src/context/realtimeContext";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
 import { getCurrencyCode } from "@/src/utils/moneda";
@@ -43,7 +44,8 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { pendingRegistrationMail, isAuthenticated, isValidated, user } =
     useAuth();
-  const { subastas, loading, error, recargar, recargarSilencioso } =
+  const { subscribeToAuctionBids, onReconnect } = useRealtime();
+  const { subastas, loading, error, recargar, actualizarPrecioSubasta } =
     useSubastasRecomendadas();
   const [showSplash, setShowSplash] = useState(true);
 
@@ -63,14 +65,23 @@ export default function HomeScreen() {
     useCallback(() => {
       if (showSplash) return;
 
-      void recargarSilencioso();
-      const interval = setInterval(() => {
-        void recargarSilencioso();
-      }, 8000);
-
-      return () => clearInterval(interval);
-    }, [recargarSilencioso, showSplash]),
+      return onReconnect(() => {
+        void recargar();
+      });
+    }, [onReconnect, recargar, showSplash]),
   );
+
+  useEffect(() => {
+    const unsubscribers = subastas.map((subasta) =>
+      subscribeToAuctionBids(subasta.idSubasta, (event) => {
+        actualizarPrecioSubasta(event.idSubasta, event.monto);
+      }),
+    );
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [actualizarPrecioSubasta, subastas, subscribeToAuctionBids]);
 
   function canAccessAuction(categoriaMin: string | null) {
     if (!user?.categoria || !categoriaMin) return false;

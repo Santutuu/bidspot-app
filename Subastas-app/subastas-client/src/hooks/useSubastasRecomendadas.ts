@@ -32,11 +32,23 @@ export function useSubastasRecomendadas() {
     [cargarSubastas],
   );
 
+  const actualizarPrecioSubasta = useCallback(
+    (idSubasta: number, precio: number) => {
+      setSubastas((current) =>
+        current.map((subasta) =>
+          subasta.idSubasta === idSubasta ? { ...subasta, precio } : subasta,
+        ),
+      );
+    },
+    [],
+  );
+
   return {
     subastas,
     loading,
     error,
     recargar: cargarSubastas,
     recargarSilencioso,
+    actualizarPrecioSubasta,
   };
 }

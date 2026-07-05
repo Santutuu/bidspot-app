@@ -15,6 +15,7 @@ import {
     NotificationsProvider,
     useNotifications,
 } from "../src/context/notificationsContext";
+import { RealtimeProvider } from "../src/context/realtimeContext";
 import { SubastasGuardadasProvider } from "../src/context/subastasGuardadasContext";
 
 function NotificationsPopover() {
@@ -102,45 +103,47 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <SubastasGuardadasProvider>
-        <NotificationsProvider>
-          <Stack
-            screenOptions={{
-              headerShown: true,
-              headerTitle: () => (
-                <Image
-                  source={require("@/src/assets/images/logo-minimalista.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              ),
-              headerTitleAlign: "left",
-              headerStyle: {
-                backgroundColor: "rgba(47, 99, 246, 0.88)",
-              },
-              headerShadowVisible: false,
-              headerLeft: () => (
-                <Pressable
-                  style={styles.headerLeft}
-                  onPress={() => router.push("/(tabs)/profile")}
-                >
-                  <Ionicons
-                    name="person-circle-outline"
-                    size={38}
-                    color="white"
+        <RealtimeProvider>
+          <NotificationsProvider>
+            <Stack
+              screenOptions={{
+                headerShown: true,
+                headerTitle: () => (
+                  <Image
+                    source={require("@/src/assets/images/logo-minimalista.png")}
+                    style={styles.logo}
+                    resizeMode="contain"
                   />
-                </Pressable>
-              ),
-              headerRight: () => (
-                <View style={styles.headerRight}>
-                  <NotificationsBellButton />
-                </View>
-              ),
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-          <NotificationsPopover />
-        </NotificationsProvider>
+                ),
+                headerTitleAlign: "left",
+                headerStyle: {
+                  backgroundColor: "rgba(47, 99, 246, 0.88)",
+                },
+                headerShadowVisible: false,
+                headerLeft: () => (
+                  <Pressable
+                    style={styles.headerLeft}
+                    onPress={() => router.push("/(tabs)/profile")}
+                  >
+                    <Ionicons
+                      name="person-circle-outline"
+                      size={38}
+                      color="white"
+                    />
+                  </Pressable>
+                ),
+                headerRight: () => (
+                  <View style={styles.headerRight}>
+                    <NotificationsBellButton />
+                  </View>
+                ),
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+            <NotificationsPopover />
+          </NotificationsProvider>
+        </RealtimeProvider>
       </SubastasGuardadasProvider>
     </AuthProvider>
   );

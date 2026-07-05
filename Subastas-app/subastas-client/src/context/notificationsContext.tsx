@@ -4,6 +4,7 @@ import {
 } from "@/src/api/solicitudesPublicacionAPI";
 import { getEstadoPuja } from "@/src/api/subastaAPI";
 import { useAuth } from "@/src/context/authContext";
+import { BidUpdateEvent, useRealtime } from "@/src/context/realtimeContext";
 import {
   addDismissedNotificationId,
   getDismissedNotificationIds,
@@ -121,7 +122,9 @@ async function createRejectedNotification(
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
+  const { subscribeToAuctionBids, onReconnect } = useRealtime();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [watchedBids, setWatchedBids] = useState<WatchedBid[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   useEffect(() => {
@@ -134,7 +137,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
 
       const stored = await getStoredNotifications(user.idUsuario);
+      const storedWatchedBids = await getWatchedBids(user.idUsuario);
       setNotifications(stored);
+      setWatchedBids(storedWatchedBids);
     }
 
     void loadStored();
@@ -223,8 +228,63 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         ...bid,
         createdAt: new Date().toISOString(),
       });
+      setWatchedBids((current) => [
+        { ...bid, createdAt: new Date().toISOString() },
+        ...current.filter((item) => item.subastaId !== bid.subastaId),
+      ]);
     },
     [user?.idUsuario],
+  );
+
+  const handleWatchedBidEvent = useCallback(
+    async (event: BidUpdateEvent) => {
+      if (!isAuthenticated || !user?.idUsuario) return;
+
+      const storedWatchedBids = await getWatchedBids(user.idUsuario);
+      const watchedBid = storedWatchedBids.find(
+        (item) =>
+          item.subastaId === event.idSubasta && event.monto > item.amount,
+      );
+
+      if (!watchedBid) return;
+
+      const stored = await getStoredNotifications(user.idUsuario);
+      const dismissedIds = new Set(
+        await getDismissedNotificationIds(user.idUsuario),
+      );
+      const notificationId = `puja-superada-${watchedBid.subastaId}-${watchedBid.amount}`;
+      const nextNotifications = [...stored];
+
+      if (
+        !dismissedIds.has(notificationId) &&
+        !nextNotifications.some((item) => item.id === notificationId)
+      ) {
+        nextNotifications.unshift({
+          id: notificationId,
+          kind: "PUJA_SUPERADA",
+          title: "Oferta superada",
+          body: `Tu oferta en ${watchedBid.title} fue sobrepasada por otra persona. Realizá otra puja antes de que se acabe el tiempo.`,
+          createdAt: new Date().toISOString(),
+          read: false,
+          subastaId: watchedBid.subastaId,
+          actionLabel: "Volver a subasta",
+        });
+      }
+
+      nextNotifications.sort((left, right) =>
+        right.createdAt.localeCompare(left.createdAt),
+      );
+
+      const remainingBids = storedWatchedBids.filter(
+        (item) => item.subastaId !== watchedBid.subastaId,
+      );
+
+      setNotifications(nextNotifications);
+      setWatchedBids(remainingBids);
+      await saveNotifications(user.idUsuario, nextNotifications);
+      await saveWatchedBids(user.idUsuario, remainingBids);
+    },
+    [isAuthenticated, user?.idUsuario],
   );
 
   const syncWatchedBidNotifications = useCallback(async () => {
@@ -293,18 +353,36 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [syncNotifications, pathname]);
 
   useEffect(() => {
-    void syncWatchedBidNotifications();
-
     if (!isAuthenticated || !user?.idUsuario) {
       return;
     }
 
-    const interval = setInterval(() => {
+    return onReconnect(() => {
       void syncWatchedBidNotifications();
-    }, 6000);
+    });
+  }, [isAuthenticated, onReconnect, syncWatchedBidNotifications, user?.idUsuario]);
 
-    return () => clearInterval(interval);
-  }, [isAuthenticated, syncWatchedBidNotifications, user?.idUsuario]);
+  useEffect(() => {
+    if (!isAuthenticated || !user?.idUsuario) {
+      return;
+    }
+
+    const unsubscribers = watchedBids.map((watchedBid) =>
+      subscribeToAuctionBids(watchedBid.subastaId, (event) => {
+        void handleWatchedBidEvent(event);
+      }),
+    );
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [
+    handleWatchedBidEvent,
+    isAuthenticated,
+    subscribeToAuctionBids,
+    user?.idUsuario,
+    watchedBids,
+  ]);
 
   const markAllAsRead = useCallback(async () => {
     if (!user?.idUsuario) {

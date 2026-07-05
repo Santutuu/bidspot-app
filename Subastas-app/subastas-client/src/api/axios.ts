@@ -1,8 +1,10 @@
 import { clearAuthData, getStoredToken } from "@/src/storage/authStorage";
 import axios from "axios";
 
+export const API_BASE_URL = "https://8ace-181-2-202-196.ngrok-free.app";
+
 const api = axios.create({
-  baseURL: "https://6fa9-181-2-202-196.ngrok-free.app",
+  baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use(async (config) => {
