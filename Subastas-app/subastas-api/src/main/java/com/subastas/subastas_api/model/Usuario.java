@@ -76,11 +76,17 @@ public class Usuario {
     }
 
     public void guardarSubasta(Subasta subasta) {
-        guardadas.add(subasta);
+        if (!guardadas.contains(subasta)) {
+            guardadas.add(subasta);
+        }
     }
 
     public void eliminarSubasta(Subasta subasta) {
         guardadas.remove(subasta);
+    }
+
+    public boolean tieneSubastaGuardada(Subasta subasta) {
+        return guardadas.contains(subasta);
     }
 
     public Long getIdUsuario() {

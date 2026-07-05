@@ -8,19 +8,22 @@ public class ChequeResponseDTO {
     private String beneficiario;
     private String cuilCuit;
     private Float saldo;
+    private String moneda;
 
     public ChequeResponseDTO(Long idCheque,
                              String identificacion,
                              String nroCheque,
                              String beneficiario,
                              String cuilCuit,
-                             Float saldo) {
+                             Float saldo,
+                             String moneda) {
         this.idCheque = idCheque;
         this.identificacion = identificacion;
         this.nroCheque = nroCheque;
         this.beneficiario = beneficiario;
         this.cuilCuit = cuilCuit;
         this.saldo = saldo;
+        this.moneda = moneda;
     }
 
     public Long getIdCheque() {
@@ -45,5 +48,9 @@ public class ChequeResponseDTO {
 
     public Float getSaldo() {
         return saldo;
+    }
+
+    public String getMoneda() {
+        return moneda;
     }
 }

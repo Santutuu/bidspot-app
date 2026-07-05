@@ -1,9 +1,12 @@
+import { MonedaMedioPago } from "@/src/dto/me/MedioPagoDTO";
+
 export interface ChequeRequestDTO {
   identificacion: string;
   nroCheque: string;
   beneficiario: string;
   cuilCuit: string;
   saldo: number;
+  moneda: MonedaMedioPago;
 }
 
 export interface ChequeResponseDTO {
@@ -15,5 +18,6 @@ export interface ChequeResponseDTO {
   beneficiario: string;
   cuilCuit: string;
   saldo: number;
+  moneda: MonedaMedioPago;
   estado?: string;
 }

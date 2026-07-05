@@ -11,6 +11,7 @@ import com.subastas.subastas_api.repository.SubastaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PujaService {
@@ -59,11 +60,21 @@ public class PujaService {
         );
     }
 
+    @Transactional
     public PujaResponseDTO realizarPuja(Long idSubasta,
                                         Usuario usuario,
                                         PujaRequestDTO request) {
         Subasta subasta = obtenerSubastaActiva(idSubasta);
-        ItemCatalogo itemActual = obtenerItemActual(subasta);
+
+        ItemCatalogo itemActual = itemCatalogoRepository
+                .findItemActualBySubastaAndEstadoForUpdate(
+                        subasta,
+                        EstadoItemCatalogo.EN_REMATE
+                )
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "La subasta no tiene un lote en remate"
+                ));
 
         validarPuedeParticipar(subasta, usuario);
         validarParticipacionUnica(subasta, usuario);
@@ -119,7 +130,8 @@ public class PujaService {
                 ));
     }
 
-    private void validarPuedeParticipar(Subasta subasta, Usuario usuario) {
+
+    private void validarPuedeParticipar(Subasta subasta, Usuario usuario, Float monto) {
         if (usuario == null) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
@@ -148,6 +160,37 @@ public class PujaService {
                     "Debe tener al menos un medio de pago cargado para pujar"
             );
         }
+
+        validarGarantiaDisponible(usuario, subasta, monto);
+    }
+
+    private void validarGarantiaDisponible(Usuario usuario,
+                                           Subasta subasta,
+                                           Float monto) {
+        boolean tieneGarantia = usuario.getMediosDePago()
+                .stream()
+                .filter(medio -> medio.getMoneda().esMismaMoneda(subasta.getMoneda()))
+                .anyMatch(medio -> puedeGarantizar(medio, monto));
+
+        if (!tieneGarantia) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "No posee un medio de pago en " + subasta.getMoneda().name()
+                            + " con garantía suficiente para realizar esta puja"
+            );
+        }
+    }
+
+    private boolean puedeGarantizar(MedioDePago medio, Float monto) {
+        if (medio instanceof TarjetaCredito tarjeta) {
+            return tarjeta.getLimiteCredito() >= monto;
+        }
+
+        if (medio instanceof Cheque cheque) {
+            return cheque.getSaldo() >= monto;
+        }
+
+        return false;
     }
 
     private void validarParticipacionUnica(Subasta subasta, Usuario usuario) {

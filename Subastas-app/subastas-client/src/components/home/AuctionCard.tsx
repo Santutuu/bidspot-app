@@ -1,4 +1,5 @@
-import { Image, Pressable, StyleSheet, Text } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   title: string;
@@ -8,6 +9,9 @@ type Props = {
   fechaInicio?: string | null;
   categoriaMin?: string | null;
   imageUrl?: string | null;
+  isSaved?: boolean;
+  savedLoading?: boolean;
+  onToggleSaved?: () => void;
   onPress?: () => void;
 };
 
@@ -45,6 +49,9 @@ export default function AuctionCard({
   fechaInicio,
   categoriaMin,
   imageUrl,
+  isSaved,
+  savedLoading = false,
+  onToggleSaved,
   onPress,
 }: Props) {
   const imageSource =
@@ -56,7 +63,27 @@ export default function AuctionCard({
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      <Image source={imageSource} style={styles.image} resizeMode="cover" />
+      <View style={styles.imageWrap}>
+        <Image source={imageSource} style={styles.image} resizeMode="cover" />
+
+        {onToggleSaved ? (
+          <Pressable
+            style={styles.savedButton}
+            onPress={onToggleSaved}
+            disabled={savedLoading}
+          >
+            {savedLoading ? (
+              <ActivityIndicator size="small" color="#111827" />
+            ) : (
+              <Ionicons
+                name={isSaved ? "bookmark" : "bookmark-outline"}
+                size={22}
+                color={isSaved ? "#111827" : "#111827"}
+              />
+            )}
+          </Pressable>
+        ) : null}
+      </View>
 
       <Text style={styles.title} numberOfLines={2}>
         {title}
@@ -90,8 +117,24 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 135,
     borderRadius: 8,
-    marginBottom: 12,
     backgroundColor: "#EEE",
+  },
+
+  imageWrap: {
+    marginBottom: 12,
+    position: "relative",
+  },
+
+  savedButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.92)",
   },
 
   title: {

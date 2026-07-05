@@ -2,6 +2,7 @@ import AuctionCard from "@/src/components/home/AuctionCard";
 import { useAuth } from "@/src/context/authContext";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useSubastasPorCategoria } from "@/src/hooks/useSubastasPorCategoria";
+import { getCurrencyCode } from "@/src/utils/moneda";
 
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -26,9 +27,7 @@ function formatPrice(precio: number | null, moneda: string) {
     return "Precio no disponible";
   }
 
-  const currencyCode = moneda === "DOLARES" || moneda === "USD" ? "USD" : "ARS";
-
-  return `${currencyCode} ${precio}`;
+  return `${getCurrencyCode(moneda)} ${precio}`;
 }
 
 function formatCategoryName(category?: string | string[]) {

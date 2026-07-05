@@ -17,22 +17,25 @@ public class TarjetaCredito extends MedioDePago {
     @Column(nullable = false)
     private String cvv;
 
-    @Transient
-    private boolean principal;
+    @Column(nullable = false)
+    private Float limiteCredito;
 
     public TarjetaCredito() {
     }
 
-    public TarjetaCredito(String numero,
+    public TarjetaCredito(Usuario usuario,
+                          String numero,
                           String nombre,
                           String fechaVto,
                           String cvv,
-                          boolean principal) {
+                          Moneda moneda,
+                          Float limiteCredito) {
+        super(usuario, moneda);
         this.numero = numero;
         this.nombre = nombre;
         this.fechaVto = fechaVto;
         this.cvv = cvv;
-        this.principal = principal;
+        this.limiteCredito = limiteCredito;
     }
 
     public String getNumero() {
@@ -51,11 +54,7 @@ public class TarjetaCredito extends MedioDePago {
         return cvv;
     }
 
-    public boolean isPrincipal() {
-        return principal;
-    }
-
-    public void setPrincipal(boolean principal) {
-        this.principal = principal;
+    public Float getLimiteCredito() {
+        return limiteCredito;
     }
 }

@@ -1,4 +1,5 @@
 import { crearCheque } from "@/src/api/meAPI";
+import { MonedaMedioPago } from "@/src/dto/me/MedioPagoDTO";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -27,6 +28,7 @@ export default function ChequeFormScreen() {
   const [beneficiario, setBeneficiario] = useState("");
   const [cuilCuit, setCuilCuit] = useState("");
   const [saldo, setSaldo] = useState("");
+  const [moneda, setMoneda] = useState<MonedaMedioPago>("PESOS");
   const [loading, setLoading] = useState(false);
 
   function handleNroChequeChange(value: string) {
@@ -91,6 +93,7 @@ export default function ChequeFormScreen() {
         beneficiario: beneficiario.trim(),
         cuilCuit: cuilCuit.trim(),
         saldo: Number(saldo),
+        moneda,
       });
 
       Alert.alert("Cheque guardado", "El cheque se agrego correctamente.", [
@@ -168,6 +171,42 @@ export default function ChequeFormScreen() {
           placeholderTextColor="#94A3B8"
         />
 
+        <Text style={styles.label}>Moneda</Text>
+        <View style={styles.segmented}>
+          <Pressable
+            style={[
+              styles.segmentButton,
+              moneda === "PESOS" && styles.segmentButtonActive,
+            ]}
+            onPress={() => setMoneda("PESOS")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                moneda === "PESOS" && styles.segmentTextActive,
+              ]}
+            >
+              ARS
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.segmentButton,
+              moneda === "DOLARES" && styles.segmentButtonActive,
+            ]}
+            onPress={() => setMoneda("DOLARES")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                moneda === "DOLARES" && styles.segmentTextActive,
+              ]}
+            >
+              USD
+            </Text>
+          </Pressable>
+        </View>
+
         <Pressable
           style={[styles.primaryButton, loading && styles.disabledButton]}
           onPress={guardarCheque}
@@ -225,6 +264,33 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#0F172A",
     backgroundColor: "#F8FAFC",
+  },
+  segmented: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  segmentButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.3,
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+  },
+  segmentButtonActive: {
+    backgroundColor: "#111827",
+    borderColor: "#111827",
+  },
+  segmentText: {
+    color: "#475569",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  segmentTextActive: {
+    color: "#FFFFFF",
   },
   primaryButton: {
     marginTop: 6,

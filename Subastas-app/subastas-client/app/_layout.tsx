@@ -15,6 +15,7 @@ import {
     NotificationsProvider,
     useNotifications,
 } from "../src/context/notificationsContext";
+import { SubastasGuardadasProvider } from "../src/context/subastasGuardadasContext";
 
 function NotificationsPopover() {
   const { notifications, isPanelOpen, closePanel, dismissNotification } =
@@ -100,45 +101,47 @@ function NotificationsPopover() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <NotificationsProvider>
-        <Stack
-          screenOptions={{
-            headerShown: true,
-            headerTitle: () => (
-              <Image
-                source={require("@/src/assets/images/logo-minimalista.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            ),
-            headerTitleAlign: "left",
-            headerStyle: {
-              backgroundColor: "rgba(47, 99, 246, 0.88)",
-            },
-            headerShadowVisible: false,
-            headerLeft: () => (
-              <Pressable
-                style={styles.headerLeft}
-                onPress={() => router.push("/(tabs)/profile")}
-              >
-                <Ionicons
-                  name="person-circle-outline"
-                  size={38}
-                  color="white"
+      <SubastasGuardadasProvider>
+        <NotificationsProvider>
+          <Stack
+            screenOptions={{
+              headerShown: true,
+              headerTitle: () => (
+                <Image
+                  source={require("@/src/assets/images/logo-minimalista.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
                 />
-              </Pressable>
-            ),
-            headerRight: () => (
-              <View style={styles.headerRight}>
-                <NotificationsBellButton />
-              </View>
-            ),
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-        <NotificationsPopover />
-      </NotificationsProvider>
+              ),
+              headerTitleAlign: "left",
+              headerStyle: {
+                backgroundColor: "rgba(47, 99, 246, 0.88)",
+              },
+              headerShadowVisible: false,
+              headerLeft: () => (
+                <Pressable
+                  style={styles.headerLeft}
+                  onPress={() => router.push("/(tabs)/profile")}
+                >
+                  <Ionicons
+                    name="person-circle-outline"
+                    size={38}
+                    color="white"
+                  />
+                </Pressable>
+              ),
+              headerRight: () => (
+                <View style={styles.headerRight}>
+                  <NotificationsBellButton />
+                </View>
+              ),
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack>
+          <NotificationsPopover />
+        </NotificationsProvider>
+      </SubastasGuardadasProvider>
     </AuthProvider>
   );
 }

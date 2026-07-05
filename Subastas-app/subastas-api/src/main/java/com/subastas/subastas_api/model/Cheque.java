@@ -23,11 +23,14 @@ public class Cheque extends MedioDePago {
     public Cheque() {
     }
 
-    public Cheque(String identificacion,
+    public Cheque(Usuario usuario,
+                  String identificacion,
                   String nroCheque,
                   String beneficiario,
                   String cuilCuit,
-                  Float saldo) {
+                  Float saldo,
+                  Moneda moneda) {
+        super(usuario, moneda);
         this.identificacion = identificacion;
         this.nroCheque = nroCheque;
         this.beneficiario = beneficiario;

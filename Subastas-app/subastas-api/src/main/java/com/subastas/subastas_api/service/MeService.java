@@ -20,6 +20,9 @@ public class MeService {
     private static final int MAX_TARJETAS = 3;
     private static final int MAX_CHEQUES = 3;
 
+    private static final float LIMITE_TARJETA_ARS = 300000f;
+    private static final float LIMITE_TARJETA_DOLARES = 30000f;
+
     private final UsuarioRepository usuarioRepository;
     private final TarjetaCreditoRepository tarjetaCreditoRepository;
     private final ChequeRepository chequeRepository;
@@ -97,7 +100,9 @@ public class MeService {
             response.add(new MedioPagoResponseDTO(
                     tarjeta.getIdMedioPago(),
                     "TARJETA",
-                    "Tarjeta " + enmascararNumero(tarjeta.getNumero())
+                    "Tarjeta " + enmascararNumero(tarjeta.getNumero()),
+                    tarjeta.getMoneda().name(),
+                    tarjeta.getLimiteCredito()
             ));
         }
 
@@ -105,7 +110,9 @@ public class MeService {
             response.add(new MedioPagoResponseDTO(
                     cheque.getIdMedioPago(),
                     "CHEQUE",
-                    "Cheque #" + cheque.getNroCheque() + " - $" + cheque.getSaldo()
+                    "Cheque #" + cheque.getNroCheque() + " - " + cheque.getSaldo(),
+                    cheque.getMoneda().name(),
+                    cheque.getSaldo()
             ));
         }
 
@@ -117,12 +124,7 @@ public class MeService {
 
         return tarjetaCreditoRepository.findByUsuario(usuario)
                 .stream()
-                .map(t -> new TarjetaResponseDTO(
-                        t.getIdMedioPago(),
-                        enmascararNumero(t.getNumero()),
-                        t.getNombre(),
-                        t.getFechaVto()
-                ))
+                .map(this::toTarjetaResponseDTO)
                 .toList();
     }
 
@@ -131,14 +133,7 @@ public class MeService {
 
         return chequeRepository.findByUsuario(usuario)
                 .stream()
-                .map(c -> new ChequeResponseDTO(
-                        c.getIdMedioPago(),
-                        c.getIdentificacion(),
-                        c.getNroCheque(),
-                        c.getBeneficiario(),
-                        c.getCuilCuit(),
-                        c.getSaldo()
-                ))
+                .map(this::toChequeResponseDTO)
                 .toList();
     }
 
@@ -155,29 +150,21 @@ public class MeService {
 
         validarTarjeta(request);
 
+        Float limiteCredito = obtenerLimiteCreditoTarjeta(request.getMoneda());
+
         TarjetaCredito tarjeta = new TarjetaCredito(
+                usuario,
                 request.getNumero().trim(),
                 request.getNombre().trim(),
                 request.getFechaVto().trim(),
                 request.getCvv().trim(),
-                false
+                request.getMoneda(),
+                limiteCredito
         );
-        usuario.agregarMedioDePago(tarjeta);
 
-        Usuario usuarioGuardado = usuarioRepository.save(usuario);
-        TarjetaCredito guardada = usuarioGuardado.getMediosDePago()
-                .stream()
-                .filter(TarjetaCredito.class::isInstance)
-                .map(TarjetaCredito.class::cast)
-                .reduce((primera, segunda) -> segunda)
-                .orElse(tarjeta);
+        TarjetaCredito guardada = tarjetaCreditoRepository.save(tarjeta);
 
-        return new TarjetaResponseDTO(
-                guardada.getIdMedioPago(),
-                enmascararNumero(guardada.getNumero()),
-                guardada.getNombre(),
-                guardada.getFechaVto()
-        );
+        return toTarjetaResponseDTO(guardada);
     }
 
     public ChequeResponseDTO crearCheque(String mail,
@@ -194,30 +181,18 @@ public class MeService {
         validarCheque(request);
 
         Cheque cheque = new Cheque(
+                usuario,
                 request.getIdentificacion().trim(),
                 request.getNroCheque().trim(),
                 request.getBeneficiario().trim(),
                 request.getCuilCuit().trim(),
-                request.getSaldo()
+                request.getSaldo(),
+                request.getMoneda()
         );
-        usuario.agregarMedioDePago(cheque);
 
-        Usuario usuarioGuardado = usuarioRepository.save(usuario);
-        Cheque guardado = usuarioGuardado.getMediosDePago()
-                .stream()
-                .filter(Cheque.class::isInstance)
-                .map(Cheque.class::cast)
-                .reduce((primero, segundo) -> segundo)
-                .orElse(cheque);
+        Cheque guardado = chequeRepository.save(cheque);
 
-        return new ChequeResponseDTO(
-                guardado.getIdMedioPago(),
-                guardado.getIdentificacion(),
-                guardado.getNroCheque(),
-                guardado.getBeneficiario(),
-                guardado.getCuilCuit(),
-                guardado.getSaldo()
-        );
+        return toChequeResponseDTO(guardado);
     }
 
     public void eliminarTarjeta(String mail, Long idTarjeta) {
@@ -306,6 +281,13 @@ public class MeService {
                     "El CVV debe tener 3 o 4 dígitos"
             );
         }
+
+        if (request.getMoneda() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "La moneda de la tarjeta es obligatoria"
+            );
+        }
     }
 
     private void validarCheque(ChequeRequestDTO request) {
@@ -343,6 +325,51 @@ public class MeService {
                     "El saldo del cheque debe ser mayor a cero"
             );
         }
+
+        if (request.getMoneda() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "La moneda del cheque es obligatoria"
+            );
+        }
+    }
+
+    private Float obtenerLimiteCreditoTarjeta(Moneda moneda) {
+        if (moneda.esMismaMoneda(Moneda.ARS)) {
+            return LIMITE_TARJETA_ARS;
+        }
+
+        if (moneda.esMismaMoneda(Moneda.DOLARES)) {
+            return LIMITE_TARJETA_DOLARES;
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Moneda no soportada para tarjeta"
+        );
+    }
+
+    private TarjetaResponseDTO toTarjetaResponseDTO(TarjetaCredito tarjeta) {
+        return new TarjetaResponseDTO(
+                tarjeta.getIdMedioPago(),
+                enmascararNumero(tarjeta.getNumero()),
+                tarjeta.getNombre(),
+                tarjeta.getFechaVto(),
+                tarjeta.getMoneda().name(),
+                tarjeta.getLimiteCredito()
+        );
+    }
+
+    private ChequeResponseDTO toChequeResponseDTO(Cheque cheque) {
+        return new ChequeResponseDTO(
+                cheque.getIdMedioPago(),
+                cheque.getIdentificacion(),
+                cheque.getNroCheque(),
+                cheque.getBeneficiario(),
+                cheque.getCuilCuit(),
+                cheque.getSaldo(),
+                cheque.getMoneda().name()
+        );
     }
 
     private String enmascararNumero(String numero) {

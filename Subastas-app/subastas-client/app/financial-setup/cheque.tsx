@@ -41,6 +41,7 @@ export default function ChequeScreen() {
         beneficiario: beneficiario.trim(),
         cuilCuit: cuilCuit.trim(),
         saldo: Number(saldo),
+        moneda: "PESOS",
       });
 
       Alert.alert("Cheque registrado", "Tu cheque fue guardado.");

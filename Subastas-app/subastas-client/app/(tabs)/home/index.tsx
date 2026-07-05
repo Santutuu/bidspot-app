@@ -4,7 +4,8 @@ import HomeCarousel from "@/src/components/home/homeCarrousel";
 import { useAuth } from "@/src/context/authContext";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
-import { router, useFocusEffect } from "expo-router";
+import { getCurrencyCode } from "@/src/utils/moneda";
+import { router, useFocusEffect, useNavigation } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -35,11 +36,11 @@ const categoryRank = {
 function formatPrice(precio: number | null, moneda: string) {
   if (precio === null) return "Precio no disponible";
 
-  const currencyCode = moneda === "DOLARES" || moneda === "USD" ? "USD" : "ARS";
-  return `${currencyCode} ${precio}`;
+  return `${getCurrencyCode(moneda)} ${precio}`;
 }
 
 export default function HomeScreen() {
+  const navigation = useNavigation();
   const { pendingRegistrationMail, isAuthenticated, isValidated, user } =
     useAuth();
   const { subastas, loading, error, recargar, recargarSilencioso } =
@@ -50,6 +51,13 @@ export default function HomeScreen() {
     const timer = setTimeout(() => setShowSplash(false), 1600);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: !showSplash,
+      tabBarStyle: showSplash ? { display: "none" } : undefined,
+    });
+  }, [navigation, showSplash]);
 
   useFocusEffect(
     useCallback(() => {
@@ -180,8 +188,16 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#FFFFFF" },
   content: { paddingBottom: 24 },
-  splashContainer: { flex: 1, backgroundColor: "#0F172A" },
-  splashImage: { ...StyleSheet.absoluteFillObject },
+  splashContainer: {
+    flex: 1,
+    backgroundColor: "#0F172A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  splashImage: {
+    width: "100%",
+    height: "100%",
+  },
   splashOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(15, 23, 42, 0.35)",

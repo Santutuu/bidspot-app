@@ -1,9 +1,17 @@
 import { useAuth } from "@/src/context/authContext";
 import { useNotifications } from "@/src/context/notificationsContext";
+import { useSubastasGuardadas } from "@/src/context/subastasGuardadasContext";
 import { LoteCatalogoDTO } from "@/src/dto/DetalleSubastaDTO";
+import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 import { useEstadoPuja } from "@/src/hooks/useEstadoPuja";
+import { useMediosPago } from "@/src/hooks/useMediosPago";
 import { useRealizarPuja } from "@/src/hooks/useRealizarPuja";
+import {
+  getCurrencyCode,
+  getMonedaLabel,
+  normalizeMoneda,
+} from "@/src/utils/moneda";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -47,8 +55,7 @@ function getPrecioLabel(tipoPrecio: string) {
 function formatPrice(moneda: string, precio: number | null) {
   if (precio === null) return "Precio no disponible";
 
-  const currencyCode = moneda === "DOLARES" || moneda === "USD" ? "USD" : "ARS";
-  return `${currencyCode} ${precio}`;
+  return `${getCurrencyCode(moneda)} ${precio}`;
 }
 
 function formatRematador(rematador: unknown) {
@@ -121,18 +128,28 @@ export default function DetalleSubastaScreen() {
     setSuccessPuja,
     enviarPuja,
   } = useRealizarPuja(canLoadDetail ? id : undefined);
+  const { mediosPago, loadingMediosPago, errorMediosPago, cargarMediosPago } =
+    useMediosPago(canLoadDetail);
   const { addLocalNotification, watchBidNotification } = useNotifications();
+  const {
+    subastasGuardadas,
+    pendingIds: pendingGuardadasIds,
+    recargar: recargarGuardadas,
+    toggleGuardada,
+    estaGuardada,
+  } = useSubastasGuardadas();
 
   const listRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [montoOferta, setMontoOferta] = useState("");
-  const [subastaGuardada, setSubastaGuardada] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       if (canLoadDetail) {
         void cargarEstadoPuja();
         void recargarSilencioso();
+        void recargarGuardadas();
+        void cargarMediosPago();
       }
       const interval = setInterval(() => {
         if (canLoadDetail) {
@@ -146,6 +163,8 @@ export default function DetalleSubastaScreen() {
       canLoadDetail,
       cargarEstadoPuja,
       cargarEstadoPujaSilencioso,
+      cargarMediosPago,
+      recargarGuardadas,
       recargarSilencioso,
     ]),
   );
@@ -234,7 +253,10 @@ export default function DetalleSubastaScreen() {
   const puedeOfertar = esActiva && !!detalle.itemActual;
   const lotesMostrados = esProgramada ? catalogo : proximosLotes;
   const { fecha, hora } = splitFechaHora(subasta.fechaInicio);
-  const guardada = subastaGuardada || !!subasta.guardada;
+  const guardada =
+    estaGuardada(subasta.idSubasta) ||
+    (!!subasta.guardada && subastasGuardadas.length === 0);
+  const guardadaLoading = pendingGuardadasIds.has(subasta.idSubasta);
 
   const baseImages =
     itemActual &&
@@ -316,7 +338,33 @@ export default function DetalleSubastaScreen() {
       return;
     }
 
+    if (errorMediosPago) {
+      Alert.alert("Medios de pago", errorMediosPago);
+      return;
+    }
+
+    if (!loadingMediosPago && !tieneGarantiaAparente) {
+      Alert.alert(
+        "Garantia insuficiente",
+        tieneMediosPago
+          ? `No tenes un medio de pago en ${getMonedaLabel(monedaPuja)} con garantia suficiente para este monto.`
+          : "Necesitas cargar un medio de pago para pujar.",
+        !tieneMediosPago
+          ? [
+              { text: "Cancelar", style: "cancel" },
+              {
+                text: "Ir a medios de pago",
+                onPress: () =>
+                  router.push("/(tabs)/financial-setup/medios-pago" as any),
+              },
+            ]
+          : [{ text: "OK" }],
+      );
+      return;
+    }
+
     const response = await enviarPuja(monto);
+    await cargarEstadoPuja();
 
     if (!response) return;
 
@@ -326,7 +374,6 @@ export default function DetalleSubastaScreen() {
       amount: response.monto,
       title: itemActual?.titulo ?? subasta.titulo,
     });
-    await cargarEstadoPuja();
     await recargar();
 
     if (response.estado === "SUPERADA") {
@@ -357,11 +404,50 @@ export default function DetalleSubastaScreen() {
     );
   }
 
-  function handleGuardarSubasta() {
-    setSubastaGuardada((current) => !current);
+  function buildSubastaGuardada(): SubastaHomeDTO {
+    const imagenUrl =
+      itemActual?.imagenesUrl?.find((image) => image.trim().length > 0) ??
+      catalogo.find((lote) => lote.imagenUrl)?.imagenUrl ??
+      null;
+    const precio =
+      esActiva && itemActual?.precioActual
+        ? itemActual.precioActual
+        : (itemActual?.precioBase ?? catalogo[0]?.precioBase ?? null);
+
+    return {
+      idSubasta: subasta.idSubasta,
+      titulo: subasta.titulo,
+      imagenUrl,
+      precio,
+      moneda: subasta.moneda,
+      estadoSubasta: subasta.estadoSubasta,
+      categoriaMin: subasta.categoriaMin,
+      fechaInicio: subasta.fechaInicio,
+    };
+  }
+
+  async function handleGuardarSubasta() {
+    await toggleGuardada(buildSubastaGuardada());
   }
 
   const amountNumber = Number(montoOferta);
+  const monedaPuja = estadoPuja?.moneda ?? subasta.moneda;
+  const monedaPujaNormalizada = normalizeMoneda(monedaPuja);
+  const montoIngresadoValido =
+    montoOferta.trim().length > 0 &&
+    !Number.isNaN(amountNumber) &&
+    amountNumber > 0;
+  const mediosCompatibles = mediosPago.filter(
+    (medio) => normalizeMoneda(medio.moneda) === monedaPujaNormalizada,
+  );
+  const tieneMediosPago = mediosPago.length > 0;
+  const tieneGarantiaAparente =
+    montoIngresadoValido &&
+    mediosCompatibles.some((medio) => medio.capacidad >= amountNumber);
+  const errorPujaEsGarantia =
+    !!errorPuja &&
+    errorPuja.toLowerCase().includes("medio de pago") &&
+    errorPuja.toLowerCase().includes("garant");
   const bidAmountInvalid =
     !montoOferta.trim() ||
     Number.isNaN(amountNumber) ||
@@ -379,12 +465,20 @@ export default function DetalleSubastaScreen() {
           <Ionicons name="chevron-back" size={34} color="#111827" />
         </Pressable>
 
-        <Pressable onPress={handleGuardarSubasta} style={styles.saveButton}>
-          <Ionicons
-            name={guardada ? "heart" : "heart-outline"}
-            size={28}
-            color={guardada ? "#DC2626" : "#111827"}
-          />
+        <Pressable
+          onPress={handleGuardarSubasta}
+          style={styles.saveButton}
+          disabled={guardadaLoading}
+        >
+          {guardadaLoading ? (
+            <ActivityIndicator size="small" color="#111827" />
+          ) : (
+            <Ionicons
+              name={guardada ? "bookmark" : "bookmark-outline"}
+              size={28}
+              color="#111827"
+            />
+          )}
         </Pressable>
       </View>
 
@@ -511,11 +605,19 @@ export default function DetalleSubastaScreen() {
           ) : estadoPuja ? (
             <View style={styles.bidLimitsRow}>
               <Text style={styles.bidLimitText}>
-                Mín. {formatPrice(estadoPuja.moneda, estadoPuja.ofertaMinimaPermitida)}
+                Mín.{" "}
+                {formatPrice(
+                  estadoPuja.moneda,
+                  estadoPuja.ofertaMinimaPermitida,
+                )}
               </Text>
               {estadoPuja.ofertaMaximaPermitida !== null && (
                 <Text style={styles.bidLimitText}>
-                  Máx. {formatPrice(estadoPuja.moneda, estadoPuja.ofertaMaximaPermitida)}
+                  Máx.{" "}
+                  {formatPrice(
+                    estadoPuja.moneda,
+                    estadoPuja.ofertaMaximaPermitida,
+                  )}
                 </Text>
               )}
             </View>
@@ -536,8 +638,22 @@ export default function DetalleSubastaScreen() {
             onChangeText={handleAmountChange}
           />
 
-          {successPuja && <Text style={styles.bidSuccessText}>{successPuja}</Text>}
+          {successPuja && (
+            <Text style={styles.bidSuccessText}>{successPuja}</Text>
+          )}
           {errorPuja && <Text style={styles.bidErrorText}>{errorPuja}</Text>}
+          {errorPujaEsGarantia && (
+            <Pressable
+              style={styles.inlinePaymentButton}
+              onPress={() =>
+                router.push("/(tabs)/financial-setup/medios-pago" as any)
+              }
+            >
+              <Text style={styles.inlinePaymentButtonText}>
+                Ir a medios de pago
+              </Text>
+            </Pressable>
+          )}
 
           <Pressable
             style={[
@@ -548,7 +664,10 @@ export default function DetalleSubastaScreen() {
             disabled={submittingPuja || bidAmountInvalid}
           >
             {submittingPuja ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <View style={styles.bidLoadingContent}>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={styles.bidButtonText}>Procesando puja...</Text>
+              </View>
             ) : (
               <Text style={styles.bidButtonText}>Pujar</Text>
             )}
@@ -558,7 +677,8 @@ export default function DetalleSubastaScreen() {
 
       {subasta.estadoSubasta === "ACTIVA" && subasta.linkVivo && (
         <Pressable onPress={handleStreaming} style={styles.streamingCard}>
-          <Text style={styles.streamingLink}>Link streaming subasta</Text>
+          <Ionicons name="play-circle-outline" size={24} color="#2563EB" />
+          <Text style={styles.streamingLink}>Ver en vivo</Text>
         </Pressable>
       )}
 
@@ -708,6 +828,7 @@ const styles = StyleSheet.create({
   },
 
   metaCard: {
+    marginTop: 10,
     marginBottom: 8,
   },
 
@@ -716,8 +837,9 @@ const styles = StyleSheet.create({
   },
 
   offerCard: {
-    marginTop: 4,
-    marginBottom: 24,
+    marginTop: 6,
+    marginBottom: 14,
+    paddingBottom: 2,
   },
 
   separator: {
@@ -840,7 +962,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   bidLimitText: {
@@ -891,12 +1013,31 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    borderBottomWidth: 1.5,
-    borderBottomColor: "#111827",
-    paddingVertical: 10,
+    borderWidth: 1.2,
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 17,
-    marginBottom: 22,
+    marginBottom: 14,
     color: "#111827",
+  },
+
+  inlinePaymentButton: {
+    alignSelf: "flex-start",
+    marginTop: -4,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#111827",
+  },
+
+  inlinePaymentButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
   },
 
   bidButton: {
@@ -911,6 +1052,12 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
 
+  bidLoadingContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
   bidButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
@@ -920,9 +1067,16 @@ const styles = StyleSheet.create({
   streamingCard: {
     backgroundColor: "#EFF6FF",
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     paddingVertical: 12,
+    paddingHorizontal: 14,
     alignItems: "center",
-    marginBottom: 18,
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 2,
+    marginBottom: 36,
   },
 
   streamingLink: {

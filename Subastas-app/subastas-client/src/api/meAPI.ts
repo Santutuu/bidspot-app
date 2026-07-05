@@ -16,6 +16,7 @@ import {
 } from "@/src/dto/me/ChequeDTO";
 
 import { MedioPagoResponseDTO } from "@/src/dto/me/MedioPagoDTO";
+import { normalizeMoneda } from "@/src/utils/moneda";
 
 export async function crearCuentaCobro(
   request: CuentaCobroRequestDTO
@@ -38,7 +39,10 @@ export async function crearTarjeta(
 ): Promise<TarjetaResponseDTO> {
   const response = await api.post<TarjetaResponseDTO>(
     "/me/medios-pago/tarjetas",
-    request
+    {
+      ...request,
+      moneda: normalizeMoneda(request.moneda),
+    }
   );
 
   return response.data;
@@ -61,7 +65,10 @@ export async function crearCheque(
 ): Promise<ChequeResponseDTO> {
   const response = await api.post<ChequeResponseDTO>(
     "/me/medios-pago/cheques",
-    request
+    {
+      ...request,
+      moneda: normalizeMoneda(request.moneda),
+    }
   );
 
   return response.data;

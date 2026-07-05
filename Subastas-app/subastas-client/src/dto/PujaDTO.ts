@@ -1,4 +1,4 @@
-export type MonedaPuja = "DOLARES" | "ARS" | string;
+export type MonedaPuja = "PESOS" | "DOLARES" | "ARS" | string;
 
 export interface EstadoPujaSubastaResponseDTO {
   idSubasta: number;

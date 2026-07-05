@@ -1,5 +1,7 @@
 package com.subastas.subastas_api.DTO.mediosPago;
 
+import com.subastas.subastas_api.model.Moneda;
+
 public class ChequeRequestDTO {
 
     private String identificacion;
@@ -7,6 +9,7 @@ public class ChequeRequestDTO {
     private String beneficiario;
     private String cuilCuit;
     private Float saldo;
+    private Moneda moneda;
 
     public String getIdentificacion() {
         return identificacion;
@@ -26,5 +29,9 @@ public class ChequeRequestDTO {
 
     public Float getSaldo() {
         return saldo;
+    }
+
+    public Moneda getMoneda() {
+        return moneda;
     }
 }
