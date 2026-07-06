@@ -9,6 +9,8 @@ public class AuthResponseDTO {
     private String rol;
     private String estado;
     private String categoria;
+    private boolean tieneMedioPago;
+    private boolean configuracionFinancieraCompleta;
 
     public AuthResponseDTO(String token,
                            Long idUsuario,
@@ -16,7 +18,9 @@ public class AuthResponseDTO {
                            String mail,
                            String rol,
                            String estado,
-                           String categoria) {
+                           String categoria,
+                           boolean tieneMedioPago,
+                           boolean configuracionFinancieraCompleta) {
         this.token = token;
         this.idUsuario = idUsuario;
         this.nombre = nombre;
@@ -24,6 +28,8 @@ public class AuthResponseDTO {
         this.rol = rol;
         this.estado = estado;
         this.categoria = categoria;
+        this.tieneMedioPago = tieneMedioPago;
+        this.configuracionFinancieraCompleta = configuracionFinancieraCompleta;
     }
 
     public String getToken() {
@@ -52,5 +58,13 @@ public class AuthResponseDTO {
 
     public String getCategoria() {
         return categoria;
+    }
+
+    public boolean isTieneMedioPago() {
+        return tieneMedioPago;
+    }
+
+    public boolean isConfiguracionFinancieraCompleta() {
+        return configuracionFinancieraCompleta;
     }
 }

@@ -4,13 +4,18 @@ public class EstadoPujaSubastaResponseDTO {
 
     private Long idSubasta;
     private Long idItemCatalogo;
+
     private Float precioBase;
     private Float mejorOferta;
     private Float incrementoMinimo;
     private Float incrementoMaximo;
     private Float ofertaMinimaPermitida;
     private Float ofertaMaximaPermitida;
+
     private String moneda;
+
+    private Float miMejorOferta;
+    private boolean soyMejorPostor;
 
     public EstadoPujaSubastaResponseDTO(Long idSubasta,
                                         Long idItemCatalogo,
@@ -20,7 +25,9 @@ public class EstadoPujaSubastaResponseDTO {
                                         Float incrementoMaximo,
                                         Float ofertaMinimaPermitida,
                                         Float ofertaMaximaPermitida,
-                                        String moneda) {
+                                        String moneda,
+                                        Float miMejorOferta,
+                                        boolean soyMejorPostor) {
         this.idSubasta = idSubasta;
         this.idItemCatalogo = idItemCatalogo;
         this.precioBase = precioBase;
@@ -30,6 +37,8 @@ public class EstadoPujaSubastaResponseDTO {
         this.ofertaMinimaPermitida = ofertaMinimaPermitida;
         this.ofertaMaximaPermitida = ofertaMaximaPermitida;
         this.moneda = moneda;
+        this.miMejorOferta = miMejorOferta;
+        this.soyMejorPostor = soyMejorPostor;
     }
 
     public Long getIdSubasta() {
@@ -66,5 +75,13 @@ public class EstadoPujaSubastaResponseDTO {
 
     public String getMoneda() {
         return moneda;
+    }
+
+    public Float getMiMejorOferta() {
+        return miMejorOferta;
+    }
+
+    public boolean isSoyMejorPostor() {
+        return soyMejorPostor;
     }
 }

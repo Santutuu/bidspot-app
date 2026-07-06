@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 "/auth/complete-registration",
                                 "/auth/login",
                                 "/uploads/**",
+                                "/ws/**",
                                 "/subastas/recomendadas",
                                 "/subastas/categoria/**"
                         ).permitAll()

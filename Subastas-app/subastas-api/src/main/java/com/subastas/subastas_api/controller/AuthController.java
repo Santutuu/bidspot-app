@@ -8,6 +8,7 @@ import com.subastas.subastas_api.DTO.auth.PreRegisterResponseDTO;
 import com.subastas.subastas_api.DTO.auth.RegistrationStatusDTO;
 import com.subastas.subastas_api.DTO.auth.UsuarioActualDTO;
 import com.subastas.subastas_api.model.Usuario;
+import com.subastas.subastas_api.repository.TarjetaCreditoRepository;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.service.AuthService;
 import org.springframework.http.HttpStatus;
@@ -22,11 +23,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final UsuarioRepository usuarioRepository;
+    private final TarjetaCreditoRepository tarjetaCreditoRepository;
 
     public AuthController(AuthService authService,
-                          UsuarioRepository usuarioRepository) {
+                          UsuarioRepository usuarioRepository,
+                          TarjetaCreditoRepository tarjetaCreditoRepository) {
         this.authService = authService;
         this.usuarioRepository = usuarioRepository;
+        this.tarjetaCreditoRepository = tarjetaCreditoRepository;
     }
 
     @PostMapping("/pre-register")
@@ -84,9 +88,7 @@ public class AuthController {
 
         boolean tieneCuentaBanco = usuario.getCuenta() != null;
 
-        boolean tieneMedioPago =
-                usuario.getMediosDePago() != null
-                        && !usuario.getMediosDePago().isEmpty();
+        boolean tieneMedioPago = tarjetaCreditoRepository.countByUsuario(usuario) > 0;
 
         boolean configuracionFinancieraCompleta =
                 tieneCuentaBanco && tieneMedioPago;

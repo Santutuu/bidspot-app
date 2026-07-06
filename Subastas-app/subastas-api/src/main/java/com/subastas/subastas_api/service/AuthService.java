@@ -5,6 +5,7 @@ import com.subastas.subastas_api.exception.EmailAlreadyExistsException;
 import com.subastas.subastas_api.exception.InvalidCredentialsException;
 import com.subastas.subastas_api.exception.UserBlockedException;
 import com.subastas.subastas_api.model.*;
+import com.subastas.subastas_api.repository.TarjetaCreditoRepository;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.security.JwtService;
 import org.springframework.http.HttpStatus;
@@ -23,17 +24,20 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    private final TarjetaCreditoRepository tarjetaCreditoRepository;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        AuthenticationManager authenticationManager,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       TarjetaCreditoRepository tarjetaCreditoRepository) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
         this.emailService = emailService;
+        this.tarjetaCreditoRepository = tarjetaCreditoRepository;
     }
 
     public PreRegisterResponseDTO preRegister(PreRegisterRequestDTO request) {
@@ -195,6 +199,9 @@ public class AuthService {
         String categoria = usuario.getCategoria() != null
                 ? usuario.getCategoria().name()
                 : null;
+        boolean tieneTarjeta = tarjetaCreditoRepository.countByUsuario(usuario) > 0;
+        boolean configuracionFinancieraCompleta =
+                usuario.getCuenta() != null && tieneTarjeta;
 
         return new AuthResponseDTO(
                 token,
@@ -203,7 +210,9 @@ public class AuthService {
                 usuario.getPersona().getMail(),
                 usuario.getRol().name(),
                 usuario.getEstado().name(),
-                categoria
+                categoria,
+                tieneTarjeta,
+                configuracionFinancieraCompleta
         );
     }
 

@@ -27,10 +27,13 @@ public class PujaController {
 
     @GetMapping("/puja/estado")
     public ResponseEntity<EstadoPujaSubastaResponseDTO> obtenerEstadoPuja(
-            @PathVariable Long idSubasta
+            @PathVariable Long idSubasta,
+            Authentication authentication
     ) {
+        Usuario usuario = obtenerUsuarioOpcional(authentication);
+
         EstadoPujaSubastaResponseDTO response =
-                pujaService.obtenerEstadoPuja(idSubasta);
+                pujaService.obtenerEstadoPuja(idSubasta, usuario);
 
         return ResponseEntity.ok(response);
     }
@@ -62,5 +65,14 @@ public class PujaController {
                         HttpStatus.UNAUTHORIZED,
                         "Usuario no autenticado"
                 ));
+    }
+
+    private Usuario obtenerUsuarioOpcional(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return null;
+        }
+
+        return usuarioRepository.findByMail(authentication.getName())
+                .orElse(null);
     }
 }

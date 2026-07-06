@@ -10,6 +10,7 @@ import com.subastas.subastas_api.repository.ItemCatalogoRepository;
 import com.subastas.subastas_api.repository.ParticipacionSubastaRepository;
 import com.subastas.subastas_api.repository.PujaRepository;
 import com.subastas.subastas_api.repository.SubastaRepository;
+import com.subastas.subastas_api.repository.TarjetaCreditoRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,20 +25,23 @@ public class PujaService {
     private final ItemCatalogoRepository itemCatalogoRepository;
     private final PujaRepository pujaRepository;
     private final ParticipacionSubastaRepository participacionRepository;
+    private final TarjetaCreditoRepository tarjetaCreditoRepository;
 
     public PujaService(SubastaRepository subastaRepository,
                        ItemCatalogoRepository itemCatalogoRepository,
                        PujaRepository pujaRepository,
                        ParticipacionSubastaRepository participacionRepository,
-                       ApplicationEventPublisher eventPublisher) {
+                       ApplicationEventPublisher eventPublisher,
+                       TarjetaCreditoRepository tarjetaCreditoRepository) {
         this.subastaRepository = subastaRepository;
         this.itemCatalogoRepository = itemCatalogoRepository;
         this.pujaRepository = pujaRepository;
         this.participacionRepository = participacionRepository;
         this.eventPublisher = eventPublisher;
+        this.tarjetaCreditoRepository = tarjetaCreditoRepository;
     }
 
-    public EstadoPujaSubastaResponseDTO obtenerEstadoPuja(Long idSubasta) {
+    public EstadoPujaSubastaResponseDTO obtenerEstadoPuja(Long idSubasta, Usuario usuario) {
         Subasta subasta = obtenerSubastaActiva(idSubasta);
         ItemCatalogo itemActual = obtenerItemActual(subasta);
 
@@ -52,10 +56,26 @@ public class PujaService {
                         || subasta.getCategoriaMin() == CategoriaUsuario.PLATINO;
 
         Float ofertaMinima = mejorOferta + incrementoMinimo;
-        Float ofertaMaxima =
-                sinLimiteMaximo
-                        ? null
-                        : mejorOferta + incrementoMaximo;
+        Float ofertaMaxima = sinLimiteMaximo
+                ? null
+                : mejorOferta + incrementoMaximo;
+
+        Float miMejorOferta = null;
+        boolean soyMejorPostor = false;
+
+        if (usuario != null) {
+            miMejorOferta = pujaRepository
+                    .findTopByItemCatalogoAndUsuarioOrderByMontoDesc(itemActual, usuario)
+                    .map(Puja::getMonto)
+                    .orElse(null);
+
+            Puja pujaActual = itemActual.getPujaActual();
+
+            soyMejorPostor =
+                    pujaActual != null
+                            && pujaActual.getUsuario() != null
+                            && pujaActual.getUsuario().getIdUsuario().equals(usuario.getIdUsuario());
+        }
 
         return new EstadoPujaSubastaResponseDTO(
                 subasta.getIdSubasta(),
@@ -66,9 +86,9 @@ public class PujaService {
                 incrementoMaximo,
                 ofertaMinima,
                 ofertaMaxima,
-                subasta.getMoneda() != null
-                        ? subasta.getMoneda().name()
-                        : null
+                subasta.getMoneda() != null ? subasta.getMoneda().name() : null,
+                miMejorOferta,
+                soyMejorPostor
         );
     }
 
@@ -258,12 +278,12 @@ public class PujaService {
             );
         }
 
-        if (usuario.getMediosDePago() == null
-                || usuario.getMediosDePago().isEmpty()) {
+        if (usuario.getCuenta() == null
+                || tarjetaCreditoRepository.countByUsuario(usuario) == 0) {
 
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Debe tener al menos un medio de pago cargado para pujar"
+                    "Debe tener una cuenta de cobro y una tarjeta de crÃ©dito cargadas para pujar"
             );
         }
 
