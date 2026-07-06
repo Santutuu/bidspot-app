@@ -8,6 +8,7 @@ import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 import { useEstadoPuja } from "@/src/hooks/useEstadoPuja";
 import { useMediosPago } from "@/src/hooks/useMediosPago";
 import { useRealizarPuja } from "@/src/hooks/useRealizarPuja";
+import { cerrarLoteDemo } from "@/src/api/subastaAPI";
 import {
   getCurrencyCode,
   getMonedaLabel,
@@ -31,6 +32,7 @@ import {
 
 const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
 const IMAGE_WIDTH = 360;
+const LOCAL_CLOSE_DELAY_MS = 80000;
 
 function getEstadoTexto(estado: string) {
   switch (estado) {
@@ -147,8 +149,56 @@ export default function DetalleSubastaScreen() {
   } = useSubastasGuardadas();
 
   const listRef = useRef<FlatList>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [montoOferta, setMontoOferta] = useState("");
+
+  const clearLocalCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleLocalClose = useCallback(
+    (idItemCatalogo: number, tituloItem: string) => {
+      if (!id) return;
+
+      clearLocalCloseTimer();
+
+      closeTimerRef.current = setTimeout(async () => {
+        try {
+          const cierre = await cerrarLoteDemo(id, idItemCatalogo);
+
+          await recargarSilencioso();
+          await cargarEstadoPuja();
+          await recargarGuardadas();
+
+          if (cierre.idVenta) {
+            await addLocalNotification({
+              kind: "SUBASTA_GANADA",
+              title: "Subasta ganada",
+              body: `Felicitaciones, ganaste el artículo ${tituloItem}. Revisá mensajería para completar la compra.`,
+              subastaId: Number(id),
+              actionLabel: "Ir a mensajería",
+            });
+          }
+        } catch (error) {
+          console.error("No pudimos cerrar el lote demo:", error);
+        } finally {
+          closeTimerRef.current = null;
+        }
+      }, LOCAL_CLOSE_DELAY_MS);
+    },
+    [
+      addLocalNotification,
+      cargarEstadoPuja,
+      clearLocalCloseTimer,
+      id,
+      recargarGuardadas,
+      recargarSilencioso,
+    ],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -182,7 +232,18 @@ export default function DetalleSubastaScreen() {
         detalle?.itemActual?.idItemCatalogo &&
         event.idItemCatalogo !== detalle.itemActual.idItemCatalogo
       ) {
+        clearLocalCloseTimer();
         void recargarSilencioso();
+      }
+
+      if (
+        detalle?.itemActual?.idItemCatalogo &&
+        event.idItemCatalogo === detalle.itemActual.idItemCatalogo
+      ) {
+        scheduleLocalClose(
+          event.idItemCatalogo,
+          detalle.itemActual.titulo ?? detalle.subasta.titulo,
+        );
       }
 
       void cargarEstadoPuja();
@@ -190,16 +251,23 @@ export default function DetalleSubastaScreen() {
   }, [
     canLoadDetail,
     cargarEstadoPuja,
+    clearLocalCloseTimer,
     detalle?.itemActual?.idItemCatalogo,
+    detalle?.itemActual?.titulo,
+    detalle?.subasta?.titulo,
     id,
     recargarSilencioso,
+    scheduleLocalClose,
     subscribeToAuctionBids,
   ]);
 
   useEffect(() => {
     setCurrentIndex(0);
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [detalle?.itemActual?.idItemCatalogo]);
+    clearLocalCloseTimer();
+  }, [clearLocalCloseTimer, detalle?.itemActual?.idItemCatalogo]);
+
+  useEffect(() => clearLocalCloseTimer, [clearLocalCloseTimer]);
 
   useEffect(() => {
     if (
@@ -435,6 +503,10 @@ export default function DetalleSubastaScreen() {
               amount: response.monto,
               title: itemActual?.titulo ?? subasta.titulo,
             });
+            scheduleLocalClose(
+              response.idItemCatalogo,
+              itemActual?.titulo ?? subasta.titulo,
+            );
             await recargar();
 
             if (response.estado === "SUPERADA") {

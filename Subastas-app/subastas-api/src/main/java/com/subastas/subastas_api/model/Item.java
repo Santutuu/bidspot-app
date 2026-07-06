@@ -42,6 +42,10 @@ public class Item {
     @JoinColumn(name = "poliza_id")
     private Poliza poliza;
 
+    @OneToOne
+    @JoinColumn(name = "solicitud_publicacion_id", unique = true)
+    private SolicitudPublicacion solicitudPublicacion;
+
     public Item() {
     }
 

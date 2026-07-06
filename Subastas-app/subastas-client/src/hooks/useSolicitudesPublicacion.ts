@@ -1,11 +1,14 @@
 import {
+  aumentarPolizaSolicitud,
   crearSolicitudPublicacion,
   obtenerDetalleSolicitudPublicacion,
   obtenerMisSolicitudesPublicacion,
+  obtenerPolizaSolicitud,
   responderAccionSolicitud,
 } from "@/src/api/solicitudesPublicacionAPI";
 import {
   AccionRequerida,
+  PolizaSolicitudResponse,
   ResponderAccionRequest,
   SolicitudPublicacionDetalle,
   SolicitudPublicacionRequest,
@@ -147,4 +150,66 @@ export function useResponderAccionSolicitud() {
   }
 
   return { responder, loading, error };
+}
+
+export function usePolizaSolicitud(idSolicitud?: string) {
+  const [poliza, setPoliza] = useState<PolizaSolicitudResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargar = useCallback(async () => {
+    if (!idSolicitud) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      setPoliza(await obtenerPolizaSolicitud(idSolicitud));
+    } catch (err: any) {
+      if (handleAuthError(err)) return;
+      setError(
+        err.response?.status === 403
+          ? "No tenÃ©s permisos para ver esta pÃ³liza."
+          : getMessage(err, "No pudimos cargar la pÃ³liza."),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [idSolicitud]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void cargar();
+    }, [cargar]),
+  );
+
+  return { poliza, loading, error, recargar: cargar, setPoliza };
+}
+
+export function useAumentarPolizaSolicitud() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function aumentar(idSolicitud: string | number, nuevoMontoAsegurado: number) {
+    try {
+      setLoading(true);
+      setError(null);
+      return await aumentarPolizaSolicitud(idSolicitud, nuevoMontoAsegurado);
+    } catch (err: any) {
+      if (handleAuthError(err)) return null;
+      const message =
+        err.response?.status === 403
+          ? "No tenÃ©s permisos para solicitar este aumento."
+          : getMessage(err, "No pudimos solicitar el aumento.");
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return { aumentar, loading, error };
 }

@@ -151,6 +151,10 @@ export default function TabsLayout() {
         name="profile/publicaciones/[id]/accion/index"
         options={{ href: null }}
       />
+      <Tabs.Screen
+        name="profile/publicaciones/[id]/poliza"
+        options={{ href: null }}
+      />
       <Tabs.Screen name="profile/publicar/categoria" options={{ href: null }} />
       <Tabs.Screen name="profile/publicar/detalle" options={{ href: null }} />
 

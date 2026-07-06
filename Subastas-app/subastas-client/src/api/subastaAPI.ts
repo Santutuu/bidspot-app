@@ -8,6 +8,16 @@ import {
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { SubastasPorCategoriaDTO } from "@/src/dto/SubastasPorCategoriaDTO";
 
+export interface CierreLoteResponseDTO {
+  idSubasta: number;
+  idItemCatalogo: number;
+  idVenta: number | null;
+  idGanador: number | null;
+  estadoLote: string;
+  estadoSubasta: string;
+  idProximoLote: number | null;
+}
+
 export async function getSubastasRecomendadas(): Promise<SubastaHomeDTO[]> {
   const response = await api.get<SubastaHomeDTO[]>("/subastas/recomendadas");
 
@@ -49,6 +59,17 @@ export async function realizarPuja(
   const response = await api.post<PujaResponseDTO>(
     `/subastas/${idSubasta}/pujas`,
     { monto }
+  );
+
+  return response.data;
+}
+
+export async function cerrarLoteDemo(
+  idSubasta: string | number,
+  idItemCatalogo: string | number
+): Promise<CierreLoteResponseDTO> {
+  const response = await api.post<CierreLoteResponseDTO>(
+    `/subastas/${idSubasta}/lotes/${idItemCatalogo}/cerrar`
   );
 
   return response.data;

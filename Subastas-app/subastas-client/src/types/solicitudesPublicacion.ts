@@ -76,3 +76,27 @@ export type ResponderAccionRequest = {
   archivoUrl?: string;
   montoAseguradoSolicitado?: number;
 };
+
+export type EstadoPoliza =
+  | "PROPUESTA"
+  | "ACEPTADA"
+  | "RECHAZADA"
+  | "AUMENTO_SOLICITADO";
+
+export type PolizaSolicitudResponse = {
+  idSolicitud: number;
+  idItem: number;
+  tituloItem: string;
+  idPoliza: number;
+  nroPoliza: string;
+  montoAsegurado: number;
+  premio: number;
+  precioBase: number;
+  tasaSeguro: number;
+  compania: string;
+  estado: EstadoPoliza;
+};
+
+export type AumentarPolizaRequest = {
+  nuevoMontoAsegurado: number;
+};

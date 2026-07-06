@@ -1,6 +1,8 @@
 import api from "@/src/api/axios";
 import {
   AccionRequerida,
+  AumentarPolizaRequest,
+  PolizaSolicitudResponse,
   ResponderAccionRequest,
   SolicitudPublicacionDetalle,
   SolicitudPublicacionRequest,
@@ -51,6 +53,29 @@ export async function responderAccionSolicitud(
 ): Promise<SolicitudPublicacionDetalle> {
   const response = await api.post<SolicitudPublicacionDetalle>(
     `/me/solicitudes-publicacion/${idSolicitud}/acciones/${accion}/resolver`,
+    request,
+  );
+
+  return response.data;
+}
+
+export async function obtenerPolizaSolicitud(
+  idSolicitud: string | number,
+): Promise<PolizaSolicitudResponse> {
+  const response = await api.get<PolizaSolicitudResponse>(
+    `/me/solicitudes-publicacion/${idSolicitud}/poliza`,
+  );
+
+  return response.data;
+}
+
+export async function aumentarPolizaSolicitud(
+  idSolicitud: string | number,
+  nuevoMontoAsegurado: number,
+): Promise<PolizaSolicitudResponse> {
+  const request: AumentarPolizaRequest = { nuevoMontoAsegurado };
+  const response = await api.post<PolizaSolicitudResponse>(
+    `/me/solicitudes-publicacion/${idSolicitud}/poliza/aumentar`,
     request,
   );
 

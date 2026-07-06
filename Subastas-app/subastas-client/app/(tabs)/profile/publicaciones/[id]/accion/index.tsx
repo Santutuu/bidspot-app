@@ -28,6 +28,22 @@ const titles: Record<AccionRequerida, string> = {
   COMPROBAR_ORIGEN_LICITO: "Comprobar origen lícito",
 };
 
+const condicionesVentaDemo = {
+  estadoSubasta: "PROGRAMADA",
+  fechaInicio: "27/07/2026 16.00hs",
+  categoriaMin: "COMUN",
+  moneda: "DOLARES",
+  ubicacion: "Salón Central - Buenos Aires",
+  linkVivo: "Sin transmisión en vivo",
+  rematador: "Rematador #1",
+  valorBase: 2500,
+  comision: 0.1,
+};
+
+function formatUsd(value: number) {
+  return `USD ${value.toLocaleString("es-AR")}`;
+}
+
 function descriptionFor(action: AccionRequerida) {
   if (action === "ENVIAR_ITEM") {
     return "Coordiná el envío del item al depósito indicado por la empresa.";
@@ -145,6 +161,102 @@ export default function AccionesRequeridasScreen() {
                 {index + 1}. {titles[accion]}
               </Text>
               <Text style={styles.description}>{descriptionFor(accion)}</Text>
+
+              {accion === "ACEPTAR_CONDICIONES_VENTA" && (
+                <View style={styles.policyCard}>
+                  <View style={styles.policyHeader}>
+                    <View>
+                      <Text style={styles.policyEyebrow}>Próxima subasta</Text>
+                      <Text style={styles.policyTitle}>Condiciones de venta</Text>
+                    </View>
+                    <Text style={styles.policyStatus}>
+                      {condicionesVentaDemo.estadoSubasta}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.noticeText}>
+                    ¡Buenas noticias! Tu artículo fue inspeccionado y aprobado
+                    para participar en la próxima subasta.
+                  </Text>
+
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Fecha</Text>
+                    <Text style={styles.policyValue}>
+                      {condicionesVentaDemo.fechaInicio}
+                    </Text>
+                  </View>
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Categoría mínima</Text>
+                    <Text style={styles.policyValue}>
+                      {condicionesVentaDemo.categoriaMin}
+                    </Text>
+                  </View>
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Moneda</Text>
+                    <Text style={styles.policyValue}>
+                      {condicionesVentaDemo.moneda}
+                    </Text>
+                  </View>
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Lugar</Text>
+                    <Text style={styles.policyValue}>
+                      {condicionesVentaDemo.ubicacion}
+                    </Text>
+                  </View>
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Streaming</Text>
+                    <Text style={styles.policyValue}>
+                      {condicionesVentaDemo.linkVivo}
+                    </Text>
+                  </View>
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Rematador</Text>
+                    <Text style={styles.policyValue}>
+                      {condicionesVentaDemo.rematador}
+                    </Text>
+                  </View>
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Valor base</Text>
+                    <Text style={styles.policyValue}>
+                      {formatUsd(condicionesVentaDemo.valorBase)}
+                    </Text>
+                  </View>
+                  <View style={styles.policyRow}>
+                    <Text style={styles.policyLabel}>Comisión</Text>
+                    <Text style={styles.policyValue}>
+                      {(condicionesVentaDemo.comision * 100).toLocaleString("es-AR")}%
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {accion === "ACEPTAR_POLIZA" && (
+                <View style={styles.policyCard}>
+                  <View style={styles.policyHeader}>
+                    <View>
+                      <Text style={styles.policyEyebrow}>Propuesta de seguro</Text>
+                      <Text style={styles.policyTitle}>Póliza de subasta</Text>
+                    </View>
+                    <Text style={styles.policyStatus}>Revisión</Text>
+                  </View>
+
+                  <Text style={styles.noticeText}>
+                    Revisá la póliza contratada para tu artículo y, si querés, solicitá
+                    un aumento del monto asegurado.
+                  </Text>
+                  <Pressable
+                    style={styles.secondaryAction}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/profile/publicaciones/[id]/poliza" as any,
+                        params: { id },
+                      })
+                    }
+                  >
+                    <Text style={styles.secondaryActionText}>Revisar póliza</Text>
+                  </Pressable>
+                </View>
+              )}
 
               {accion === "ENVIAR_ITEM" && (
                 <>
@@ -328,6 +440,71 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 12,
   },
+  policyCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D8E1EE",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    marginBottom: 14,
+  },
+  policyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    paddingBottom: 12,
+    marginBottom: 10,
+  },
+  policyEyebrow: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "900",
+    textTransform: "uppercase",
+    marginBottom: 3,
+  },
+  policyTitle: {
+    fontSize: 16,
+    color: "#0F172A",
+    fontWeight: "900",
+  },
+  policyStatus: {
+    color: "#92400E",
+    backgroundColor: "#FEF3C7",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  noticeText: {
+    color: "#334155",
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 19,
+    marginBottom: 10,
+  },
+  policyRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 6,
+  },
+  policyLabel: {
+    flex: 1,
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  policyValue: {
+    flex: 1,
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "900",
+    textAlign: "right",
+  },
   primaryAction: {
     backgroundColor: "#111827",
     borderRadius: 12,
@@ -336,6 +513,18 @@ const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: "#FFFFFF",
+    fontWeight: "900",
+  },
+  secondaryAction: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#111827",
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  secondaryActionText: {
+    color: "#111827",
     fontWeight: "900",
   },
   uploadBox: {
