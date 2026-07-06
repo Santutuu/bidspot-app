@@ -9,6 +9,7 @@ import {
     View,
 } from "react-native";
 
+import MessagesHeaderButton from "../src/components/ui/MessagesHeaderButton";
 import NotificationsBellButton from "../src/components/ui/NotificationsBellButton";
 import { AuthProvider } from "../src/context/authContext";
 import {
@@ -71,7 +72,7 @@ function NotificationsPopover() {
                     }
 
                     if (notification.kind === "SUBASTA_GANADA") {
-                      router.push("/mensajeria" as any);
+                      router.push("/(tabs)/mensajeria" as any);
                       return;
                     }
 
@@ -134,6 +135,7 @@ export default function RootLayout() {
                 ),
                 headerRight: () => (
                   <View style={styles.headerRight}>
+                    <MessagesHeaderButton />
                     <NotificationsBellButton />
                   </View>
                 ),

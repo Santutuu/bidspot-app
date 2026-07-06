@@ -96,6 +96,10 @@ public class Subasta {
         catalogo.setSubasta(this);
     }
 
+    public void setEstadoSubasta(EstadoSubasta estadoSubasta) {
+        this.estadoSubasta = estadoSubasta;
+    }
+
 
     public void iniciarSubasta() {
         this.estadoSubasta = EstadoSubasta.ACTIVA;

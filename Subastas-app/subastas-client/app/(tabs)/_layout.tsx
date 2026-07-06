@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs, router } from "expo-router";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 
+import MessagesHeaderButton from "../../src/components/ui/MessagesHeaderButton";
 import NotificationsBellButton from "../../src/components/ui/NotificationsBellButton";
 
 export default function TabsLayout() {
@@ -33,6 +34,7 @@ export default function TabsLayout() {
         ),
         headerRight: () => (
           <View style={styles.headerRight}>
+            <MessagesHeaderButton />
             <NotificationsBellButton />
           </View>
         ),
@@ -102,6 +104,7 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen name="notifications/index" options={{ href: null }} />
+      <Tabs.Screen name="mensajeria/index" options={{ href: null }} />
 
       <Tabs.Screen name="auth/login" options={{ href: null }} />
       <Tabs.Screen name="auth/register" options={{ href: null }} />

@@ -84,6 +84,10 @@ public class Puja {
         this.estado = EstadoPuja.SUPERADA;
     }
 
+    public void marcarRegistrada() {
+        this.estado = EstadoPuja.REGISTRADA;
+    }
+
     public void marcarGanadora() {
         this.estado = EstadoPuja.GANADORA;
     }

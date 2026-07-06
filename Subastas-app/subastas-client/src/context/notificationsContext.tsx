@@ -251,9 +251,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         const estadoPuja = await getEstadoPuja(event.idSubasta);
         if (
           estadoPuja.miMejorOferta === null ||
-          estadoPuja.miMejorOferta === undefined ||
-          estadoPuja.soyMejorPostor
+          estadoPuja.miMejorOferta === undefined
         ) {
+          return;
+        }
+
+        if (estadoPuja.soyMejorPostor) {
+          const nextWatchedBids = storedWatchedBids.map((item) =>
+            item.subastaId === watchedBid.subastaId
+              ? { ...item, amount: estadoPuja.miMejorOferta ?? item.amount }
+              : item,
+          );
+          setWatchedBids(nextWatchedBids);
+          await saveWatchedBids(user.idUsuario, nextWatchedBids);
           return;
         }
       } catch {
@@ -326,7 +336,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         try {
           const estadoPuja = await getEstadoPuja(watchedBid.subastaId);
 
-          if (estadoPuja.mejorOferta > watchedBid.amount) {
+          if (
+            estadoPuja.miMejorOferta !== null &&
+            estadoPuja.miMejorOferta !== undefined &&
+            !estadoPuja.soyMejorPostor
+          ) {
             const notificationId = `puja-superada-${watchedBid.subastaId}-${watchedBid.amount}`;
 
             if (
@@ -345,6 +359,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
               });
               addedNotification = true;
             }
+          } else if (
+            estadoPuja.miMejorOferta !== null &&
+            estadoPuja.miMejorOferta !== undefined
+          ) {
+            remainingBids.push({
+              ...watchedBid,
+              amount: estadoPuja.miMejorOferta,
+            });
           } else {
             remainingBids.push(watchedBid);
           }
@@ -372,6 +394,24 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void syncNotifications();
   }, [syncNotifications, pathname]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.idUsuario || watchedBids.length === 0) {
+      return;
+    }
+
+    void syncWatchedBidNotifications();
+    const intervalId = setInterval(() => {
+      void syncWatchedBidNotifications();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [
+    isAuthenticated,
+    syncWatchedBidNotifications,
+    user?.idUsuario,
+    watchedBids.length,
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.idUsuario) {

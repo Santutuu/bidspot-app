@@ -81,6 +81,10 @@ public class ItemCatalogo {
         this.catalogo = catalogo;
     }
 
+    public void setEstado(EstadoItemCatalogo estado) {
+        this.estado = estado;
+    }
+
     public void recibirPuja(Puja puja) {
         if (!verificarPuja(puja.getMonto())) {
             throw new IllegalArgumentException("El monto de la puja no es válido");

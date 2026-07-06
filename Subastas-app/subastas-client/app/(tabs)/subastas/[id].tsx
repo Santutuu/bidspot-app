@@ -173,6 +173,30 @@ export default function DetalleSubastaScreen() {
   }, [canLoadDetail, cargarEstadoPuja, id, subscribeToAuctionBids]);
 
   useEffect(() => {
+    if (
+      !canLoadDetail ||
+      !detalle?.subasta?.idSubasta ||
+      estadoPuja?.miMejorOferta === null ||
+      estadoPuja?.miMejorOferta === undefined
+    ) {
+      return;
+    }
+
+    void watchBidNotification({
+      subastaId: detalle.subasta.idSubasta,
+      amount: estadoPuja.miMejorOferta,
+      title: detalle.itemActual?.titulo ?? detalle.subasta.titulo,
+    });
+  }, [
+    canLoadDetail,
+    detalle?.itemActual?.titulo,
+    detalle?.subasta?.idSubasta,
+    detalle?.subasta?.titulo,
+    estadoPuja?.miMejorOferta,
+    watchBidNotification,
+  ]);
+
+  useEffect(() => {
     if (loadingAuth) return;
 
     if (pendingRegistrationMail && !isAuthenticated) {
