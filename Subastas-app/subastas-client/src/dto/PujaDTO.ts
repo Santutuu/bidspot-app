@@ -10,6 +10,8 @@ export interface EstadoPujaSubastaResponseDTO {
   ofertaMinimaPermitida: number;
   ofertaMaximaPermitida: number | null;
   moneda: MonedaPuja;
+  miMejorOferta: number | null;
+  soyMejorPostor: boolean;
 }
 
 export interface PujaRequestDTO {

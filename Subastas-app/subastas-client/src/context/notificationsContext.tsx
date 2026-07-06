@@ -242,11 +242,25 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       const storedWatchedBids = await getWatchedBids(user.idUsuario);
       const watchedBid = storedWatchedBids.find(
-        (item) =>
-          item.subastaId === event.idSubasta && event.monto > item.amount,
+        (item) => item.subastaId === event.idSubasta,
       );
 
       if (!watchedBid) return;
+
+      try {
+        const estadoPuja = await getEstadoPuja(event.idSubasta);
+        if (
+          estadoPuja.miMejorOferta === null ||
+          estadoPuja.miMejorOferta === undefined ||
+          estadoPuja.soyMejorPostor
+        ) {
+          return;
+        }
+      } catch {
+        if (event.monto <= watchedBid.amount) {
+          return;
+        }
+      }
 
       const stored = await getStoredNotifications(user.idUsuario);
       const dismissedIds = new Set(
@@ -269,6 +283,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           subastaId: watchedBid.subastaId,
           actionLabel: "Volver a subasta",
         });
+        setIsPanelOpen(true);
       }
 
       nextNotifications.sort((left, right) =>
@@ -305,6 +320,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       );
       const nextNotifications = [...stored];
       const remainingBids: WatchedBid[] = [];
+      let addedNotification = false;
 
       for (const watchedBid of watchedBids) {
         try {
@@ -327,6 +343,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                 subastaId: watchedBid.subastaId,
                 actionLabel: "Volver a subasta",
               });
+              addedNotification = true;
             }
           } else {
             remainingBids.push(watchedBid);
@@ -341,6 +358,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       );
 
       setNotifications(nextNotifications);
+      setWatchedBids(remainingBids);
+      if (addedNotification) {
+        setIsPanelOpen(true);
+      }
       await saveNotifications(user.idUsuario, nextNotifications);
       await saveWatchedBids(user.idUsuario, remainingBids);
     } catch {

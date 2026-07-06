@@ -40,7 +40,7 @@ function getWebSocketUrl() {
   return API_BASE_URL.replace(/^https:/, "wss:")
     .replace(/^http:/, "ws:")
     .replace(/\/$/, "")
-    .concat("/ws");
+    .concat("/ws/websocket");
 }
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {

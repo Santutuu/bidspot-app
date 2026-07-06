@@ -114,12 +114,8 @@ export default function DetalleSubastaScreen() {
 
   const { detalle, loading, error, recargar, recargarSilencioso } =
     useDetalleSubasta(canLoadDetail ? id : undefined);
-  const {
-    estadoPuja,
-    loadingEstadoPuja,
-    errorEstadoPuja,
-    cargarEstadoPuja,
-  } = useEstadoPuja(canLoadDetail ? id : undefined);
+  const { estadoPuja, loadingEstadoPuja, errorEstadoPuja, cargarEstadoPuja } =
+    useEstadoPuja(canLoadDetail ? id : undefined);
   const {
     submittingPuja,
     errorPuja,
@@ -257,7 +253,7 @@ export default function DetalleSubastaScreen() {
       ? estadoPuja.mejorOferta
       : esActiva && detalle.itemActual?.precioActual
         ? detalle.itemActual.precioActual
-      : (itemActual?.precioBase ?? null);
+        : (itemActual?.precioBase ?? null);
   const tipoPrecio = esActiva ? "PRECIO_ACTUAL" : "PRECIO_INICIAL";
   const puedeOfertar = esActiva && !!detalle.itemActual;
   const lotesMostrados = esProgramada ? catalogo : proximosLotes;
@@ -372,38 +368,50 @@ export default function DetalleSubastaScreen() {
       return;
     }
 
-    const response = await enviarPuja(monto);
-    await cargarEstadoPuja();
+    Alert.alert(
+      "Confirmar puja",
+      `¿Estás seguro de ofertar ${formatPrice(monedaPuja, monto)}?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Confirmar",
+          onPress: async () => {
+            const response = await enviarPuja(monto);
+            await cargarEstadoPuja();
 
-    if (!response) return;
+            if (!response) return;
 
-    setMontoOferta("");
-    await watchBidNotification({
-      subastaId: subasta.idSubasta,
-      amount: response.monto,
-      title: itemActual?.titulo ?? subasta.titulo,
-    });
-    await recargar();
+            setMontoOferta("");
+            await watchBidNotification({
+              subastaId: subasta.idSubasta,
+              amount: response.monto,
+              title: itemActual?.titulo ?? subasta.titulo,
+            });
+            await recargar();
 
-    if (response.estado === "SUPERADA") {
-      await addLocalNotification({
-        kind: "PUJA_SUPERADA",
-        title: "Oferta superada",
-        body: `Tu oferta en ${itemActual?.titulo ?? subasta.titulo} fue sobrepasada por otra persona. Realizá otra puja antes de que se acabe el tiempo.`,
-        subastaId: subasta.idSubasta,
-        actionLabel: "Volver a subasta",
-      });
-    }
+            if (response.estado === "SUPERADA") {
+              await addLocalNotification({
+                kind: "PUJA_SUPERADA",
+                title: "Oferta superada",
+                body: `Tu oferta en ${itemActual?.titulo ?? subasta.titulo} fue sobrepasada por otra persona. Realizá otra puja antes de que se acabe el tiempo.`,
+                subastaId: subasta.idSubasta,
+                actionLabel: "Volver a subasta",
+              });
+            }
 
-    if (response.estado === "GANADORA") {
-      await addLocalNotification({
-        kind: "SUBASTA_GANADA",
-        title: "Subasta ganada",
-        body: `Felicitaciones, ganaste el artículo ${itemActual?.titulo ?? subasta.titulo}. Por favor, revisá los detalles en mensajería y completá el pago.`,
-        subastaId: subasta.idSubasta,
-        actionLabel: "Ir a mensajería",
-      });
-    }
+            if (response.estado === "GANADORA") {
+              await addLocalNotification({
+                kind: "SUBASTA_GANADA",
+                title: "Subasta ganada",
+                body: `Felicitaciones, ganaste el artículo ${itemActual?.titulo ?? subasta.titulo}. Por favor, revisá los detalles en mensajería y completá el pago.`,
+                subastaId: subasta.idSubasta,
+                actionLabel: "Ir a mensajería",
+              });
+            }
+          },
+        },
+      ],
+    );
   }
 
   function handleStreaming() {
@@ -466,6 +474,23 @@ export default function DetalleSubastaScreen() {
     estadoPuja?.ofertaMaximaPermitida !== undefined
       ? amountNumber > estadoPuja.ofertaMaximaPermitida
       : false);
+  const bidPersonalStatus =
+    estadoPuja?.miMejorOferta === null ||
+    estadoPuja?.miMejorOferta === undefined
+      ? {
+          title: "Todavia no realizaste una puja en este lote.",
+          tone: "neutral" as const,
+        }
+      : estadoPuja.soyMejorPostor
+        ? {
+            title: "Vas ganando",
+            tone: "winning" as const,
+          }
+        : {
+            title: "Te superaron",
+            detail: `Tu mejor oferta: ${formatPrice(estadoPuja.moneda, estadoPuja.miMejorOferta)}`,
+            tone: "outbid" as const,
+          };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -612,24 +637,45 @@ export default function DetalleSubastaScreen() {
           ) : errorEstadoPuja ? (
             <Text style={styles.bidErrorText}>{errorEstadoPuja}</Text>
           ) : estadoPuja ? (
-            <View style={styles.bidLimitsRow}>
-              <Text style={styles.bidLimitText}>
-                Mín.{" "}
-                {formatPrice(
-                  estadoPuja.moneda,
-                  estadoPuja.ofertaMinimaPermitida,
+            <>
+              <View style={styles.bidStatusRow}>
+                <Text
+                  style={[
+                    styles.bidStatusText,
+                    bidPersonalStatus.tone === "winning" &&
+                      styles.bidStatusTextWinning,
+                    bidPersonalStatus.tone === "outbid" &&
+                      styles.bidStatusTextOutbid,
+                  ]}
+                >
+                  {bidPersonalStatus.title}
+                </Text>
+                {"detail" in bidPersonalStatus && (
+                  <Text style={styles.bidPersonalStatusDetail}>
+                    {bidPersonalStatus.detail}
+                  </Text>
                 )}
-              </Text>
-              {estadoPuja.ofertaMaximaPermitida !== null && (
-                <Text style={styles.bidLimitText}>
-                  Máx.{" "}
+              </View>
+
+              <View style={styles.bidLimitsRow}>
+                <Text style={styles.bidRangeText}>
+                  <Text style={styles.bidRangeLabel}>Puja mín:</Text>{" "}
                   {formatPrice(
                     estadoPuja.moneda,
-                    estadoPuja.ofertaMaximaPermitida,
+                    estadoPuja.ofertaMinimaPermitida,
                   )}
                 </Text>
-              )}
-            </View>
+                {estadoPuja.ofertaMaximaPermitida !== null && (
+                  <Text style={styles.bidRangeText}>
+                    <Text style={styles.bidRangeLabel}>Puja máx:</Text>{" "}
+                    {formatPrice(
+                      estadoPuja.moneda,
+                      estadoPuja.ofertaMaximaPermitida,
+                    )}
+                  </Text>
+                )}
+              </View>
+            </>
           ) : null}
 
           {requiresPaymentSetup && (
@@ -646,7 +692,6 @@ export default function DetalleSubastaScreen() {
             value={montoOferta}
             onChangeText={handleAmountChange}
           />
-
           {successPuja && (
             <Text style={styles.bidSuccessText}>{successPuja}</Text>
           )}
@@ -842,7 +887,7 @@ const styles = StyleSheet.create({
   },
 
   auctioneerCard: {
-    marginBottom: 36,
+    marginBottom: 26,
   },
 
   offerCard: {
@@ -970,18 +1015,44 @@ const styles = StyleSheet.create({
   bidLimitsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 14,
+    gap: 14,
+    marginBottom: 22,
   },
 
-  bidLimitText: {
-    fontSize: 12,
-    color: "#374151",
+  bidRangeText: {
+    fontSize: 13,
+    color: "#334155",
+    fontWeight: "700",
+  },
+
+  bidRangeLabel: {
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+
+  bidStatusRow: {
+    marginBottom: 26,
+  },
+
+  bidStatusText: {
+    fontSize: 14,
+    color: "#475569",
     fontWeight: "800",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  },
+
+  bidStatusTextWinning: {
+    color: "#15803D",
+  },
+
+  bidStatusTextOutbid: {
+    color: "#B45309",
+  },
+
+  bidPersonalStatusDetail: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#4B5563",
+    fontWeight: "700",
   },
 
   bidHelperText: {

@@ -4,10 +4,11 @@ import HomeCarousel from "@/src/components/home/homeCarrousel";
 import { useAuth } from "@/src/context/authContext";
 import { useRealtime } from "@/src/context/realtimeContext";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
+import { getEstadoPuja } from "@/src/api/subastaAPI";
 import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
 import { getCurrencyCode } from "@/src/utils/moneda";
 import { router, useFocusEffect, useNavigation } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -48,6 +49,29 @@ export default function HomeScreen() {
   const { subastas, loading, error, recargar, actualizarPrecioSubasta } =
     useSubastasRecomendadas();
   const [showSplash, setShowSplash] = useState(true);
+  const subastaIdsKey = subastas
+    .map((subasta) => subasta.idSubasta)
+    .join(",");
+  const subastaIds = useMemo(
+    () =>
+      subastaIdsKey
+        ? subastaIdsKey.split(",").map((idSubasta) => Number(idSubasta))
+        : [],
+    [subastaIdsKey],
+  );
+
+  const actualizarPreciosVisibles = useCallback(async () => {
+    await Promise.all(
+      subastaIds.map(async (idSubasta) => {
+        try {
+          const estado = await getEstadoPuja(idSubasta);
+          actualizarPrecioSubasta(idSubasta, estado.mejorOferta);
+        } catch {
+          return;
+        }
+      }),
+    );
+  }, [actualizarPrecioSubasta, subastaIds]);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1600);
@@ -65,23 +89,39 @@ export default function HomeScreen() {
     useCallback(() => {
       if (showSplash) return;
 
-      return onReconnect(() => {
-        void recargar();
+      void actualizarPreciosVisibles();
+      const intervalId = setInterval(() => {
+        void actualizarPreciosVisibles();
+      }, 5000);
+      const unsubscribeReconnect = onReconnect(() => {
+        void actualizarPreciosVisibles();
       });
-    }, [onReconnect, recargar, showSplash]),
+
+      return () => {
+        clearInterval(intervalId);
+        unsubscribeReconnect();
+      };
+    }, [actualizarPreciosVisibles, onReconnect, showSplash]),
   );
 
   useEffect(() => {
-    const unsubscribers = subastas.map((subasta) =>
-      subscribeToAuctionBids(subasta.idSubasta, (event) => {
+    const unsubscribers = subastaIds.map((idSubasta) =>
+      subscribeToAuctionBids(idSubasta, async (event) => {
         actualizarPrecioSubasta(event.idSubasta, event.monto);
+
+        try {
+          const estado = await getEstadoPuja(event.idSubasta);
+          actualizarPrecioSubasta(event.idSubasta, estado.mejorOferta);
+        } catch {
+          return;
+        }
       }),
     );
 
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe());
     };
-  }, [actualizarPrecioSubasta, subastas, subscribeToAuctionBids]);
+  }, [actualizarPrecioSubasta, subastaIds, subscribeToAuctionBids]);
 
   function canAccessAuction(categoriaMin: string | null) {
     if (!user?.categoria || !categoriaMin) return false;

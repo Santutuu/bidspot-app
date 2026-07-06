@@ -59,7 +59,7 @@ export function useRealizarPuja(idSubasta?: string) {
         setSuccessPuja(null);
 
         const response = await realizarPuja(idSubasta, monto);
-        setSuccessPuja("Tu puja fue registrada correctamente.");
+        Alert.alert("Puja registrada", "Tu puja fue registrada correctamente.");
 
         return response;
       } catch (error: unknown) {
