@@ -1,7 +1,7 @@
 import { clearAuthData, getStoredToken } from "@/src/storage/authStorage";
 import axios from "axios";
 
-export const API_BASE_URL = "http://192.168.1.43:8083";
+export const API_BASE_URL = "https://apathetic-dusty-frustrately.ngrok-free.dev";
 
 const api = axios.create({
   baseURL: API_BASE_URL,

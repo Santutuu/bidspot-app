@@ -65,36 +65,4 @@ public class SubastaHomeDTO {
     public LocalDateTime getFechaInicio() {
         return fechaInicio;
     }
-
-    private SubastaHomeDTO toHomeDTO(Subasta subasta, boolean precioVisible) {
-        ItemCatalogo loteActual = obtenerLoteActual(subasta);
-
-        if (loteActual == null) {
-            return new SubastaHomeDTO(
-                    subasta.getIdSubasta(),
-                    "Subasta finalizada",
-                    subasta.getMoneda() != null ? subasta.getMoneda().name() : null,
-                    subasta.getCategoriaMin() != null ? subasta.getCategoriaMin().name() : null,
-                    null,
-                    null,
-                    false
-            );
-        }
-
-        Item item = loteActual.getItem();
-
-        Float precioActual = loteActual.getPujaActual() != null
-                ? loteActual.getPujaActual().getMonto()
-                : loteActual.getPrecioBase();
-
-        return new SubastaHomeDTO(
-                subasta.getIdSubasta(),
-                item.getTitulo(),
-                subasta.getMoneda() != null ? subasta.getMoneda().name() : null,
-                subasta.getCategoriaMin() != null ? subasta.getCategoriaMin().name() : null,
-                precioVisible ? precioActual : null,
-                item.getPrimeraImagen(),
-                precioVisible
-        );
-    }
 }
