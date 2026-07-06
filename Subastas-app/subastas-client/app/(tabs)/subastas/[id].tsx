@@ -2,7 +2,7 @@ import { useAuth } from "@/src/context/authContext";
 import { useNotifications } from "@/src/context/notificationsContext";
 import { useRealtime } from "@/src/context/realtimeContext";
 import { useSubastasGuardadas } from "@/src/context/subastasGuardadasContext";
-import { LoteCatalogoDTO } from "@/src/dto/DetalleSubastaDTO";
+import { ItemActualDTO, LoteCatalogoDTO } from "@/src/dto/DetalleSubastaDTO";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
 import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 import { useEstadoPuja } from "@/src/hooks/useEstadoPuja";
@@ -79,6 +79,16 @@ function getImagenLote(lote: LoteCatalogoDTO) {
   return lote.imagenUrl && lote.imagenUrl.trim().length > 0
     ? { uri: lote.imagenUrl }
     : defaultImage;
+}
+
+function getImagenesItemActual(item: ItemActualDTO | null) {
+  if (!item) return [null];
+
+  const imagenes = item.imagenesUrl?.length ? item.imagenesUrl : item.imagenes;
+  const validas =
+    imagenes?.filter((image) => image && image.trim().length > 0) ?? [];
+
+  return validas.length > 0 ? validas : [null];
 }
 
 function splitFechaHora(fechaInicio: string | null) {
@@ -167,10 +177,29 @@ export default function DetalleSubastaScreen() {
   useEffect(() => {
     if (!canLoadDetail || !id) return;
 
-    return subscribeToAuctionBids(Number(id), () => {
+    return subscribeToAuctionBids(Number(id), (event) => {
+      if (
+        detalle?.itemActual?.idItemCatalogo &&
+        event.idItemCatalogo !== detalle.itemActual.idItemCatalogo
+      ) {
+        void recargarSilencioso();
+      }
+
       void cargarEstadoPuja();
     });
-  }, [canLoadDetail, cargarEstadoPuja, id, subscribeToAuctionBids]);
+  }, [
+    canLoadDetail,
+    cargarEstadoPuja,
+    detalle?.itemActual?.idItemCatalogo,
+    id,
+    recargarSilencioso,
+    subscribeToAuctionBids,
+  ]);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [detalle?.itemActual?.idItemCatalogo]);
 
   useEffect(() => {
     if (
@@ -269,9 +298,11 @@ export default function DetalleSubastaScreen() {
   const subasta = detalle.subasta;
   const esActiva = subasta.estadoSubasta === "ACTIVA";
   const esProgramada = subasta.estadoSubasta === "PROGRAMADA";
+  const esFinalizada = subasta.estadoSubasta === "FINALIZADA";
   const catalogo = detalle.catalogo ?? [];
   const proximosLotes = detalle.proximosLotes ?? [];
   const itemActual = esActiva ? detalle.itemActual : null;
+  const tituloItemActual = itemActual?.titulo ?? subasta.titulo;
   const precioMostrado =
     esActiva && estadoPuja?.mejorOferta
       ? estadoPuja.mejorOferta
@@ -287,14 +318,7 @@ export default function DetalleSubastaScreen() {
     (!!subasta.guardada && subastasGuardadas.length === 0);
   const guardadaLoading = pendingGuardadasIds.has(subasta.idSubasta);
 
-  const baseImages =
-    itemActual &&
-    "imagenesUrl" in itemActual &&
-    itemActual.imagenesUrl.length > 0
-      ? itemActual.imagenesUrl
-      : itemActual && "imagenUrl" in itemActual && itemActual.imagenUrl
-        ? [itemActual.imagenUrl]
-        : [null];
+  const baseImages = getImagenesItemActual(itemActual);
 
   const carouselImages = Array.from(
     { length: 4 },
@@ -446,18 +470,16 @@ export default function DetalleSubastaScreen() {
   }
 
   function buildSubastaGuardada(): SubastaHomeDTO {
-    const imagenUrl =
-      itemActual?.imagenesUrl?.find((image) => image.trim().length > 0) ??
-      catalogo.find((lote) => lote.imagenUrl)?.imagenUrl ??
-      null;
+    const imagenPrincipal = getImagenesItemActual(itemActual)[0];
+    const imagenUrl = imagenPrincipal ?? null;
     const precio =
       esActiva && itemActual?.precioActual
         ? itemActual.precioActual
-        : (itemActual?.precioBase ?? catalogo[0]?.precioBase ?? null);
+        : (itemActual?.precioBase ?? null);
 
     return {
       idSubasta: subasta.idSubasta,
-      titulo: subasta.titulo,
+      titulo: tituloItemActual,
       imagenUrl,
       precio,
       moneda: subasta.moneda,
@@ -541,7 +563,7 @@ export default function DetalleSubastaScreen() {
       </View>
 
       <View style={styles.auctionHeader}>
-        <Text style={styles.auctionTitle}>{subasta.titulo}</Text>
+        <Text style={styles.auctionTitle}>{tituloItemActual}</Text>
         <Text style={styles.status}>
           {getEstadoTexto(subasta.estadoSubasta)}
         </Text>
@@ -557,6 +579,22 @@ export default function DetalleSubastaScreen() {
         </Text>
         <Text style={styles.dateText}>Subasta en {subasta.moneda}</Text>
       </View>
+
+      {esFinalizada && !detalle.itemActual && (
+        <View style={styles.closedCard}>
+          <Ionicons
+            name="checkmark-done-circle-outline"
+            size={28}
+            color="#64748B"
+          />
+          <View style={styles.closedCopy}>
+            <Text style={styles.closedTitle}>Subasta finalizada</Text>
+            <Text style={styles.closedText}>
+              No hay un lote en remate actualmente.
+            </Text>
+          </View>
+        </View>
+      )}
 
       {esActiva && itemActual && (
         <>
@@ -622,7 +660,7 @@ export default function DetalleSubastaScreen() {
 
           <View style={styles.infoCard}>
             <Text style={styles.title}>
-              {itemActual?.titulo ?? subasta.titulo}
+              {tituloItemActual}
             </Text>
 
             <Text style={styles.label}>{getPrecioLabel(tipoPrecio)}</Text>
@@ -975,6 +1013,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#4B5563",
     lineHeight: 24,
+  },
+
+  closedCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    padding: 14,
+    marginTop: -10,
+    marginBottom: 26,
+  },
+
+  closedCopy: {
+    flex: 1,
+  },
+
+  closedTitle: {
+    fontSize: 16,
+    color: "#0F172A",
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+
+  closedText: {
+    fontSize: 13,
+    color: "#64748B",
+    lineHeight: 19,
+    fontWeight: "600",
   },
 
   loteRow: {

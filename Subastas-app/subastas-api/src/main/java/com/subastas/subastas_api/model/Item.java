@@ -97,8 +97,11 @@ public class Item {
     }
 
     public String getPrimeraImagen() {
-        if (imagenesUrl != null && !imagenesUrl.isEmpty()) {
-            return imagenesUrl.get(0);
+        if (imagenesUrl != null) {
+            return imagenesUrl.stream()
+                    .filter(imagen -> imagen != null && !imagen.isBlank())
+                    .findFirst()
+                    .orElse(imagenUrl);
         }
 
         return imagenUrl;

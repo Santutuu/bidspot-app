@@ -22,6 +22,7 @@ export interface ItemActualDTO {
   numeroLote: number;
   titulo: string;
   descripcion: string;
+  imagenes?: string[];
   imagenesUrl: string[];
   precioBase: number;
   precioActual: number | null;
