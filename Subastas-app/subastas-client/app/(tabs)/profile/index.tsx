@@ -343,6 +343,14 @@ export default function ProfileScreen() {
           <Text style={styles.optionTitle}>Medios de pago</Text>
           <Text style={styles.arrow}>→</Text>
         </Pressable>
+
+        <Pressable
+          style={styles.optionCard}
+          onPress={() => router.push("/(tabs)/compras" as any)}
+        >
+          <Text style={styles.optionTitle}>Mis compras</Text>
+          <Text style={styles.arrow}>→</Text>
+        </Pressable>
       </ScrollView>
     );
   }
@@ -456,6 +464,14 @@ export default function ProfileScreen() {
             onPress={() => router.push("/(tabs)/profile/publicaciones" as any)}
           >
             <Text style={styles.menuText}>Mis publicaciones</Text>
+            <Ionicons name="chevron-forward" size={18} color="#334155" />
+          </Pressable>
+
+          <Pressable
+            style={styles.menuRowButton}
+            onPress={() => router.push("/(tabs)/compras" as any)}
+          >
+            <Text style={styles.menuText}>Mis compras</Text>
             <Ionicons name="chevron-forward" size={18} color="#334155" />
           </Pressable>
 

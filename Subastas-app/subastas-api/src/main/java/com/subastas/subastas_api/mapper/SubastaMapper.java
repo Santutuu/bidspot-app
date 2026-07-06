@@ -14,6 +14,7 @@ import com.subastas.subastas_api.model.Usuario;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Component
@@ -27,28 +28,57 @@ public class SubastaMapper {
                 obtenerTituloCard(subasta),
                 obtenerImagenPrincipal(itemVisible),
                 obtenerPrecioMostrado(itemVisible),
-                subasta.getMoneda() != null ? subasta.getMoneda().toString() : null,
+                subasta.getMoneda() != null
+                        ? subasta.getMoneda().toString()
+                        : null,
                 subasta.getEstadoSubasta(),
                 subasta.getCategoriaMin(),
                 subasta.getFechaInicio()
         );
     }
 
-    public DetalleSubastaDTO toDetalleDTO(Subasta subasta, Usuario usuarioActual) {
-        SubastaInfoDTO subastaInfo = toSubastaInfoDTO(subasta, usuarioActual);
+    public DetalleSubastaDTO toDetalleDTO(
+            Subasta subasta,
+            Usuario usuarioActual
+    ) {
+        SubastaInfoDTO subastaInfo =
+                toSubastaInfoDTO(subasta, usuarioActual);
 
+        /*
+         * SUBASTA ACTIVA
+         *
+         * itemActual:
+         * ItemCatalogo cuyo estado es EN_REMATE.
+         *
+         * proximosLotes:
+         * ItemCatalogo cuyo estado es PENDIENTE.
+         */
         if (subasta.getEstadoSubasta() == EstadoSubasta.ACTIVA) {
-            ItemCatalogo itemActual = obtenerItemActual(subasta);
+
+            ItemCatalogo itemActual =
+                    obtenerItemActual(subasta);
 
             return new DetalleSubastaDTO(
                     subastaInfo,
-                    itemActual != null ? toItemActualDTO(itemActual) : null,
+
+                    itemActual != null
+                            ? toItemActualDTO(itemActual)
+                            : null,
+
                     List.of(),
+
                     obtenerProximosLotes(subasta)
             );
         }
 
+        /*
+         * SUBASTA PROGRAMADA
+         *
+         * Todavía no existe lote EN_REMATE.
+         * Mostramos catálogo completo.
+         */
         if (subasta.getEstadoSubasta() == EstadoSubasta.PROGRAMADA) {
+
             return new DetalleSubastaDTO(
                     subastaInfo,
                     null,
@@ -57,6 +87,9 @@ public class SubastaMapper {
             );
         }
 
+        /*
+         * SUBASTA FINALIZADA
+         */
         return new DetalleSubastaDTO(
                 subastaInfo,
                 null,
@@ -65,50 +98,102 @@ public class SubastaMapper {
         );
     }
 
-    public ItemCatalogoPreviewDTO toItemPreviewDTO(ItemCatalogo itemCatalogo) {
+    public ItemCatalogoPreviewDTO toItemPreviewDTO(
+            ItemCatalogo itemCatalogo
+    ) {
         Item item = itemCatalogo.getItem();
 
         return new ItemCatalogoPreviewDTO(
                 itemCatalogo.getIdItemCatalogo(),
                 obtenerNumeroLote(itemCatalogo),
-                item != null ? item.getTitulo() : null,
-                item != null ? item.getPrimeraImagen() : null,
+
+                item != null
+                        ? item.getTitulo()
+                        : null,
+
+                item != null
+                        ? item.getPrimeraImagen()
+                        : null,
+
                 itemCatalogo.getPrecioBase()
         );
     }
 
-    public ItemActualDTO toItemActualDTO(ItemCatalogo itemCatalogo) {
+    public ItemActualDTO toItemActualDTO(
+            ItemCatalogo itemCatalogo
+    ) {
         Item item = itemCatalogo.getItem();
 
         return new ItemActualDTO(
                 itemCatalogo.getIdItemCatalogo(),
+
                 obtenerNumeroLote(itemCatalogo),
-                item != null ? item.getTitulo() : null,
-                item != null ? item.getDescripcion() : null,
-                item != null ? obtenerImagenesItem(item) : List.of(),
+
+                item != null
+                        ? item.getTitulo()
+                        : null,
+
+                item != null
+                        ? item.getDescripcion()
+                        : null,
+
+                item != null
+                        ? obtenerImagenesItem(item)
+                        : List.of(),
+
                 itemCatalogo.getPrecioBase(),
+
                 obtenerPrecioMostrado(itemCatalogo)
         );
     }
 
-    private SubastaInfoDTO toSubastaInfoDTO(Subasta subasta, Usuario usuarioActual) {
+    private SubastaInfoDTO toSubastaInfoDTO(
+            Subasta subasta,
+            Usuario usuarioActual
+    ) {
         return new SubastaInfoDTO(
                 subasta.getIdSubasta(),
                 obtenerTituloSubasta(subasta),
                 subasta.getEstadoSubasta(),
                 subasta.getCategoriaMin(),
-                subasta.getMoneda() != null ? subasta.getMoneda().toString() : null,
+
+                subasta.getMoneda() != null
+                        ? subasta.getMoneda().toString()
+                        : null,
+
                 subasta.getFechaInicio(),
                 subasta.getUbicacion(),
                 obtenerNombreRematador(subasta),
-                subasta.getEstadoSubasta() == EstadoSubasta.ACTIVA ? subasta.getLinkVivo() : null,
+
+                subasta.getEstadoSubasta() == EstadoSubasta.ACTIVA
+                        ? subasta.getLinkVivo()
+                        : null,
+
                 estaGuardada(subasta, usuarioActual)
         );
     }
 
-    private ItemCatalogo obtenerItemVisibleParaCard(Subasta subasta) {
+    /**
+     * Determina qué lote debe mostrarse en las cards.
+     *
+     * ACTIVA:
+     * muestra el ItemCatalogo EN_REMATE.
+     *
+     * PROGRAMADA:
+     * muestra el primer lote.
+     *
+     * FINALIZADA:
+     * actualmente devuelve el primer lote como fallback,
+     * aunque las recomendadas normalmente solo incluyen ACTIVA.
+     */
+    private ItemCatalogo obtenerItemVisibleParaCard(
+            Subasta subasta
+    ) {
         if (subasta.getEstadoSubasta() == EstadoSubasta.ACTIVA) {
-            ItemCatalogo itemActual = obtenerItemActual(subasta);
+
+            ItemCatalogo itemActual =
+                    obtenerItemActual(subasta);
+
             if (itemActual != null) {
                 return itemActual;
             }
@@ -117,127 +202,281 @@ public class SubastaMapper {
         return obtenerPrimerItem(subasta);
     }
 
-    private ItemCatalogo obtenerItemActual(Subasta subasta) {
-        if (subasta.getCatalogo() == null || subasta.getCatalogo().getItems() == null) {
+    /**
+     * Devuelve el lote actualmente EN_REMATE.
+     *
+     * En una subasta consistente debería existir como máximo uno.
+     *
+     * Ordenamos por ID para tener comportamiento determinista
+     * durante el MVP en caso de datos inconsistentes.
+     */
+    private ItemCatalogo obtenerItemActual(
+            Subasta subasta
+    ) {
+        if (subasta.getCatalogo() == null
+                || subasta.getCatalogo().getItems() == null) {
+
             return null;
         }
 
         return subasta.getCatalogo()
                 .getItems()
                 .stream()
-                .filter(item -> item.getEstado() == EstadoItemCatalogo.EN_REMATE)
+
+                .filter(item ->
+                        item.getEstado()
+                                == EstadoItemCatalogo.EN_REMATE
+                )
+
+                .sorted(
+                        Comparator.comparing(
+                                ItemCatalogo::getIdItemCatalogo
+                        )
+                )
+
                 .findFirst()
                 .orElse(null);
     }
 
-    private ItemCatalogo obtenerPrimerItem(Subasta subasta) {
+    /**
+     * Devuelve el primer lote del catálogo ordenado por ID.
+     *
+     * Principalmente utilizado para subastas PROGRAMADAS.
+     */
+    private ItemCatalogo obtenerPrimerItem(
+            Subasta subasta
+    ) {
         if (subasta.getCatalogo() == null
                 || subasta.getCatalogo().getItems() == null
                 || subasta.getCatalogo().getItems().isEmpty()) {
+
             return null;
         }
 
-        return subasta.getCatalogo().getItems().get(0);
+        return subasta.getCatalogo()
+                .getItems()
+                .stream()
+
+                .sorted(
+                        Comparator.comparing(
+                                ItemCatalogo::getIdItemCatalogo
+                        )
+                )
+
+                .findFirst()
+                .orElse(null);
     }
 
-    private List<ItemCatalogoPreviewDTO> obtenerCatalogoCompleto(Subasta subasta) {
-        if (subasta.getCatalogo() == null || subasta.getCatalogo().getItems() == null) {
+    /**
+     * Devuelve todo el catálogo ordenado.
+     */
+    private List<ItemCatalogoPreviewDTO> obtenerCatalogoCompleto(
+            Subasta subasta
+    ) {
+        if (subasta.getCatalogo() == null
+                || subasta.getCatalogo().getItems() == null) {
+
             return List.of();
         }
 
         return subasta.getCatalogo()
                 .getItems()
                 .stream()
+
+                .sorted(
+                        Comparator.comparing(
+                                ItemCatalogo::getIdItemCatalogo
+                        )
+                )
+
                 .map(this::toItemPreviewDTO)
+
                 .toList();
     }
 
-    private List<ItemCatalogoPreviewDTO> obtenerProximosLotes(Subasta subasta) {
-        if (subasta.getCatalogo() == null || subasta.getCatalogo().getItems() == null) {
+    /**
+     * Devuelve únicamente los lotes pendientes,
+     * ordenados por ID.
+     */
+    private List<ItemCatalogoPreviewDTO> obtenerProximosLotes(
+            Subasta subasta
+    ) {
+        if (subasta.getCatalogo() == null
+                || subasta.getCatalogo().getItems() == null) {
+
             return List.of();
         }
 
         return subasta.getCatalogo()
                 .getItems()
                 .stream()
-                .filter(item -> item.getEstado() == EstadoItemCatalogo.PENDIENTE)
+
+                .filter(item ->
+                        item.getEstado()
+                                == EstadoItemCatalogo.PENDIENTE
+                )
+
+                .sorted(
+                        Comparator.comparing(
+                                ItemCatalogo::getIdItemCatalogo
+                        )
+                )
+
                 .map(this::toItemPreviewDTO)
+
                 .toList();
     }
 
-    private Float obtenerPrecioMostrado(ItemCatalogo itemCatalogo) {
+    /**
+     * Precio mostrado:
+     *
+     * Si existe puja actual:
+     * monto de la puja.
+     *
+     * Si no:
+     * precio base.
+     */
+    private Float obtenerPrecioMostrado(
+            ItemCatalogo itemCatalogo
+    ) {
         if (itemCatalogo == null) {
             return null;
         }
 
         if (itemCatalogo.getPujaActual() != null) {
-            return itemCatalogo.getPujaActual().getMonto();
+            return itemCatalogo
+                    .getPujaActual()
+                    .getMonto();
         }
 
         return itemCatalogo.getPrecioBase();
     }
 
-    private String obtenerImagenPrincipal(ItemCatalogo itemCatalogo) {
-        if (itemCatalogo == null || itemCatalogo.getItem() == null) {
+    private String obtenerImagenPrincipal(
+            ItemCatalogo itemCatalogo
+    ) {
+        if (itemCatalogo == null
+                || itemCatalogo.getItem() == null) {
+
             return null;
         }
 
-        return itemCatalogo.getItem().getPrimeraImagen();
+        return itemCatalogo
+                .getItem()
+                .getPrimeraImagen();
     }
 
-    private List<String> obtenerImagenesItem(Item item) {
-        if (item.getImagenesUrl() != null && !item.getImagenesUrl().isEmpty()) {
+    private List<String> obtenerImagenesItem(
+            Item item
+    ) {
+        if (item.getImagenesUrl() != null
+                && !item.getImagenesUrl().isEmpty()) {
+
             return item.getImagenesUrl();
         }
 
-        if (item.getImagenUrl() != null && !item.getImagenUrl().isBlank()) {
-            return List.of(item.getImagenUrl());
+        if (item.getImagenUrl() != null
+                && !item.getImagenUrl().isBlank()) {
+
+            return List.of(
+                    item.getImagenUrl()
+            );
         }
 
         return List.of();
     }
 
-    private String obtenerTituloCard(Subasta subasta) {
+    private String obtenerTituloCard(
+            Subasta subasta
+    ) {
         return obtenerTituloSubasta(subasta);
     }
 
-    private String obtenerTituloSubasta(Subasta subasta) {
+    private String obtenerTituloSubasta(
+            Subasta subasta
+    ) {
         if (subasta.getCatalogo() != null
                 && subasta.getCatalogo().getDescripcion() != null
-                && !subasta.getCatalogo().getDescripcion().isBlank()) {
-            return subasta.getCatalogo().getDescripcion();
+                && !subasta.getCatalogo()
+                .getDescripcion()
+                .isBlank()) {
+
+            return subasta
+                    .getCatalogo()
+                    .getDescripcion();
         }
 
-        return "Subasta #" + subasta.getIdSubasta();
+        return "Subasta #"
+                + subasta.getIdSubasta();
     }
 
-    private String obtenerNombreRematador(Subasta subasta) {
+    private String obtenerNombreRematador(
+            Subasta subasta
+    ) {
         if (subasta.getRematador() == null) {
             return null;
         }
 
-        return subasta.getRematador().getNombre() + " " + subasta.getRematador().getApellido();
+        return subasta.getRematador().getNombre()
+                + " "
+                + subasta.getRematador().getApellido();
     }
 
-    private Integer obtenerNumeroLote(ItemCatalogo itemCatalogo) {
+    /**
+     * Calcula el número de lote según su posición
+     * en el catálogo ordenado por ID.
+     */
+    private Integer obtenerNumeroLote(
+            ItemCatalogo itemCatalogo
+    ) {
         if (itemCatalogo == null
                 || itemCatalogo.getCatalogo() == null
                 || itemCatalogo.getCatalogo().getItems() == null) {
+
             return null;
         }
 
-        List<ItemCatalogo> items = new ArrayList<>(itemCatalogo.getCatalogo().getItems());
+        List<ItemCatalogo> items =
+                new ArrayList<>(
+                        itemCatalogo
+                                .getCatalogo()
+                                .getItems()
+                );
 
-        return items.indexOf(itemCatalogo) + 1;
+        items.sort(
+                Comparator.comparing(
+                        ItemCatalogo::getIdItemCatalogo
+                )
+        );
+
+        int indice =
+                items.indexOf(itemCatalogo);
+
+        return indice >= 0
+                ? indice + 1
+                : null;
     }
 
-    private boolean estaGuardada(Subasta subasta, Usuario usuarioActual) {
-        if (usuarioActual == null || usuarioActual.getGuardadas() == null) {
+    private boolean estaGuardada(
+            Subasta subasta,
+            Usuario usuarioActual
+    ) {
+        if (usuarioActual == null
+                || usuarioActual.getGuardadas() == null) {
+
             return false;
         }
 
-        return usuarioActual.getGuardadas()
+        return usuarioActual
+                .getGuardadas()
                 .stream()
-                .anyMatch(guardada -> guardada.getIdSubasta().equals(subasta.getIdSubasta()));
+
+                .anyMatch(guardada ->
+                        guardada
+                                .getIdSubasta()
+                                .equals(
+                                        subasta.getIdSubasta()
+                                )
+                );
     }
 }

@@ -105,6 +105,10 @@ export default function TabsLayout() {
 
       <Tabs.Screen name="notifications/index" options={{ href: null }} />
       <Tabs.Screen name="mensajeria/index" options={{ href: null }} />
+      <Tabs.Screen name="compras/index" options={{ href: null }} />
+      <Tabs.Screen name="compras/[idVenta]" options={{ href: null }} />
+      <Tabs.Screen name="compras/[idVenta]/pago" options={{ href: null }} />
+      <Tabs.Screen name="compras/[idVenta]/estado" options={{ href: null }} />
 
       <Tabs.Screen name="auth/login" options={{ href: null }} />
       <Tabs.Screen name="auth/register" options={{ href: null }} />

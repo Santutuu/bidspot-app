@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function MensajeriaScreen() {
@@ -40,7 +41,10 @@ export default function MensajeriaScreen() {
           </View>
         </View>
 
-        <View style={styles.messageRowSupport}>
+        <Pressable
+          style={styles.messageRowSupport}
+          onPress={() => router.push("/(tabs)/compras" as any)}
+        >
           <View style={styles.messageMetaWrap}>
             <View style={styles.inlineAvatar}>
               <Ionicons name="person-outline" size={15} color="#1E293B" />
@@ -51,7 +55,7 @@ export default function MensajeriaScreen() {
             <Text style={styles.priceLine}>Comision: $9999</Text>
             <Text style={styles.actionLine}>COMPLETAR COMPRA</Text>
           </View>
-        </View>
+        </Pressable>
       </ScrollView>
 
       <View style={styles.footerInfo}>
