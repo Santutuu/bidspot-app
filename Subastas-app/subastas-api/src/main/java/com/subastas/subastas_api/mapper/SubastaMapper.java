@@ -210,9 +210,7 @@ public class SubastaMapper {
      * Ordenamos por ID para tener comportamiento determinista
      * durante el MVP en caso de datos inconsistentes.
      */
-    private ItemCatalogo obtenerItemActual(
-            Subasta subasta
-    ) {
+    private ItemCatalogo obtenerItemActual(Subasta subasta) {
         if (subasta.getCatalogo() == null
                 || subasta.getCatalogo().getItems() == null) {
 
@@ -222,22 +220,17 @@ public class SubastaMapper {
         return subasta.getCatalogo()
                 .getItems()
                 .stream()
-
                 .filter(item ->
-                        item.getEstado()
-                                == EstadoItemCatalogo.EN_REMATE
+                        item.getEstado() == EstadoItemCatalogo.EN_REMATE
                 )
-
                 .sorted(
                         Comparator.comparing(
                                 ItemCatalogo::getIdItemCatalogo
                         )
                 )
-
                 .findFirst()
                 .orElse(null);
     }
-
     /**
      * Devuelve el primer lote del catálogo ordenado por ID.
      *

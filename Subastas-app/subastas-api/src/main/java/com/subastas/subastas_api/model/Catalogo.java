@@ -6,17 +6,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "catalogos")
 public class Catalogo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "identificador")
     private Long idCatalogo;
 
+    @Column(name = "descripcion", nullable = false)
     private String descripcion;
 
-    @OneToOne
-    @JoinColumn(name = "subasta_id", nullable = false, unique = true)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subasta", unique = true)
     private Subasta subasta;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "responsable", nullable = false)
+    private Empleado responsable;
 
     @OneToMany(mappedBy = "catalogo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemCatalogo> items = new ArrayList<>();
@@ -50,11 +57,19 @@ public class Catalogo {
         return subasta;
     }
 
+    public Empleado getResponsable() {
+        return responsable;
+    }
+
     public List<ItemCatalogo> getItems() {
         return items;
     }
 
     public void setSubasta(Subasta subasta) {
         this.subasta = subasta;
+    }
+
+    public void setResponsable(Empleado responsable) {
+        this.responsable = responsable;
     }
 }

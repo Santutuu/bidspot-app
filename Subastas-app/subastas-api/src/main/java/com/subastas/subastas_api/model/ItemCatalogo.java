@@ -6,35 +6,39 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "itemscatalogo")
 public class ItemCatalogo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "identificador")
     private Long idItemCatalogo;
 
-    @ManyToOne
-    @JoinColumn(name = "catalogo_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "catalogo", nullable = false)
     private Catalogo catalogo;
 
-    @OneToOne
-    @JoinColumn(name = "item_id", nullable = false, unique = true)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "producto", nullable = false, unique = true)
     private Item item;
 
-    @Column(nullable = false)
+    @Column(name = "preciobase", nullable = false)
     private float precioBase;
 
-    @Column(nullable = false)
+    @Column(name = "comision", nullable = false)
     private float comision;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EstadoItemCatalogo estado = EstadoItemCatalogo.PENDIENTE;
+    @Column(name = "subastado")
+    private String subastado = "no";
 
-    @OneToOne
-    @JoinColumn(name = "puja_actual_id")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "estadoitemcatalogo", nullable = false)
+    private EstadoItemCatalogoEntity estado;
+
+    @Transient
     private Puja pujaActual;
 
-    @OneToMany(mappedBy = "itemCatalogo", cascade = CascadeType.ALL)
+    @Transient
     private List<Puja> pujas = new ArrayList<>();
 
     public ItemCatalogo() {
@@ -44,10 +48,12 @@ public class ItemCatalogo {
         this.item = item;
         this.precioBase = precioBase;
         this.comision = comision;
-        this.estado = EstadoItemCatalogo.PENDIENTE;
+        this.subastado = "no";
     }
 
-
+    public Long getIdItemCatalogo() {
+        return idItemCatalogo;
+    }
 
     public Catalogo getCatalogo() {
         return catalogo;
@@ -66,7 +72,15 @@ public class ItemCatalogo {
     }
 
     public EstadoItemCatalogo getEstado() {
+        return estado == null ? null : estado.getNombre();
+    }
+
+    public EstadoItemCatalogoEntity getEstadoEntity() {
         return estado;
+    }
+
+    public String getSubastado() {
+        return subastado;
     }
 
     public Puja getPujaActual() {
@@ -81,8 +95,16 @@ public class ItemCatalogo {
         this.catalogo = catalogo;
     }
 
-    public void setEstado(EstadoItemCatalogo estado) {
+    public void setEstadoEntity(EstadoItemCatalogoEntity estado) {
         this.estado = estado;
+    }
+
+    public void setEstado(EstadoItemCatalogo estado) {
+        this.estado = new EstadoItemCatalogoEntity(estado);
+
+        if (estado == EstadoItemCatalogo.VENDIDO) {
+            this.subastado = "si";
+        }
     }
 
     public void recibirPuja(Puja puja) {
@@ -91,7 +113,6 @@ public class ItemCatalogo {
         }
 
         pujas.add(puja);
-        puja.setItemCatalogo(this);
         this.pujaActual = puja;
     }
 
@@ -123,28 +144,24 @@ public class ItemCatalogo {
     }
 
     public Usuario obtenerGanador() {
-        if (pujaActual == null) {
-            return null;
-        }
-
-        return pujaActual.getUsuario();
+        return pujaActual == null ? null : pujaActual.getUsuario();
     }
 
     public void marcarEnRemate() {
-        this.estado = EstadoItemCatalogo.EN_REMATE;
+        setEstado(EstadoItemCatalogo.EN_REMATE);
     }
 
     public void marcarComoVendido() {
-        this.estado = EstadoItemCatalogo.VENDIDO;
-        this.item.marcarComoVendido();
+        setEstado(EstadoItemCatalogo.VENDIDO);
+        this.subastado = "si";
+
+        if (this.item != null) {
+            this.item.marcarComoVendido();
+        }
     }
 
     public void marcarSinOfertas() {
-        this.estado = EstadoItemCatalogo.SIN_OFERTAS;
+        setEstado(EstadoItemCatalogo.SIN_OFERTAS);
+        this.subastado = "no";
     }
-
-    public Long getIdItemCatalogo() {
-        return idItemCatalogo;
-    }
-
 }

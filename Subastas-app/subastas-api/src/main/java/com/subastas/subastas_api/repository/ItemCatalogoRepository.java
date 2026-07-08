@@ -19,7 +19,7 @@ public interface ItemCatalogoRepository extends JpaRepository<ItemCatalogo, Long
             FROM ItemCatalogo ic
             JOIN ic.catalogo c
             WHERE c.subasta = :subasta
-              AND ic.estado = :estado
+              AND ic.estado.nombre = :estado
             """)
     Optional<ItemCatalogo> findItemActualBySubastaAndEstado(
             Subasta subasta,
@@ -32,18 +32,33 @@ public interface ItemCatalogoRepository extends JpaRepository<ItemCatalogo, Long
             FROM ItemCatalogo ic
             JOIN ic.catalogo c
             WHERE c.subasta = :subasta
-              AND ic.estado = :estado
+              AND ic.estado.nombre = :estado
             """)
     Optional<ItemCatalogo> findItemActualBySubastaAndEstadoForUpdate(
             Subasta subasta,
             EstadoItemCatalogo estado
     );
 
+    @Query("""
+            SELECT ic
+            FROM ItemCatalogo ic
+            WHERE ic.catalogo = :catalogo
+              AND ic.estado.nombre = :estado
+            ORDER BY ic.idItemCatalogo ASC
+            LIMIT 1
+            """)
     Optional<ItemCatalogo> findFirstByCatalogoAndEstadoOrderByIdItemCatalogoAsc(
             Catalogo catalogo,
             EstadoItemCatalogo estado
     );
 
+    @Query("""
+            SELECT ic
+            FROM ItemCatalogo ic
+            WHERE ic.catalogo = :catalogo
+              AND ic.estado.nombre = :estado
+            ORDER BY ic.idItemCatalogo ASC
+            """)
     List<ItemCatalogo> findByCatalogoAndEstado(
             Catalogo catalogo,
             EstadoItemCatalogo estado

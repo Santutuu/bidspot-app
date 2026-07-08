@@ -2,49 +2,52 @@ package com.subastas.subastas_api.model;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "productos")
 public class Item {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "identificador")
     private Long idItem;
 
-    @Column(nullable = false)
+    @Column(name = "titulo")
     private String titulo;
 
-    @Column(length = 2000)
+    @Column(name = "descripcioncatalogo", length = 500)
     private String descripcion;
 
-    @Column(name = "imagen_url")
-    private String imagenUrl;
-
-    @ElementCollection
-    @CollectionTable(
-            name = "item_imagenes",
-            joinColumns = @JoinColumn(name = "item_id")
-    )
-    @Column(name = "imagen_url")
-    private List<String> imagenesUrl;
+    @Column(name = "disponible")
+    private String disponible = "si";
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "categoria")
     private Categoria categoria;
 
-    @Enumerated(EnumType.STRING)
-    private EstadoItem estado = EstadoItem.PROPUESTO;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "duenio")
+    private Duenio duenio;
 
-    @ManyToOne
-    @JoinColumn(name = "usuario_id")
-    private Usuario usuario;
-
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "poliza_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seguro", referencedColumnName = "nropoliza")
     private Poliza poliza;
 
     @OneToOne
     @JoinColumn(name = "solicitud_publicacion_id", unique = true)
     private SolicitudPublicacion solicitudPublicacion;
+
+    @OneToMany(
+            mappedBy = "producto",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<Foto> fotos = new ArrayList<>();
+
+    @Transient
+    private Usuario usuario;
 
     public Item() {
     }
@@ -57,11 +60,17 @@ public class Item {
                 Usuario usuario) {
         this.titulo = titulo;
         this.descripcion = descripcion;
-        this.imagenUrl = imagenUrl;
-        this.imagenesUrl = imagenesUrl;
         this.categoria = categoria;
         this.usuario = usuario;
-        this.estado = EstadoItem.PROPUESTO;
+        this.disponible = "si";
+
+        if (imagenUrl != null && !imagenUrl.isBlank()) {
+            agregarFoto(imagenUrl);
+        }
+
+        if (imagenesUrl != null) {
+            imagenesUrl.forEach(this::agregarFoto);
+        }
     }
 
     public Long getIdItem() {
@@ -69,7 +78,11 @@ public class Item {
     }
 
     public String getTitulo() {
-        return titulo;
+        if (titulo != null && !titulo.isBlank()) {
+            return titulo;
+        }
+
+        return descripcion;
     }
 
     public String getDescripcion() {
@@ -77,11 +90,13 @@ public class Item {
     }
 
     public String getImagenUrl() {
-        return imagenUrl;
+        return getPrimeraImagen();
     }
 
     public List<String> getImagenesUrl() {
-        return imagenesUrl;
+        return fotos.stream()
+                .map(Foto::getFoto)
+                .toList();
     }
 
     public Categoria getCategoria() {
@@ -89,37 +104,72 @@ public class Item {
     }
 
     public EstadoItem getEstado() {
-        return estado;
+        if ("no".equalsIgnoreCase(disponible)) {
+            return EstadoItem.VENDIDO;
+        }
+
+        return EstadoItem.PROPUESTO;
     }
 
     public Usuario getUsuario() {
         return usuario;
     }
 
+    public Duenio getDuenio() {
+        return duenio;
+    }
+
     public Poliza getPoliza() {
         return poliza;
     }
 
+    public SolicitudPublicacion getSolicitudPublicacion() {
+        return solicitudPublicacion;
+    }
+
+    public List<Foto> getFotos() {
+        return fotos;
+    }
+
     public String getPrimeraImagen() {
-        if (imagenesUrl != null) {
-            return imagenesUrl.stream()
-                    .filter(imagen -> imagen != null && !imagen.isBlank())
-                    .findFirst()
-                    .orElse(imagenUrl);
+        if (fotos == null || fotos.isEmpty()) {
+            return null;
         }
 
-        return imagenUrl;
+        return fotos.get(0).getFoto();
     }
 
     public void setEstado(EstadoItem estado) {
-        this.estado = estado;
+        if (estado == EstadoItem.VENDIDO) {
+            this.disponible = "no";
+        } else {
+            this.disponible = "si";
+        }
     }
 
     public void setPoliza(Poliza poliza) {
         this.poliza = poliza;
     }
 
+    public void setDuenio(Duenio duenio) {
+        this.duenio = duenio;
+    }
+
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+    }
+
+    public void agregarFoto(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+
+        Foto foto = new Foto(url);
+        foto.setProducto(this);
+        this.fotos.add(foto);
+    }
+
     public void marcarComoVendido() {
-        this.estado = EstadoItem.VENDIDO;
+        this.disponible = "no";
     }
 }
