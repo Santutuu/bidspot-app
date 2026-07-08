@@ -1,5 +1,6 @@
 package com.subastas.subastas_api.service;
 
+import com.subastas.subastas_api.DTO.poliza.AumentarPolizaRequestDTO;
 import com.subastas.subastas_api.DTO.poliza.PolizaSolicitudResponseDTO;
 import com.subastas.subastas_api.model.Item;
 import com.subastas.subastas_api.model.Poliza;
@@ -11,6 +12,7 @@ import com.subastas.subastas_api.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -31,49 +33,41 @@ public class PolizaSolicitudService {
     public PolizaSolicitudResponseDTO obtenerPoliza(Long idSolicitud,
                                                     Authentication authentication) {
         Usuario usuario = obtenerUsuario(authentication);
+        SolicitudPublicacion solicitud = obtenerSolicitudDelUsuario(idSolicitud, usuario);
+        Item item = obtenerItemDeSolicitud(idSolicitud);
+        Poliza poliza = obtenerPolizaDeItem(item);
 
-        SolicitudPublicacion solicitud = solicitudRepository.findById(idSolicitud)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Solicitud no encontrada"
-                ));
+        return toDTO(solicitud, item, poliza);
+    }
 
-        if (solicitud.getUsuario() == null ||
-                !solicitud.getUsuario().getIdUsuario().equals(usuario.getIdUsuario())) {
+    @Transactional
+    public PolizaSolicitudResponseDTO aumentarPoliza(Long idSolicitud,
+                                                     AumentarPolizaRequestDTO request,
+                                                     Authentication authentication) {
+        Usuario usuario = obtenerUsuario(authentication);
+        SolicitudPublicacion solicitud = obtenerSolicitudDelUsuario(idSolicitud, usuario);
+        Item item = obtenerItemDeSolicitud(idSolicitud);
+        Poliza poliza = obtenerPolizaDeItem(item);
+
+        if (request == null || request.getNuevoMontoAsegurado() == null) {
             throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "La solicitud no pertenece al usuario autenticado"
+                    HttpStatus.BAD_REQUEST,
+                    "El nuevo monto asegurado es obligatorio"
             );
         }
 
-        Item item = itemRepository.findByIdSolicitudPublicacion(idSolicitud)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Todavía no existe un item asociado a esta solicitud"
-                ));
+        Float nuevoMonto = request.getNuevoMontoAsegurado();
 
-        Poliza poliza = item.getPoliza();
-
-        if (poliza == null) {
+        if (nuevoMonto <= poliza.getMontoAsegurado()) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Todavía no existe una póliza asociada al item"
+                    HttpStatus.BAD_REQUEST,
+                    "El nuevo monto asegurado debe ser mayor al monto asegurado actual"
             );
         }
 
-        return new PolizaSolicitudResponseDTO(
-                solicitud.getIdSolicitud(),
-                item.getIdItem(),
-                item.getTitulo(),
-                poliza.getIdPoliza(),
-                poliza.getNroPoliza(),
-                poliza.getMontoAsegurado(),
-                poliza.getPremio(),
-                poliza.getPrecioBase(),
-                poliza.getTasaSeguro(),
-                poliza.getCompania(),
-                poliza.getEstado()
-        );
+        poliza.solicitarAumento(nuevoMonto);
+
+        return toDTO(solicitud, item, poliza);
     }
 
     private Usuario obtenerUsuario(Authentication authentication) {
@@ -89,5 +83,60 @@ public class PolizaSolicitudService {
                         HttpStatus.UNAUTHORIZED,
                         "Usuario no autenticado"
                 ));
+    }
+
+    private SolicitudPublicacion obtenerSolicitudDelUsuario(Long idSolicitud, Usuario usuario) {
+        SolicitudPublicacion solicitud = solicitudRepository.findById(idSolicitud)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Solicitud no encontrada"
+                ));
+
+        if (solicitud.getUsuario() == null ||
+                !solicitud.getUsuario().getIdUsuario().equals(usuario.getIdUsuario())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "La solicitud no pertenece al usuario autenticado"
+            );
+        }
+
+        return solicitud;
+    }
+
+    private Item obtenerItemDeSolicitud(Long idSolicitud) {
+        return itemRepository.findByIdSolicitudPublicacion(idSolicitud)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Todavía no existe un item asociado a esta solicitud"
+                ));
+    }
+
+    private Poliza obtenerPolizaDeItem(Item item) {
+        if (item.getPoliza() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Todavía no existe una póliza asociada al item"
+            );
+        }
+
+        return item.getPoliza();
+    }
+
+    private PolizaSolicitudResponseDTO toDTO(SolicitudPublicacion solicitud,
+                                             Item item,
+                                             Poliza poliza) {
+        return new PolizaSolicitudResponseDTO(
+                solicitud.getIdSolicitud(),
+                item.getIdItem(),
+                item.getTitulo(),
+                poliza.getIdPoliza(),
+                poliza.getNroPoliza(),
+                poliza.getMontoAsegurado(),
+                poliza.getPremio(),
+                poliza.getPrecioBase(),
+                poliza.getTasaSeguro(),
+                poliza.getCompania(),
+                poliza.getEstado()
+        );
     }
 }
