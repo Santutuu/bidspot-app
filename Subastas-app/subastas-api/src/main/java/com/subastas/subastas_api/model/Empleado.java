@@ -8,7 +8,7 @@ public class Empleado {
 
     @Id
     @Column(name = "identificador")
-    private Long identificador;
+    private Integer identificador;
 
     @Column(name = "cargo")
     private String cargo;
@@ -19,7 +19,7 @@ public class Empleado {
     public Empleado() {
     }
 
-    public Long getIdentificador() {
+    public Integer getIdentificador() {
         return identificador;
     }
 

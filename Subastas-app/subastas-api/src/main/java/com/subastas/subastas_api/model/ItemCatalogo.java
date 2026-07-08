@@ -12,7 +12,7 @@ public class ItemCatalogo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "identificador")
-    private Long idItemCatalogo;
+    private Integer idItemCatalogo;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "catalogo", nullable = false)
@@ -51,7 +51,7 @@ public class ItemCatalogo {
         this.subastado = "no";
     }
 
-    public Long getIdItemCatalogo() {
+    public Integer getIdItemCatalogo() {
         return idItemCatalogo;
     }
 

@@ -6,6 +6,7 @@ import com.subastas.subastas_api.DTO.puja.PujaRequestDTO;
 import com.subastas.subastas_api.DTO.puja.PujaResponseDTO;
 import com.subastas.subastas_api.events.PujaActualizadaEvent;
 import com.subastas.subastas_api.model.*;
+import com.subastas.subastas_api.repository.AsistenteRepository;
 import com.subastas.subastas_api.repository.ItemCatalogoRepository;
 import com.subastas.subastas_api.repository.ParticipacionSubastaRepository;
 import com.subastas.subastas_api.repository.PujaRepository;
@@ -26,19 +27,22 @@ public class PujaService {
     private final PujaRepository pujaRepository;
     private final ParticipacionSubastaRepository participacionRepository;
     private final TarjetaCreditoRepository tarjetaCreditoRepository;
+    private final AsistenteRepository asistenteRepository;
 
     public PujaService(SubastaRepository subastaRepository,
                        ItemCatalogoRepository itemCatalogoRepository,
                        PujaRepository pujaRepository,
                        ParticipacionSubastaRepository participacionRepository,
                        ApplicationEventPublisher eventPublisher,
-                       TarjetaCreditoRepository tarjetaCreditoRepository) {
+                       TarjetaCreditoRepository tarjetaCreditoRepository,
+                       AsistenteRepository asistenteRepository) {
         this.subastaRepository = subastaRepository;
         this.itemCatalogoRepository = itemCatalogoRepository;
         this.pujaRepository = pujaRepository;
         this.participacionRepository = participacionRepository;
         this.eventPublisher = eventPublisher;
         this.tarjetaCreditoRepository = tarjetaCreditoRepository;
+        this.asistenteRepository = asistenteRepository;
     }
 
     public EstadoPujaSubastaResponseDTO obtenerEstadoPuja(Long idSubasta, Usuario usuario) {
@@ -46,7 +50,14 @@ public class PujaService {
         ItemCatalogo itemActual = obtenerItemActual(subasta);
 
         Float precioBase = itemActual.getPrecioBase();
-        Float mejorOferta = itemActual.obtenerMejorOferta();
+
+        Puja pujaActual = pujaRepository
+                .findTopByItemCatalogoOrderByMontoDesc(itemActual)
+                .orElse(null);
+
+        Float mejorOferta = pujaActual != null
+                ? pujaActual.getMonto()
+                : itemActual.getPrecioBase();
 
         Float incrementoMinimo = itemActual.calcularIncrementoMinimo();
         Float incrementoMaximo = itemActual.calcularIncrementoMaximo();
@@ -63,18 +74,20 @@ public class PujaService {
         Float miMejorOferta = null;
         boolean soyMejorPostor = false;
 
-        if (usuario != null) {
+        if (usuario != null && usuario.getClienteLegacy() != null) {
             miMejorOferta = pujaRepository
                     .findTopByItemCatalogoAndUsuarioOrderByMontoDesc(itemActual, usuario)
                     .map(Puja::getMonto)
                     .orElse(null);
 
-            Puja pujaActual = itemActual.getPujaActual();
-
             soyMejorPostor =
                     pujaActual != null
-                            && pujaActual.getUsuario() != null
-                            && pujaActual.getUsuario().getIdUsuario().equals(usuario.getIdUsuario());
+                            && pujaActual.getAsistente() != null
+                            && pujaActual.getAsistente().getCliente() != null
+                            && pujaActual.getAsistente()
+                            .getCliente()
+                            .getIdentificador()
+                            .equals(usuario.getClienteLegacy().getIdentificador());
         }
 
         return new EstadoPujaSubastaResponseDTO(
@@ -99,15 +112,6 @@ public class PujaService {
 
         Subasta subasta = obtenerSubastaActiva(idSubasta);
 
-        /*
-         * LOCK PESIMISTA.
-         *
-         * PostgreSQL bloquea la fila del ItemCatalogo hasta que
-         * esta transacción termina (COMMIT o ROLLBACK).
-         *
-         * Si llega otra puja concurrente sobre el mismo lote,
-         * deberá esperar.
-         */
         ItemCatalogo itemActual = itemCatalogoRepository
                 .findItemActualBySubastaAndEstadoForUpdate(
                         subasta,
@@ -117,13 +121,6 @@ public class PujaService {
                         HttpStatus.CONFLICT,
                         "La subasta no tiene un lote en remate"
                 ));
-
-        /*
-         * IMPORTANTE:
-         *
-         * Las validaciones dependientes del estado actual del lote
-         * ocurren después de adquirir el lock.
-         */
 
         validarMonto(
                 subasta,
@@ -142,24 +139,19 @@ public class PujaService {
                 usuario
         );
 
-        /*
-         * La puja actualmente ganadora deja de serlo.
-         */
+        Asistente asistente = obtenerOCrearAsistente(subasta, usuario);
 
-        Puja pujaAnterior = itemActual.getPujaActual();
+        Puja pujaAnterior = pujaRepository
+                .findTopByItemCatalogoOrderByMontoDesc(itemActual)
+                .orElse(null);
 
         if (pujaAnterior != null) {
             pujaAnterior.marcarSuperada();
             pujaRepository.save(pujaAnterior);
         }
 
-        /*
-         * Creamos la nueva puja.
-         */
-
         Puja nuevaPuja = new Puja(
-                usuario,
-                subasta,
+                asistente,
                 itemActual,
                 request.getMonto()
         );
@@ -167,34 +159,14 @@ public class PujaService {
         Puja pujaGuardada =
                 pujaRepository.save(nuevaPuja);
 
-        /*
-         * Actualizamos la referencia a la mejor puja del lote.
-         */
-
         itemActual.recibirPuja(pujaGuardada);
 
         itemCatalogoRepository.save(itemActual);
-
-        /*
-         * La participación se crea automáticamente
-         * con la primera puja del usuario.
-         */
 
         registrarParticipacionSiNoExiste(
                 subasta,
                 usuario
         );
-
-        /*
-         * Publicamos el evento dentro de la transacción.
-         *
-         * PujaWebSocketListener utiliza:
-         *
-         * @TransactionalEventListener(AFTER_COMMIT)
-         *
-         * Por lo tanto, el WebSocket solamente será enviado
-         * si PostgreSQL confirma correctamente la transacción.
-         */
 
         PujaActualizadaEventDTO eventoDTO =
                 new PujaActualizadaEventDTO(
@@ -219,7 +191,6 @@ public class PujaService {
     }
 
     private Subasta obtenerSubastaActiva(Long idSubasta) {
-
         Subasta subasta = subastaRepository
                 .findById(idSubasta)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -238,7 +209,6 @@ public class PujaService {
     }
 
     private ItemCatalogo obtenerItemActual(Subasta subasta) {
-
         return itemCatalogoRepository
                 .findItemActualBySubastaAndEstado(
                         subasta,
@@ -248,6 +218,31 @@ public class PujaService {
                         HttpStatus.CONFLICT,
                         "La subasta no tiene un lote en remate"
                 ));
+    }
+
+    private Asistente obtenerOCrearAsistente(Subasta subasta, Usuario usuario) {
+        if (usuario.getClienteLegacy() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El usuario no está vinculado a un cliente legacy"
+            );
+        }
+
+        return asistenteRepository
+                .findByClienteAndSubasta(usuario.getClienteLegacy(), subasta)
+                .orElseGet(() -> {
+                    Integer numeroPostor = Math.toIntExact(
+                            usuario.getClienteLegacy().getIdentificador()
+                    );
+
+                    Asistente asistente = new Asistente(
+                            numeroPostor,
+                            usuario.getClienteLegacy(),
+                            subasta
+                    );
+
+                    return asistenteRepository.save(asistente);
+                });
     }
 
     private void validarPuedeParticipar(Subasta subasta,
@@ -283,7 +278,7 @@ public class PujaService {
 
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Debe tener una cuenta de cobro y una tarjeta de crÃ©dito cargadas para pujar"
+                    "Debe tener una cuenta de cobro y una tarjeta de crédito cargadas para pujar"
             );
         }
 
@@ -368,7 +363,6 @@ public class PujaService {
                         .isPresent();
 
         if (!yaParticipa) {
-
             ParticipacionSubasta participacion =
                     new ParticipacionSubasta(
                             usuario,
@@ -392,19 +386,22 @@ public class PujaService {
             );
         }
 
-        Float mejorOferta =
-                itemActual.obtenerMejorOferta();
+        Puja pujaActual = pujaRepository
+                .findTopByItemCatalogoOrderByMontoDesc(itemActual)
+                .orElse(null);
+
+        Float mejorOferta = pujaActual != null
+                ? pujaActual.getMonto()
+                : itemActual.getPrecioBase();
 
         Float ofertaMinima =
                 mejorOferta
                         + itemActual.calcularIncrementoMinimo();
 
         if (request.getMonto() < ofertaMinima) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "La oferta debe ser al menos "
-                            + ofertaMinima
+                    "La oferta debe ser al menos " + ofertaMinima
             );
         }
 
@@ -413,17 +410,14 @@ public class PujaService {
                         || subasta.getCategoriaMin() == CategoriaUsuario.PLATINO;
 
         if (!sinLimiteMaximo) {
-
             Float ofertaMaxima =
                     mejorOferta
                             + itemActual.calcularIncrementoMaximo();
 
             if (request.getMonto() > ofertaMaxima) {
-
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "La oferta no puede superar "
-                                + ofertaMaxima
+                        "La oferta no puede superar " + ofertaMaxima
                 );
             }
         }

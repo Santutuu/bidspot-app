@@ -2,62 +2,67 @@ package com.subastas.subastas_api.model;
 
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "pujos")
 public class Puja {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idPuja;
+    @Column(name = "identificador")
+    private Integer idPuja;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "usuario_id")
-    private Usuario usuario;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "asistente", nullable = false)
+    private Asistente asistente;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "subasta_id")
-    private Subasta subasta;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "item_catalogo_id")
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "item", nullable = false)
     private ItemCatalogo itemCatalogo;
 
-    @Column(nullable = false)
-    private Float monto;
+    @Column(name = "importe", nullable = false)
+    private BigDecimal monto;
 
-    @Column(nullable = false)
+    @Column(name = "fecha_hora")
     private LocalDateTime fechaHora;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "estado_puja")
     private EstadoPuja estado = EstadoPuja.REGISTRADA;
+
+    @Column(name = "ganador")
+    private String ganador = "no";
 
     public Puja() {
     }
 
-    public Puja(Usuario usuario,
-                Subasta subasta,
+    public Puja(Asistente asistente,
                 ItemCatalogo itemCatalogo,
                 Float monto) {
-        this.usuario = usuario;
-        this.subasta = subasta;
+        this.asistente = asistente;
         this.itemCatalogo = itemCatalogo;
-        this.monto = monto;
+        this.monto = BigDecimal.valueOf(monto);
         this.fechaHora = LocalDateTime.now();
         this.estado = EstadoPuja.REGISTRADA;
+        this.ganador = "no";
     }
 
-    public Long getIdPuja() {
+    public Integer getIdPuja() {
         return idPuja;
     }
 
     public Usuario getUsuario() {
-        return usuario;
+        return null;
     }
 
     public Subasta getSubasta() {
-        return subasta;
+        return asistente == null ? null : asistente.getSubasta();
+    }
+
+    public Asistente getAsistente() {
+        return asistente;
     }
 
     public ItemCatalogo getItemCatalogo() {
@@ -65,6 +70,10 @@ public class Puja {
     }
 
     public Float getMonto() {
+        return monto == null ? null : monto.floatValue();
+    }
+
+    public BigDecimal getMontoDecimal() {
         return monto;
     }
 
@@ -72,27 +81,39 @@ public class Puja {
         return fechaHora;
     }
 
-    public void setItemCatalogo(ItemCatalogo itemCatalogo) {
-        this.itemCatalogo = itemCatalogo;
-    }
-
     public EstadoPuja getEstado() {
         return estado;
     }
 
+    public String getGanador() {
+        return ganador;
+    }
+
+    public void setItemCatalogo(ItemCatalogo itemCatalogo) {
+        this.itemCatalogo = itemCatalogo;
+    }
+
+    public void setAsistente(Asistente asistente) {
+        this.asistente = asistente;
+    }
+
     public void marcarSuperada() {
         this.estado = EstadoPuja.SUPERADA;
+        this.ganador = "no";
     }
 
     public void marcarRegistrada() {
         this.estado = EstadoPuja.REGISTRADA;
+        this.ganador = "no";
     }
 
     public void marcarGanadora() {
         this.estado = EstadoPuja.GANADORA;
+        this.ganador = "si";
     }
 
     public void marcarRechazada() {
         this.estado = EstadoPuja.RECHAZADA;
+        this.ganador = "no";
     }
 }

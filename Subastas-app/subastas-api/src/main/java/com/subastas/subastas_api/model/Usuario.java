@@ -16,6 +16,14 @@ public class Usuario {
     @JoinColumn(name = "persona_id", nullable = false, unique = true)
     private Persona persona;
 
+    /*
+     * Puente entre el modelo moderno de autenticación
+     * y el Cliente del modelo legacy.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cliente_legacy_id")
+    private Cliente clienteLegacy;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Rol rol = Rol.USER;
@@ -42,11 +50,12 @@ public class Usuario {
     @JoinColumn(name = "cuenta_id")
     private CuentaBanco cuenta;
 
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(
+            mappedBy = "usuario",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<MedioDePago> mediosDePago = new ArrayList<>();
-
-    @OneToMany(mappedBy = "usuario")
-    private List<Puja> pujas = new ArrayList<>();
 
     public Usuario() {
     }
@@ -97,6 +106,10 @@ public class Usuario {
         return persona;
     }
 
+    public Cliente getClienteLegacy() {
+        return clienteLegacy;
+    }
+
     public String getPassword() {
         return password;
     }
@@ -121,12 +134,12 @@ public class Usuario {
         return mediosDePago;
     }
 
-    public List<Puja> getPujas() {
-        return pujas;
-    }
-
     public List<Subasta> getGuardadas() {
         return guardadas;
+    }
+
+    public void setClienteLegacy(Cliente clienteLegacy) {
+        this.clienteLegacy = clienteLegacy;
     }
 
     public void setEstado(EstadoUsuario estado) {

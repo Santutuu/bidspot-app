@@ -5,16 +5,40 @@ import com.subastas.subastas_api.model.Puja;
 import com.subastas.subastas_api.model.Subasta;
 import com.subastas.subastas_api.model.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface PujaRepository extends JpaRepository<Puja, Long> {
+public interface PujaRepository extends JpaRepository<Puja, Integer> {
 
+    @Query("""
+            SELECT p
+            FROM Puja p
+            WHERE p.asistente.subasta = :subasta
+            ORDER BY p.fechaHora ASC
+            """)
     List<Puja> findBySubastaOrderByFechaHoraAsc(Subasta subasta);
 
+    @Query("""
+            SELECT p
+            FROM Puja p
+            WHERE p.itemCatalogo = :itemCatalogo
+              AND p.asistente.cliente = :#{#usuario.clienteLegacy}
+            ORDER BY p.monto DESC
+            LIMIT 1
+            """)
     Optional<Puja> findTopByItemCatalogoAndUsuarioOrderByMontoDesc(
             ItemCatalogo itemCatalogo,
             Usuario usuario
     );
+
+    @Query("""
+            SELECT p
+            FROM Puja p
+            WHERE p.itemCatalogo = :itemCatalogo
+            ORDER BY p.monto DESC
+            LIMIT 1
+            """)
+    Optional<Puja> findTopByItemCatalogoOrderByMontoDesc(ItemCatalogo itemCatalogo);
 }

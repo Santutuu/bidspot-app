@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 public class PujaResponseDTO {
 
-    private Long idPuja;
+    private Integer idPuja;
     private Long idSubasta;
     private Long idItemCatalogo;
     private Float monto;
@@ -13,7 +13,7 @@ public class PujaResponseDTO {
     private LocalDateTime fechaHora;
     private boolean mejorOferta;
 
-    public PujaResponseDTO(Long idPuja,
+    public PujaResponseDTO(Integer idPuja,
                            Long idSubasta,
                            Long idItemCatalogo,
                            Float monto,
@@ -31,7 +31,7 @@ public class PujaResponseDTO {
         this.mejorOferta = mejorOferta;
     }
 
-    public Long getIdPuja() {
+    public Integer getIdPuja() {
         return idPuja;
     }
 
