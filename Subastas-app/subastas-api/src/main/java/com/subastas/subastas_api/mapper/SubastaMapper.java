@@ -11,6 +11,7 @@ import com.subastas.subastas_api.model.Item;
 import com.subastas.subastas_api.model.ItemCatalogo;
 import com.subastas.subastas_api.model.Subasta;
 import com.subastas.subastas_api.model.Usuario;
+import com.subastas.subastas_api.repository.PujaRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -19,6 +20,12 @@ import java.util.List;
 
 @Component
 public class SubastaMapper {
+
+    private final PujaRepository pujaRepository;
+
+    public SubastaMapper(PujaRepository pujaRepository) {
+        this.pujaRepository = pujaRepository;
+    }
 
     public SubastaHomeDTO toHomeDTO(Subasta subasta) {
         ItemCatalogo itemVisible = obtenerItemVisibleParaCard(subasta);
@@ -231,6 +238,7 @@ public class SubastaMapper {
                 .findFirst()
                 .orElse(null);
     }
+
     /**
      * Devuelve el primer lote del catálogo ordenado por ID.
      *
@@ -249,13 +257,11 @@ public class SubastaMapper {
         return subasta.getCatalogo()
                 .getItems()
                 .stream()
-
                 .sorted(
                         Comparator.comparing(
                                 ItemCatalogo::getIdItemCatalogo
                         )
                 )
-
                 .findFirst()
                 .orElse(null);
     }
@@ -275,15 +281,12 @@ public class SubastaMapper {
         return subasta.getCatalogo()
                 .getItems()
                 .stream()
-
                 .sorted(
                         Comparator.comparing(
                                 ItemCatalogo::getIdItemCatalogo
                         )
                 )
-
                 .map(this::toItemPreviewDTO)
-
                 .toList();
     }
 
@@ -303,31 +306,27 @@ public class SubastaMapper {
         return subasta.getCatalogo()
                 .getItems()
                 .stream()
-
                 .filter(item ->
                         item.getEstado()
                                 == EstadoItemCatalogo.PENDIENTE
                 )
-
                 .sorted(
                         Comparator.comparing(
                                 ItemCatalogo::getIdItemCatalogo
                         )
                 )
-
                 .map(this::toItemPreviewDTO)
-
                 .toList();
     }
 
     /**
      * Precio mostrado:
      *
-     * Si existe puja actual:
-     * monto de la puja.
+     * Si existe una puja persistida para el lote:
+     * muestra la puja de mayor importe.
      *
-     * Si no:
-     * precio base.
+     * Si no existen pujas:
+     * muestra el precio base.
      */
     private Float obtenerPrecioMostrado(
             ItemCatalogo itemCatalogo
@@ -336,13 +335,10 @@ public class SubastaMapper {
             return null;
         }
 
-        if (itemCatalogo.getPujaActual() != null) {
-            return itemCatalogo
-                    .getPujaActual()
-                    .getMonto();
-        }
-
-        return itemCatalogo.getPrecioBase();
+        return pujaRepository
+                .findTopByItemCatalogoOrderByMontoDesc(itemCatalogo)
+                .map(puja -> puja.getMonto())
+                .orElse(itemCatalogo.getPrecioBase());
     }
 
     private String obtenerImagenPrincipal(
@@ -463,7 +459,6 @@ public class SubastaMapper {
         return usuarioActual
                 .getGuardadas()
                 .stream()
-
                 .anyMatch(guardada ->
                         guardada
                                 .getIdSubasta()

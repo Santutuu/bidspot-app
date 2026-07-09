@@ -21,6 +21,19 @@ public class Subasta {
     private EstadoSubastaEntity estado;
 
     /*
+     * Campo legacy.
+     *
+     * Se mantiene sincronizado con estadosubasta:
+     *
+     * ACTIVA      -> abierta
+     * PROGRAMADA  -> programada
+     * FINALIZADA  -> cerrada
+     * CANCELADA   -> cancelada
+     */
+    @Column(name = "estado")
+    private String estadoLegacy;
+
+    /*
      * En la base legacy las categorías están guardadas en minúsculas:
      * comun, especial, plata, oro, platino.
      *
@@ -90,8 +103,24 @@ public class Subasta {
         return estado;
     }
 
+    /*
+     * Método principal para asignar una entidad de estado persistente.
+     *
+     * Este es el método que deberían utilizar los services que obtienen
+     * EstadoSubastaEntity desde EstadoSubastaRepository.
+     */
     public void setEstado(EstadoSubastaEntity estado) {
         this.estado = estado;
+
+        if (estado == null || estado.getNombre() == null) {
+            return;
+        }
+
+        this.estadoLegacy = convertirEstadoLegacy(estado.getNombre());
+    }
+
+    public String getEstadoLegacy() {
+        return estadoLegacy;
     }
 
     public CategoriaUsuario getCategoriaMin() {
@@ -149,17 +178,23 @@ public class Subasta {
     }
 
     /*
-     * Este método se conserva por compatibilidad con services actuales.
+     * Se conserva temporalmente por compatibilidad con services existentes.
      *
-     * IMPORTANTE:
+     * ATENCIÓN:
      * EstadoSubastaEntity es una entidad persistente.
-     * Crear una instancia nueva acá NO significa que ya exista en DB.
      *
-     * Más adelante adaptaremos las transiciones de estado para obtener
-     * EstadoSubastaEntity desde EstadoSubastaRepository.
+     * Crear una instancia nueva acá puede provocar TransientObjectException
+     * si posteriormente Hibernate intenta persistir la Subasta.
+     *
+     * Los services refactorizados deberían utilizar:
+     *
+     * EstadoSubastaRepository.findByNombre(...)
+     * subasta.setEstado(estadoEntity)
      */
     public void setEstadoSubasta(EstadoSubasta estadoSubasta) {
+
         this.estado = new EstadoSubastaEntity(estadoSubasta);
+        this.estadoLegacy = convertirEstadoLegacy(estadoSubasta);
     }
 
     public void iniciarSubasta() {
@@ -172,5 +207,19 @@ public class Subasta {
 
     public void cancelarSubasta() {
         setEstadoSubasta(EstadoSubasta.CANCELADA);
+    }
+
+    private String convertirEstadoLegacy(EstadoSubasta estadoSubasta) {
+
+        if (estadoSubasta == null) {
+            return null;
+        }
+
+        return switch (estadoSubasta) {
+            case ACTIVA -> "abierta";
+            case PROGRAMADA -> "programada";
+            case FINALIZADA -> "carrada";
+            case CANCELADA -> "cancelada";
+        };
     }
 }

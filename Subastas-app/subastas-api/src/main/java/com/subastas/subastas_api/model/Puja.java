@@ -12,7 +12,7 @@ public class Puja {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "identificador")
-    private Integer idPuja;
+    private Long idPuja;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "asistente", nullable = false)
@@ -49,7 +49,7 @@ public class Puja {
         this.ganador = "no";
     }
 
-    public Integer getIdPuja() {
+    public Long getIdPuja() {
         return idPuja;
     }
 

@@ -9,7 +9,7 @@ public class Asistente {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "identificador")
-    private Integer identificador;
+    private Long identificador;
 
     @Column(name = "numeropostor", nullable = false)
     private Integer numeroPostor;
@@ -31,7 +31,7 @@ public class Asistente {
         this.subasta = subasta;
     }
 
-    public Integer getIdentificador() {
+    public Long getIdentificador() {
         return identificador;
     }
 

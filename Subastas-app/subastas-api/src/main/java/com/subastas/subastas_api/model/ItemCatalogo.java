@@ -12,7 +12,7 @@ public class ItemCatalogo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "identificador")
-    private Integer idItemCatalogo;
+    private Long idItemCatalogo;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "catalogo", nullable = false)
@@ -24,6 +24,9 @@ public class ItemCatalogo {
 
     @Column(name = "preciobase", nullable = false)
     private float precioBase;
+
+    @Column(name = "estado_app")
+    private String estadoApp;
 
     @Column(name = "comision", nullable = false)
     private float comision;
@@ -51,7 +54,7 @@ public class ItemCatalogo {
         this.subastado = "no";
     }
 
-    public Integer getIdItemCatalogo() {
+    public Long getIdItemCatalogo() {
         return idItemCatalogo;
     }
 
@@ -97,13 +100,43 @@ public class ItemCatalogo {
 
     public void setEstadoEntity(EstadoItemCatalogoEntity estado) {
         this.estado = estado;
-    }
 
+        if (estado == null || estado.getNombre() == null) {
+            return;
+        }
+
+        EstadoItemCatalogo nombre = estado.getNombre();
+
+        this.estadoApp = nombre.name();
+
+        if (nombre == EstadoItemCatalogo.VENDIDO) {
+            this.subastado = "si";
+
+            if (this.item != null) {
+                this.item.marcarComoVendido();
+            }
+            return;
+        }
+
+        if (nombre == EstadoItemCatalogo.EN_REMATE) {
+            this.subastado = "no";
+
+            if (this.item != null) {
+                this.item.setEstado(EstadoItem.EN_SUBASTA);
+            }
+            return;
+        }
+
+        this.subastado = "no";
+    }
     public void setEstado(EstadoItemCatalogo estado) {
         this.estado = new EstadoItemCatalogoEntity(estado);
+        this.estadoApp = estado.name();
 
         if (estado == EstadoItemCatalogo.VENDIDO) {
             this.subastado = "si";
+        } else {
+            this.subastado = "no";
         }
     }
 

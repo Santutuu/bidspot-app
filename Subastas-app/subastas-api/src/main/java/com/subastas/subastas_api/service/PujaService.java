@@ -159,9 +159,9 @@ public class PujaService {
         Puja pujaGuardada =
                 pujaRepository.save(nuevaPuja);
 
-        itemActual.recibirPuja(pujaGuardada);
 
-        itemCatalogoRepository.save(itemActual);
+
+
 
         registrarParticipacionSiNoExiste(
                 subasta,

@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface AsistenteRepository extends JpaRepository<Asistente, Integer> {
+public interface AsistenteRepository extends JpaRepository<Asistente, Long> {
 
     Optional<Asistente> findByClienteAndSubasta(Cliente cliente, Subasta subasta);
 }

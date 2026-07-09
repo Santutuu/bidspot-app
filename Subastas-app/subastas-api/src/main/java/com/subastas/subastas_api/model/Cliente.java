@@ -9,7 +9,7 @@ public class Cliente {
 
     @Id
     @Column(name = "identificador")
-    private Integer identificador;
+    private Long identificador;
 
     @Column(name = "numeropais")
     private Integer numeroPais;
@@ -28,7 +28,7 @@ public class Cliente {
     public Cliente() {
     }
 
-    public Integer getIdentificador() {
+    public Long getIdentificador() {
         return identificador;
     }
 
