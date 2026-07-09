@@ -7,13 +7,28 @@ import { Alert } from "react-native";
 const AUCTION_CONFLICT_MESSAGE =
   "No podes participar en mas de una subasta al mismo tiempo.";
 
+function sanitizeErrorMessage(message: string) {
+  return message
+    .replace(/^\s*(error\s*)?\d{3}\s*[-:]?\s*/i, "")
+    .replace(/^request failed with status code\s+\d{3}\s*[-:]?\s*/i, "")
+    .replace(/^axioserror\s*:\s*/i, "")
+    .trim();
+}
+
 function getBackendMessage(error: AxiosError) {
   const data = error.response?.data as
     | { message?: string; error?: string }
     | string
     | undefined;
+  const rawMessage =
+    typeof data === "string" ? data : (data?.message ?? data?.error);
 
-  return typeof data === "string" ? data : (data?.message ?? data?.error);
+  if (!rawMessage) {
+    return undefined;
+  }
+
+  const sanitized = sanitizeErrorMessage(rawMessage);
+  return sanitized.length > 0 ? sanitized : undefined;
 }
 
 function isSimultaneousAuctionError(error: unknown) {
@@ -68,7 +83,7 @@ export function useRealizarPuja(idSubasta?: string) {
           return null;
         }
 
-        setErrorPuja(getErrorMessage(error));
+        Alert.alert("No se pudo registrar la puja", getErrorMessage(error));
         return null;
       } finally {
         submittingRef.current = false;

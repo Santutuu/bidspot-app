@@ -9,10 +9,8 @@ import {
   addDismissedNotificationId,
   getDismissedNotificationIds,
   getStoredNotifications,
-  getWatchedBids,
   saveNotifications,
   saveWatchedBids,
-  upsertWatchedBid,
   WatchedBid,
 } from "@/src/storage/notificationsStorage";
 import { AppNotification } from "@/src/types/notifications";
@@ -25,6 +23,7 @@ import {
     useContext,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
 
@@ -119,17 +118,92 @@ async function createRejectedNotification(
   };
 }
 
+function getWatchedBidRemovalReason(error: unknown) {
+  const status = (error as any)?.response?.status;
+  const backendMessage = String(
+    (error as any)?.response?.data?.message ??
+      (error as any)?.response?.data?.error ??
+      "",
+  ).toLowerCase();
+
+  if (status === 404) {
+    return "HTTP 404";
+  }
+
+  if (status !== 409) {
+    return null;
+  }
+
+  if (backendMessage.includes("finalizada") || backendMessage.includes("cerrada")) {
+    return "auction finalized (HTTP 409)";
+  }
+
+  if (backendMessage.includes("no activa") || backendMessage.includes("inactive")) {
+    return "auction inactive (HTTP 409)";
+  }
+
+  if (
+    backendMessage.includes("en remate") ||
+    backendMessage.includes("en_remate") ||
+    backendMessage.includes("no tiene un lote") ||
+    backendMessage.includes("sin lote")
+  ) {
+    return "no lot in remate (HTTP 409)";
+  }
+
+  return null;
+}
+
+function logWatchedBidRemoval(idSubasta: number, reason: string) {
+  console.log(
+    `[WatchedBid] Removing auction ${idSubasta} from monitoring: ${reason}`,
+  );
+}
+
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
   const { subscribeToAuctionBids, onReconnect } = useRealtime();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [watchedBids, setWatchedBids] = useState<WatchedBid[]>([]);
+  const watchedBidsRef = useRef<WatchedBid[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  const replaceWatchedBids = useCallback((nextWatchedBids: WatchedBid[]) => {
+    watchedBidsRef.current = nextWatchedBids;
+    setWatchedBids(nextWatchedBids);
+  }, []);
+
+  const removeWatchedBid = useCallback(
+    async (idSubasta: number, reason: string) => {
+      if (!user?.idUsuario) {
+        return;
+      }
+
+      const currentWatchedBids = watchedBidsRef.current;
+      if (!currentWatchedBids.some((item) => item.subastaId === idSubasta)) {
+        return;
+      }
+
+      const nextWatchedBids = currentWatchedBids.filter(
+        (item) => item.subastaId !== idSubasta,
+      );
+
+      logWatchedBidRemoval(idSubasta, reason);
+      watchedBidsRef.current = nextWatchedBids;
+      setWatchedBids((prev) =>
+        prev.filter((item) => item.subastaId !== idSubasta),
+      );
+      await saveWatchedBids(user.idUsuario, nextWatchedBids);
+    },
+    [user?.idUsuario],
+  );
 
   useEffect(() => {
     setIsPanelOpen(false);
     setNotifications([]);
+    watchedBidsRef.current = [];
+    setWatchedBids([]);
 
     async function loadStored() {
       if (!isAuthenticated || !user?.idUsuario) {
@@ -139,11 +213,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const stored = await getStoredNotifications(user.idUsuario);
       const storedWatchedBids = await getWatchedBids(user.idUsuario);
       setNotifications(stored);
-      setWatchedBids(storedWatchedBids);
+      replaceWatchedBids(storedWatchedBids);
     }
 
     void loadStored();
-  }, [isAuthenticated, user?.idUsuario]);
+  }, [isAuthenticated, replaceWatchedBids, user?.idUsuario]);
 
   const syncNotifications = useCallback(async () => {
     if (!isAuthenticated || !user?.idUsuario) {
@@ -224,14 +298,23 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      await upsertWatchedBid(user.idUsuario, {
+      const nextWatchedBid = {
         ...bid,
         createdAt: new Date().toISOString(),
-      });
+      };
+      const nextWatchedBids = [
+        nextWatchedBid,
+        ...watchedBidsRef.current.filter(
+          (item) => item.subastaId !== bid.subastaId,
+        ),
+      ];
+
+      watchedBidsRef.current = nextWatchedBids;
       setWatchedBids((current) => [
-        { ...bid, createdAt: new Date().toISOString() },
+        nextWatchedBid,
         ...current.filter((item) => item.subastaId !== bid.subastaId),
       ]);
+      await saveWatchedBids(user.idUsuario, nextWatchedBids);
     },
     [user?.idUsuario],
   );
@@ -240,8 +323,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     async (event: BidUpdateEvent) => {
       if (!isAuthenticated || !user?.idUsuario) return;
 
-      const storedWatchedBids = await getWatchedBids(user.idUsuario);
-      const watchedBid = storedWatchedBids.find(
+      const currentWatchedBids = watchedBidsRef.current;
+      const watchedBid = currentWatchedBids.find(
         (item) => item.subastaId === event.idSubasta,
       );
 
@@ -257,16 +340,23 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
 
         if (estadoPuja.soyMejorPostor) {
-          const nextWatchedBids = storedWatchedBids.map((item) =>
+          const nextWatchedBids = currentWatchedBids.map((item) =>
             item.subastaId === watchedBid.subastaId
               ? { ...item, amount: estadoPuja.miMejorOferta ?? item.amount }
               : item,
           );
-          setWatchedBids(nextWatchedBids);
+          replaceWatchedBids(nextWatchedBids);
           await saveWatchedBids(user.idUsuario, nextWatchedBids);
           return;
         }
-      } catch {
+      } catch (error) {
+        const removalReason = getWatchedBidRemovalReason(error);
+
+        if (removalReason) {
+          await removeWatchedBid(event.idSubasta, removalReason);
+          return;
+        }
+
         if (event.monto <= watchedBid.amount) {
           return;
         }
@@ -300,16 +390,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         right.createdAt.localeCompare(left.createdAt),
       );
 
-      const remainingBids = storedWatchedBids.filter(
+      const remainingBids = currentWatchedBids.filter(
         (item) => item.subastaId !== watchedBid.subastaId,
       );
 
       setNotifications(nextNotifications);
-      setWatchedBids(remainingBids);
+      replaceWatchedBids(remainingBids);
       await saveNotifications(user.idUsuario, nextNotifications);
       await saveWatchedBids(user.idUsuario, remainingBids);
     },
-    [isAuthenticated, user?.idUsuario],
+    [isAuthenticated, removeWatchedBid, replaceWatchedBids, user?.idUsuario],
   );
 
   const syncWatchedBidNotifications = useCallback(async () => {
@@ -318,9 +408,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const watchedBids = await getWatchedBids(user.idUsuario);
+      const watchedBidsSnapshot = watchedBidsRef.current;
 
-      if (watchedBids.length === 0) {
+      if (watchedBidsSnapshot.length === 0) {
         return;
       }
 
@@ -330,9 +420,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       );
       const nextNotifications = [...stored];
       const remainingBids: WatchedBid[] = [];
+      const snapshotIds = new Set(
+        watchedBidsSnapshot.map((watchedBid) => watchedBid.subastaId),
+      );
       let addedNotification = false;
 
-      for (const watchedBid of watchedBids) {
+      for (const watchedBid of watchedBidsSnapshot) {
         try {
           const estadoPuja = await getEstadoPuja(watchedBid.subastaId);
 
@@ -370,7 +463,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           } else {
             remainingBids.push(watchedBid);
           }
-        } catch {
+        } catch (error) {
+          const removalReason = getWatchedBidRemovalReason(error);
+
+          if (removalReason) {
+            logWatchedBidRemoval(watchedBid.subastaId, removalReason);
+            continue;
+          }
+
           remainingBids.push(watchedBid);
         }
       }
@@ -379,13 +479,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         right.createdAt.localeCompare(left.createdAt),
       );
 
+      let nextWatchedBids = remainingBids;
+
       setNotifications(nextNotifications);
-      setWatchedBids(remainingBids);
+      setWatchedBids((prev) => {
+        const preservedOutsideSnapshot = prev.filter(
+          (item) => !snapshotIds.has(item.subastaId),
+        );
+        nextWatchedBids = [...remainingBids, ...preservedOutsideSnapshot];
+        watchedBidsRef.current = nextWatchedBids;
+        return nextWatchedBids;
+      });
       if (addedNotification) {
         setIsPanelOpen(true);
       }
       await saveNotifications(user.idUsuario, nextNotifications);
-      await saveWatchedBids(user.idUsuario, remainingBids);
+      await saveWatchedBids(user.idUsuario, nextWatchedBids);
     } catch {
       return;
     }

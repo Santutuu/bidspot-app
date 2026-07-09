@@ -1,10 +1,10 @@
+import { getEstadoPuja } from "@/src/api/subastaAPI";
 import AuctionCard from "@/src/components/home/AuctionCard";
 import CategoryCircle from "@/src/components/home/CategoryCircle";
 import HomeCarousel from "@/src/components/home/homeCarrousel";
 import { useAuth } from "@/src/context/authContext";
 import { useRealtime } from "@/src/context/realtimeContext";
 import { SubastaHomeDTO } from "@/src/dto/SubastaHomeDTO";
-import { getEstadoPuja } from "@/src/api/subastaAPI";
 import { useSubastasRecomendadas } from "@/src/hooks/useSubastasRecomendadas";
 import { getCurrencyCode } from "@/src/utils/moneda";
 import { router, useFocusEffect, useNavigation } from "expo-router";
@@ -49,9 +49,7 @@ export default function HomeScreen() {
   const { subastas, loading, error, recargar, actualizarPrecioSubasta } =
     useSubastasRecomendadas();
   const [showSplash, setShowSplash] = useState(true);
-  const subastaIdsKey = subastas
-    .map((subasta) => subasta.idSubasta)
-    .join(",");
+  const subastaIdsKey = subastas.map((subasta) => subasta.idSubasta).join(",");
   const subastaIds = useMemo(
     () =>
       subastaIdsKey
@@ -87,6 +85,8 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      void recargar();
+
       if (showSplash) return;
 
       void actualizarPreciosVisibles();
@@ -101,7 +101,7 @@ export default function HomeScreen() {
         clearInterval(intervalId);
         unsubscribeReconnect();
       };
-    }, [actualizarPreciosVisibles, onReconnect, showSplash]),
+    }, [actualizarPreciosVisibles, onReconnect, recargar, showSplash]),
   );
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export default function HomeScreen() {
     );
   }
 
-  function handleAuctionPress(subasta: SubastaHomeDTO) {
+  function handleAuctionPress(item: SubastaHomeDTO) {
     if (pendingRegistrationMail && !isAuthenticated) {
       router.push({
         pathname: "/(tabs)/auth/registration-status" as any,
@@ -146,7 +146,7 @@ export default function HomeScreen() {
       return;
     }
 
-    if (!canAccessAuction(subasta.categoriaMin)) {
+    if (!canAccessAuction(item.categoriaMin)) {
       Alert.alert(
         "Categoria insuficiente",
         "Tu categoria de usuario no permite acceder a esta subasta.",
@@ -154,9 +154,11 @@ export default function HomeScreen() {
       return;
     }
 
+    console.log("[AuctionCard] idSubasta:", item.idSubasta);
+
     router.push({
       pathname: "/(tabs)/subastas/[id]" as any,
-      params: { id: String(subasta.idSubasta) },
+      params: { id: String(item.idSubasta) },
     });
   }
 

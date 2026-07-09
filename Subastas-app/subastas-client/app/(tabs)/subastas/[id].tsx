@@ -1,3 +1,4 @@
+import { cerrarLoteDemo } from "@/src/api/subastaAPI";
 import { useAuth } from "@/src/context/authContext";
 import { useNotifications } from "@/src/context/notificationsContext";
 import { useRealtime } from "@/src/context/realtimeContext";
@@ -8,26 +9,25 @@ import { useDetalleSubasta } from "@/src/hooks/useDetalleSubasta";
 import { useEstadoPuja } from "@/src/hooks/useEstadoPuja";
 import { useMediosPago } from "@/src/hooks/useMediosPago";
 import { useRealizarPuja } from "@/src/hooks/useRealizarPuja";
-import { cerrarLoteDemo } from "@/src/api/subastaAPI";
 import {
-  getCurrencyCode,
-  getMonedaLabel,
-  normalizeMoneda,
+    getCurrencyCode,
+    getMonedaLabel,
+    normalizeMoneda,
 } from "@/src/utils/moneda";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 const defaultImage = require("@/assets/images/white-old-vehicle.jpg");
@@ -124,10 +124,21 @@ export default function DetalleSubastaScreen() {
   const canLoadDetail =
     isAuthenticated && isValidated && !isBlocked && !isRejected;
 
-  const { detalle, loading, error, recargar, recargarSilencioso } =
-    useDetalleSubasta(canLoadDetail ? id : undefined);
-  const { estadoPuja, loadingEstadoPuja, errorEstadoPuja, cargarEstadoPuja } =
-    useEstadoPuja(canLoadDetail ? id : undefined);
+  const {
+    detalle,
+    loading,
+    error,
+    subastaFinalizada: subastaFinalizadaDetalle,
+    recargar,
+    recargarSilencioso,
+  } = useDetalleSubasta(canLoadDetail ? id : undefined);
+  const {
+    estadoPuja,
+    loadingEstadoPuja,
+    errorEstadoPuja,
+    subastaFinalizada: subastaFinalizadaEstado,
+    cargarEstadoPuja,
+  } = useEstadoPuja(canLoadDetail ? id : undefined);
   const {
     submittingPuja,
     errorPuja,
@@ -150,6 +161,7 @@ export default function DetalleSubastaScreen() {
 
   const listRef = useRef<FlatList>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finalizadaAlertShownRef = useRef(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [montoOferta, setMontoOferta] = useState("");
 
@@ -294,6 +306,34 @@ export default function DetalleSubastaScreen() {
   ]);
 
   useEffect(() => {
+    const subastaFinalizada =
+      subastaFinalizadaDetalle || subastaFinalizadaEstado;
+
+    if (!subastaFinalizada) {
+      finalizadaAlertShownRef.current = false;
+      return;
+    }
+
+    if (finalizadaAlertShownRef.current) {
+      return;
+    }
+
+    finalizadaAlertShownRef.current = true;
+
+    Alert.alert(
+      "Subasta finalizada",
+      "Esta subasta finalizó o ya no está disponible.",
+      [
+        { text: "Cerrar", style: "cancel" },
+        {
+          text: "Volver al Home",
+          onPress: () => router.replace("/(tabs)/home" as any),
+        },
+      ],
+    );
+  }, [subastaFinalizadaDetalle, subastaFinalizadaEstado]);
+
+  useEffect(() => {
     if (loadingAuth) return;
 
     if (pendingRegistrationMail && !isAuthenticated) {
@@ -350,15 +390,29 @@ export default function DetalleSubastaScreen() {
   }
 
   if (error || !detalle) {
+    const subastaFinalizada =
+      subastaFinalizadaDetalle || subastaFinalizadaEstado;
+
     return (
       <View style={styles.stateContainer}>
         <Text style={styles.errorText}>
-          {error ?? "No pudimos cargar el detalle de la subasta."}
+          {subastaFinalizada
+            ? "Esta subasta finalizó o ya no está disponible."
+            : (error ?? "No pudimos cargar el detalle de la subasta.")}
         </Text>
 
-        <Pressable style={styles.retryButton} onPress={() => recargar()}>
-          <Text style={styles.retryText}>Reintentar</Text>
-        </Pressable>
+        {subastaFinalizada ? (
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => router.replace("/(tabs)/home" as any)}
+          >
+            <Text style={styles.retryText}>Volver al Home</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.retryButton} onPress={() => recargar()}>
+            <Text style={styles.retryText}>Reintentar</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
@@ -731,9 +785,7 @@ export default function DetalleSubastaScreen() {
           </View>
 
           <View style={styles.infoCard}>
-            <Text style={styles.title}>
-              {tituloItemActual}
-            </Text>
+            <Text style={styles.title}>{tituloItemActual}</Text>
 
             <Text style={styles.label}>{getPrecioLabel(tipoPrecio)}</Text>
 

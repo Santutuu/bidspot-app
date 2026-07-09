@@ -8,7 +8,6 @@ import com.subastas.subastas_api.events.PujaActualizadaEvent;
 import com.subastas.subastas_api.model.*;
 import com.subastas.subastas_api.repository.AsistenteRepository;
 import com.subastas.subastas_api.repository.ItemCatalogoRepository;
-import com.subastas.subastas_api.repository.ParticipacionSubastaRepository;
 import com.subastas.subastas_api.repository.PujaRepository;
 import com.subastas.subastas_api.repository.SubastaRepository;
 import com.subastas.subastas_api.repository.TarjetaCreditoRepository;
@@ -25,21 +24,18 @@ public class PujaService {
     private final SubastaRepository subastaRepository;
     private final ItemCatalogoRepository itemCatalogoRepository;
     private final PujaRepository pujaRepository;
-    private final ParticipacionSubastaRepository participacionRepository;
     private final TarjetaCreditoRepository tarjetaCreditoRepository;
     private final AsistenteRepository asistenteRepository;
 
     public PujaService(SubastaRepository subastaRepository,
                        ItemCatalogoRepository itemCatalogoRepository,
                        PujaRepository pujaRepository,
-                       ParticipacionSubastaRepository participacionRepository,
                        ApplicationEventPublisher eventPublisher,
                        TarjetaCreditoRepository tarjetaCreditoRepository,
                        AsistenteRepository asistenteRepository) {
         this.subastaRepository = subastaRepository;
         this.itemCatalogoRepository = itemCatalogoRepository;
         this.pujaRepository = pujaRepository;
-        this.participacionRepository = participacionRepository;
         this.eventPublisher = eventPublisher;
         this.tarjetaCreditoRepository = tarjetaCreditoRepository;
         this.asistenteRepository = asistenteRepository;
@@ -48,8 +44,6 @@ public class PujaService {
     public EstadoPujaSubastaResponseDTO obtenerEstadoPuja(Long idSubasta, Usuario usuario) {
         Subasta subasta = obtenerSubastaActiva(idSubasta);
         ItemCatalogo itemActual = obtenerItemActual(subasta);
-
-        Float precioBase = itemActual.getPrecioBase();
 
         Puja pujaActual = pujaRepository
                 .findTopByItemCatalogoOrderByMontoDesc(itemActual)
@@ -80,20 +74,13 @@ public class PujaService {
                     .map(Puja::getMonto)
                     .orElse(null);
 
-            soyMejorPostor =
-                    pujaActual != null
-                            && pujaActual.getAsistente() != null
-                            && pujaActual.getAsistente().getCliente() != null
-                            && pujaActual.getAsistente()
-                            .getCliente()
-                            .getIdentificador()
-                            .equals(usuario.getClienteLegacy().getIdentificador());
+            soyMejorPostor = esPujaDelUsuario(pujaActual, usuario);
         }
 
         return new EstadoPujaSubastaResponseDTO(
                 subasta.getIdSubasta(),
                 itemActual.getIdItemCatalogo(),
-                precioBase,
+                itemActual.getPrecioBase(),
                 mejorOferta,
                 incrementoMinimo,
                 incrementoMaximo,
@@ -122,22 +109,8 @@ public class PujaService {
                         "La subasta no tiene un lote en remate"
                 ));
 
-        validarMonto(
-                subasta,
-                itemActual,
-                request
-        );
-
-        validarPuedeParticipar(
-                subasta,
-                usuario,
-                request.getMonto()
-        );
-
-        validarParticipacionUnica(
-                subasta,
-                usuario
-        );
+        validarPuedeParticipar(subasta, usuario, request.getMonto());
+        validarMonto(subasta, itemActual, usuario, request);
 
         Asistente asistente = obtenerOCrearAsistente(subasta, usuario);
 
@@ -156,17 +129,7 @@ public class PujaService {
                 request.getMonto()
         );
 
-        Puja pujaGuardada =
-                pujaRepository.save(nuevaPuja);
-
-
-
-
-
-        registrarParticipacionSiNoExiste(
-                subasta,
-                usuario
-        );
+        Puja pujaGuardada = pujaRepository.save(nuevaPuja);
 
         PujaActualizadaEventDTO eventoDTO =
                 new PujaActualizadaEventDTO(
@@ -179,15 +142,9 @@ public class PujaService {
                         pujaGuardada.getFechaHora()
                 );
 
-        eventPublisher.publishEvent(
-                new PujaActualizadaEvent(eventoDTO)
-        );
+        eventPublisher.publishEvent(new PujaActualizadaEvent(eventoDTO));
 
-        return toResponseDTO(
-                pujaGuardada,
-                subasta,
-                true
-        );
+        return toResponseDTO(pujaGuardada, subasta, true);
     }
 
     private Subasta obtenerSubastaActiva(Long idSubasta) {
@@ -263,6 +220,13 @@ public class PujaService {
             );
         }
 
+        if (usuario.getClienteLegacy() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El usuario no está vinculado a un cliente legacy"
+            );
+        }
+
         if (usuario.getCategoria() == null
                 || usuario.getCategoria().ordinal()
                 < subasta.getCategoriaMin().ordinal()) {
@@ -282,11 +246,7 @@ public class PujaService {
             );
         }
 
-        validarGarantiaDisponible(
-                usuario,
-                subasta,
-                monto
-        );
+        validarGarantiaDisponible(usuario, subasta, monto);
     }
 
     private void validarGarantiaDisponible(Usuario usuario,
@@ -328,53 +288,9 @@ public class PujaService {
         return false;
     }
 
-    private void validarParticipacionUnica(Subasta subasta,
-                                           Usuario usuario) {
-
-        participacionRepository
-                .findByUsuarioAndEstado(
-                        usuario,
-                        EstadoParticipacionSubasta.ACTIVA
-                )
-                .ifPresent(participacion -> {
-
-                    if (!participacion
-                            .getSubasta()
-                            .getIdSubasta()
-                            .equals(subasta.getIdSubasta())) {
-
-                        throw new ResponseStatusException(
-                                HttpStatus.CONFLICT,
-                                "No puede participar en más de una subasta al mismo tiempo"
-                        );
-                    }
-                });
-    }
-
-    private void registrarParticipacionSiNoExiste(Subasta subasta,
-                                                  Usuario usuario) {
-
-        boolean yaParticipa =
-                participacionRepository
-                        .findByUsuarioAndEstado(
-                                usuario,
-                                EstadoParticipacionSubasta.ACTIVA
-                        )
-                        .isPresent();
-
-        if (!yaParticipa) {
-            ParticipacionSubasta participacion =
-                    new ParticipacionSubasta(
-                            usuario,
-                            subasta
-                    );
-
-            participacionRepository.save(participacion);
-        }
-    }
-
     private void validarMonto(Subasta subasta,
                               ItemCatalogo itemActual,
+                              Usuario usuario,
                               PujaRequestDTO request) {
 
         if (request.getMonto() == null
@@ -390,13 +306,18 @@ public class PujaService {
                 .findTopByItemCatalogoOrderByMontoDesc(itemActual)
                 .orElse(null);
 
+        if (esPujaDelUsuario(pujaActual, usuario)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Ya sos el mejor postor!. Espera a que te superen tu oferta para realizar otra puja en el mismo item!"
+            );
+        }
+
         Float mejorOferta = pujaActual != null
                 ? pujaActual.getMonto()
                 : itemActual.getPrecioBase();
 
-        Float ofertaMinima =
-                mejorOferta
-                        + itemActual.calcularIncrementoMinimo();
+        Float ofertaMinima = mejorOferta + itemActual.calcularIncrementoMinimo();
 
         if (request.getMonto() < ofertaMinima) {
             throw new ResponseStatusException(
@@ -410,9 +331,7 @@ public class PujaService {
                         || subasta.getCategoriaMin() == CategoriaUsuario.PLATINO;
 
         if (!sinLimiteMaximo) {
-            Float ofertaMaxima =
-                    mejorOferta
-                            + itemActual.calcularIncrementoMaximo();
+            Float ofertaMaxima = mejorOferta + itemActual.calcularIncrementoMaximo();
 
             if (request.getMonto() > ofertaMaxima) {
                 throw new ResponseStatusException(
@@ -421,6 +340,23 @@ public class PujaService {
                 );
             }
         }
+    }
+
+    private boolean esPujaDelUsuario(Puja puja,
+                                     Usuario usuario) {
+
+        if (puja == null
+                || usuario == null
+                || usuario.getClienteLegacy() == null
+                || puja.getAsistente() == null
+                || puja.getAsistente().getCliente() == null) {
+            return false;
+        }
+
+        return puja.getAsistente()
+                .getCliente()
+                .getIdentificador()
+                .equals(usuario.getClienteLegacy().getIdentificador());
     }
 
     private PujaResponseDTO toResponseDTO(Puja puja,
