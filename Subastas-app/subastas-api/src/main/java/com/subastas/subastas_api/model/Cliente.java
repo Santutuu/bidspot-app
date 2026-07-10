@@ -47,4 +47,13 @@ public class Cliente {
     public Empleado getVerificador() {
         return verificador;
     }
+
+    /**
+     * Indica si la empresa habilitó al cliente para operar.
+     *
+     * La base legacy guarda este valor como "si" / "no".
+     */
+    public boolean estaAdmitido() {
+        return "si".equalsIgnoreCase(admitido);
+    }
 }

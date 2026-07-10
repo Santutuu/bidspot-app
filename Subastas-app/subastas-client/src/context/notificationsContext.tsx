@@ -1,17 +1,18 @@
 import {
-  obtenerDetalleSolicitudPublicacion,
-  obtenerMisSolicitudesPublicacion,
+    obtenerDetalleSolicitudPublicacion,
+    obtenerMisSolicitudesPublicacion,
 } from "@/src/api/solicitudesPublicacionAPI";
 import { getEstadoPuja } from "@/src/api/subastaAPI";
 import { useAuth } from "@/src/context/authContext";
 import { BidUpdateEvent, useRealtime } from "@/src/context/realtimeContext";
 import {
-  addDismissedNotificationId,
-  getDismissedNotificationIds,
-  getStoredNotifications,
-  saveNotifications,
-  saveWatchedBids,
-  WatchedBid,
+    addDismissedNotificationId,
+    getDismissedNotificationIds,
+    getStoredNotifications,
+  getWatchedBids,
+    saveNotifications,
+    saveWatchedBids,
+    WatchedBid,
 } from "@/src/storage/notificationsStorage";
 import { AppNotification } from "@/src/types/notifications";
 import { SolicitudPublicacionResumen } from "@/src/types/solicitudesPublicacion";
@@ -37,9 +38,7 @@ type NotificationsContextType = {
       id?: string;
     },
   ) => Promise<void>;
-  watchBidNotification: (
-    bid: Omit<WatchedBid, "createdAt">,
-  ) => Promise<void>;
+  watchBidNotification: (bid: Omit<WatchedBid, "createdAt">) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   dismissNotification: (notificationId: string) => Promise<void>;
   togglePanel: () => Promise<void>;
@@ -134,11 +133,19 @@ function getWatchedBidRemovalReason(error: unknown) {
     return null;
   }
 
-  if (backendMessage.includes("finalizada") || backendMessage.includes("cerrada")) {
+  if (
+    backendMessage.includes("finalizada") ||
+    backendMessage.includes("cerrada")
+  ) {
     return "auction finalized (HTTP 409)";
   }
 
-  if (backendMessage.includes("no activa") || backendMessage.includes("inactive")) {
+  if (
+    backendMessage.includes("no activa") ||
+    backendMessage.includes("no esta activa") ||
+    backendMessage.includes("no está activa") ||
+    backendMessage.includes("inactive")
+  ) {
     return "auction inactive (HTTP 409)";
   }
 
@@ -530,7 +537,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return onReconnect(() => {
       void syncWatchedBidNotifications();
     });
-  }, [isAuthenticated, onReconnect, syncWatchedBidNotifications, user?.idUsuario]);
+  }, [
+    isAuthenticated,
+    onReconnect,
+    syncWatchedBidNotifications,
+    user?.idUsuario,
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.idUsuario) {

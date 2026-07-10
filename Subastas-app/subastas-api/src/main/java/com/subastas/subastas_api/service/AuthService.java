@@ -40,8 +40,11 @@ public class AuthService {
         this.tarjetaCreditoRepository = tarjetaCreditoRepository;
     }
 
-    public PreRegisterResponseDTO preRegister(PreRegisterRequestDTO request) {
-        String mailNormalizado = request.getMail().trim().toLowerCase();
+    public PreRegisterResponseDTO preRegister(
+            PreRegisterRequestDTO request
+    ) {
+        String mailNormalizado =
+                request.getMail().trim().toLowerCase();
 
         if (usuarioRepository.existsByMail(mailNormalizado)) {
             throw new EmailAlreadyExistsException(mailNormalizado);
@@ -58,6 +61,13 @@ public class AuthService {
                 request.getDomicilio()
         );
 
+        /*
+         * Primera etapa:
+         *
+         * Se crea Persona y la cuenta técnica Usuario.
+         * Todavía no existe Cliente porque la empresa no verificó
+         * ni admitió a la persona.
+         */
         Usuario usuario = new Usuario(
                 persona,
                 null,
@@ -65,7 +75,8 @@ public class AuthService {
                 EstadoUsuario.PENDIENTE_VALIDACION
         );
 
-        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+        Usuario usuarioGuardado =
+                usuarioRepository.save(usuario);
 
         emailService.enviarSolicitudRecibida(
                 usuarioGuardado.getPersona().getMail(),
@@ -76,37 +87,47 @@ public class AuthService {
                 usuarioGuardado.getIdUsuario(),
                 usuarioGuardado.getPersona().getNombre(),
                 usuarioGuardado.getPersona().getMail(),
-                usuarioGuardado.getEstado().name(),
+                usuarioGuardado.getEstadoEfectivo().name(),
                 "Tu solicitud fue enviada y se encuentra pendiente de validación."
         );
     }
 
-    public RegistrationStatusDTO obtenerEstadoRegistro(String mail) {
-        String mailNormalizado = mail.trim().toLowerCase();
+    public RegistrationStatusDTO obtenerEstadoRegistro(
+            String mail
+    ) {
+        String mailNormalizado =
+                mail.trim().toLowerCase();
 
-        Usuario usuario = usuarioRepository.findByMail(mailNormalizado)
+        Usuario usuario = usuarioRepository
+                .findByMail(mailNormalizado)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "No existe una solicitud con ese email"
                 ));
 
-        String categoria = usuario.getCategoria() != null
-                ? usuario.getCategoria().name()
+        CategoriaUsuario categoriaNegocio =
+                usuario.getCategoriaNegocio();
+
+        String categoria = categoriaNegocio != null
+                ? categoriaNegocio.name()
                 : null;
 
+        EstadoUsuario estadoEfectivo =
+                usuario.getEstadoEfectivo();
+
         boolean puedeGenerarClave =
-                usuario.getEstado() == EstadoUsuario.VALIDADO
-                        && usuario.getCategoria() != null
+                estadoEfectivo == EstadoUsuario.VALIDADO
+                        && categoriaNegocio != null
                         && !usuario.tieneClaveGenerada();
 
         String mensaje;
 
-        if (usuario.getEstado() == EstadoUsuario.PENDIENTE_VALIDACION) {
-            mensaje = "Tu cuenta se encuentra en revisión.";
-        } else if (usuario.getEstado() == EstadoUsuario.RECHAZADO) {
+        if (estadoEfectivo == EstadoUsuario.RECHAZADO) {
             mensaje = "Tu solicitud fue rechazada.";
-        } else if (usuario.getEstado() == EstadoUsuario.BLOQUEADO) {
+        } else if (estadoEfectivo == EstadoUsuario.BLOQUEADO) {
             mensaje = "Tu cuenta se encuentra bloqueada.";
+        } else if (estadoEfectivo == EstadoUsuario.PENDIENTE_VALIDACION) {
+            mensaje = "Tu cuenta se encuentra en revisión.";
         } else if (puedeGenerarClave) {
             mensaje = "Tu cuenta fue validada. Ya podés generar tu clave personal.";
         } else {
@@ -115,30 +136,51 @@ public class AuthService {
 
         return new RegistrationStatusDTO(
                 usuario.getPersona().getMail(),
-                usuario.getEstado().name(),
+                estadoEfectivo.name(),
                 categoria,
                 puedeGenerarClave,
                 mensaje
         );
     }
 
-    public AuthResponseDTO completarRegistro(CompleteRegistrationRequestDTO request) {
-        String mailNormalizado = request.getMail().trim().toLowerCase();
+    public AuthResponseDTO completarRegistro(
+            CompleteRegistrationRequestDTO request
+    ) {
+        String mailNormalizado =
+                request.getMail().trim().toLowerCase();
 
-        Usuario usuario = usuarioRepository.findByMail(mailNormalizado)
+        Usuario usuario = usuarioRepository
+                .findByMail(mailNormalizado)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "No existe una solicitud con ese email"
                 ));
 
-        if (usuario.getEstado() != EstadoUsuario.VALIDADO) {
+        EstadoUsuario estadoEfectivo =
+                usuario.getEstadoEfectivo();
+
+        if (estadoEfectivo != EstadoUsuario.VALIDADO) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Tu cuenta todavía no fue validada por la empresa"
             );
         }
 
-        if (usuario.getCategoria() == null) {
+        if (usuario.getClienteLegacy() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Todavía no se creó el perfil de cliente"
+            );
+        }
+
+        if (!usuario.getClienteLegacy().estaAdmitido()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El cliente todavía no fue admitido por la empresa"
+            );
+        }
+
+        if (usuario.getCategoriaNegocio() == null) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Tu cuenta todavía no tiene categoría asignada"
@@ -152,20 +194,33 @@ public class AuthService {
             );
         }
 
-        validarPassword(request.getPassword(), request.getConfirmPassword());
+        validarPassword(
+                request.getPassword(),
+                request.getConfirmPassword()
+        );
 
-        usuario.setPassword(passwordEncoder.encode(request.getPassword()));
-        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+        usuario.setPassword(
+                passwordEncoder.encode(request.getPassword())
+        );
 
-        String token = jwtService.generateToken(usuarioGuardado.getPersona().getMail());
+        Usuario usuarioGuardado =
+                usuarioRepository.save(usuario);
+
+        String token = jwtService.generateToken(
+                usuarioGuardado.getPersona().getMail()
+        );
 
         return toAuthResponse(usuarioGuardado, token);
     }
 
-    public AuthResponseDTO login(LoginRequestDTO request) {
-        String mailNormalizado = request.getMail().trim().toLowerCase();
+    public AuthResponseDTO login(
+            LoginRequestDTO request
+    ) {
+        String mailNormalizado =
+                request.getMail().trim().toLowerCase();
 
-        Usuario usuario = usuarioRepository.findByMail(mailNormalizado)
+        Usuario usuario = usuarioRepository
+                .findByMail(mailNormalizado)
                 .orElseThrow(InvalidCredentialsException::new);
 
         if (!usuario.tieneClaveGenerada()) {
@@ -175,7 +230,7 @@ public class AuthService {
             );
         }
 
-        if (usuario.getEstado() == EstadoUsuario.BLOQUEADO) {
+        if (usuario.getEstadoEfectivo() == EstadoUsuario.BLOQUEADO) {
             throw new UserBlockedException();
         }
 
@@ -190,16 +245,27 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        String token = jwtService.generateToken(usuario.getPersona().getMail());
+        String token = jwtService.generateToken(
+                usuario.getPersona().getMail()
+        );
 
         return toAuthResponse(usuario, token);
     }
 
-    private AuthResponseDTO toAuthResponse(Usuario usuario, String token) {
-        String categoria = usuario.getCategoria() != null
-                ? usuario.getCategoria().name()
+    private AuthResponseDTO toAuthResponse(
+            Usuario usuario,
+            String token
+    ) {
+        CategoriaUsuario categoriaNegocio =
+                usuario.getCategoriaNegocio();
+
+        String categoria = categoriaNegocio != null
+                ? categoriaNegocio.name()
                 : null;
-        boolean tieneTarjeta = tarjetaCreditoRepository.countByUsuario(usuario) > 0;
+
+        boolean tieneTarjeta =
+                tarjetaCreditoRepository.countByUsuario(usuario) > 0;
+
         boolean configuracionFinancieraCompleta =
                 usuario.getCuenta() != null && tieneTarjeta;
 
@@ -209,40 +275,73 @@ public class AuthService {
                 usuario.getPersona().getNombre(),
                 usuario.getPersona().getMail(),
                 usuario.getRol().name(),
-                usuario.getEstado().name(),
+                usuario.getEstadoEfectivo().name(),
                 categoria,
                 tieneTarjeta,
                 configuracionFinancieraCompleta
         );
     }
 
-    private void validarPreRegister(PreRegisterRequestDTO request) {
-        if (request.getNombre() == null || request.getNombre().trim().length() < 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nombre inválido");
+    private void validarPreRegister(
+            PreRegisterRequestDTO request
+    ) {
+        if (request.getNombre() == null
+                || request.getNombre().trim().length() < 2) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Nombre inválido"
+            );
         }
 
-        if (request.getApellido() == null || request.getApellido().trim().length() < 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Apellido inválido");
+        if (request.getApellido() == null
+                || request.getApellido().trim().length() < 2) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Apellido inválido"
+            );
         }
 
-        if (request.getMail() == null || !request.getMail().contains("@")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email inválido");
+        if (request.getMail() == null
+                || !request.getMail().contains("@")) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Email inválido"
+            );
         }
 
-        if (request.getFrenteDNIUrl() == null || request.getFrenteDNIUrl().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Falta frente del DNI");
+        if (request.getFrenteDNIUrl() == null
+                || request.getFrenteDNIUrl().isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Falta frente del DNI"
+            );
         }
 
-        if (request.getDorsoDNIUrl() == null || request.getDorsoDNIUrl().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Falta dorso del DNI");
+        if (request.getDorsoDNIUrl() == null
+                || request.getDorsoDNIUrl().isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Falta dorso del DNI"
+            );
         }
 
         if (request.getDomicilio() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Domicilio obligatorio");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Domicilio obligatorio"
+            );
         }
     }
 
-    private void validarPassword(String password, String confirmPassword) {
+    private void validarPassword(
+            String password,
+            String confirmPassword
+    ) {
         if (password == null || confirmPassword == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,

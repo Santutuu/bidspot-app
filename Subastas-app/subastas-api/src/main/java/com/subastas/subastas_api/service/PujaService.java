@@ -41,7 +41,10 @@ public class PujaService {
         this.asistenteRepository = asistenteRepository;
     }
 
-    public EstadoPujaSubastaResponseDTO obtenerEstadoPuja(Long idSubasta, Usuario usuario) {
+    public EstadoPujaSubastaResponseDTO obtenerEstadoPuja(
+            Long idSubasta,
+            Usuario usuario
+    ) {
         Subasta subasta = obtenerSubastaActiva(idSubasta);
         ItemCatalogo itemActual = obtenerItemActual(subasta);
 
@@ -53,14 +56,19 @@ public class PujaService {
                 ? pujaActual.getMonto()
                 : itemActual.getPrecioBase();
 
-        Float incrementoMinimo = itemActual.calcularIncrementoMinimo();
-        Float incrementoMaximo = itemActual.calcularIncrementoMaximo();
+        Float incrementoMinimo =
+                itemActual.calcularIncrementoMinimo();
+
+        Float incrementoMaximo =
+                itemActual.calcularIncrementoMaximo();
 
         boolean sinLimiteMaximo =
                 subasta.getCategoriaMin() == CategoriaUsuario.ORO
                         || subasta.getCategoriaMin() == CategoriaUsuario.PLATINO;
 
-        Float ofertaMinima = mejorOferta + incrementoMinimo;
+        Float ofertaMinima =
+                mejorOferta + incrementoMinimo;
+
         Float ofertaMaxima = sinLimiteMaximo
                 ? null
                 : mejorOferta + incrementoMaximo;
@@ -70,11 +78,15 @@ public class PujaService {
 
         if (usuario != null && usuario.getClienteLegacy() != null) {
             miMejorOferta = pujaRepository
-                    .findTopByItemCatalogoAndUsuarioOrderByMontoDesc(itemActual, usuario)
+                    .findTopByItemCatalogoAndUsuarioOrderByMontoDesc(
+                            itemActual,
+                            usuario
+                    )
                     .map(Puja::getMonto)
                     .orElse(null);
 
-            soyMejorPostor = esPujaDelUsuario(pujaActual, usuario);
+            soyMejorPostor =
+                    esPujaDelUsuario(pujaActual, usuario);
         }
 
         return new EstadoPujaSubastaResponseDTO(
@@ -86,18 +98,22 @@ public class PujaService {
                 incrementoMaximo,
                 ofertaMinima,
                 ofertaMaxima,
-                subasta.getMoneda() != null ? subasta.getMoneda().name() : null,
+                subasta.getMoneda() != null
+                        ? subasta.getMoneda().name()
+                        : null,
                 miMejorOferta,
                 soyMejorPostor
         );
     }
 
     @Transactional
-    public PujaResponseDTO realizarPuja(Long idSubasta,
-                                        Usuario usuario,
-                                        PujaRequestDTO request) {
-
-        Subasta subasta = obtenerSubastaActiva(idSubasta);
+    public PujaResponseDTO realizarPuja(
+            Long idSubasta,
+            Usuario usuario,
+            PujaRequestDTO request
+    ) {
+        Subasta subasta =
+                obtenerSubastaActiva(idSubasta);
 
         ItemCatalogo itemActual = itemCatalogoRepository
                 .findItemActualBySubastaAndEstadoForUpdate(
@@ -109,10 +125,21 @@ public class PujaService {
                         "La subasta no tiene un lote en remate"
                 ));
 
-        validarPuedeParticipar(subasta, usuario, request.getMonto());
-        validarMonto(subasta, itemActual, usuario, request);
+        validarPuedeParticipar(
+                subasta,
+                usuario,
+                request.getMonto()
+        );
 
-        Asistente asistente = obtenerOCrearAsistente(subasta, usuario);
+        validarMonto(
+                subasta,
+                itemActual,
+                usuario,
+                request
+        );
+
+        Asistente asistente =
+                obtenerOCrearAsistente(subasta, usuario);
 
         Puja pujaAnterior = pujaRepository
                 .findTopByItemCatalogoOrderByMontoDesc(itemActual)
@@ -129,7 +156,8 @@ public class PujaService {
                 request.getMonto()
         );
 
-        Puja pujaGuardada = pujaRepository.save(nuevaPuja);
+        Puja pujaGuardada =
+                pujaRepository.save(nuevaPuja);
 
         PujaActualizadaEventDTO eventoDTO =
                 new PujaActualizadaEventDTO(
@@ -142,9 +170,15 @@ public class PujaService {
                         pujaGuardada.getFechaHora()
                 );
 
-        eventPublisher.publishEvent(new PujaActualizadaEvent(eventoDTO));
+        eventPublisher.publishEvent(
+                new PujaActualizadaEvent(eventoDTO)
+        );
 
-        return toResponseDTO(pujaGuardada, subasta, true);
+        return toResponseDTO(
+                pujaGuardada,
+                subasta,
+                true
+        );
     }
 
     private Subasta obtenerSubastaActiva(Long idSubasta) {
@@ -177,8 +211,13 @@ public class PujaService {
                 ));
     }
 
-    private Asistente obtenerOCrearAsistente(Subasta subasta, Usuario usuario) {
-        if (usuario.getClienteLegacy() == null) {
+    private Asistente obtenerOCrearAsistente(
+            Subasta subasta,
+            Usuario usuario
+    ) {
+        Cliente cliente = usuario.getClienteLegacy();
+
+        if (cliente == null) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "El usuario no está vinculado a un cliente legacy"
@@ -186,15 +225,15 @@ public class PujaService {
         }
 
         return asistenteRepository
-                .findByClienteAndSubasta(usuario.getClienteLegacy(), subasta)
+                .findByClienteAndSubasta(cliente, subasta)
                 .orElseGet(() -> {
                     Integer numeroPostor = Math.toIntExact(
-                            usuario.getClienteLegacy().getIdentificador()
+                            cliente.getIdentificador()
                     );
 
                     Asistente asistente = new Asistente(
                             numeroPostor,
-                            usuario.getClienteLegacy(),
+                            cliente,
                             subasta
                     );
 
@@ -202,10 +241,11 @@ public class PujaService {
                 });
     }
 
-    private void validarPuedeParticipar(Subasta subasta,
-                                        Usuario usuario,
-                                        Float monto) {
-
+    private void validarPuedeParticipar(
+            Subasta subasta,
+            Usuario usuario,
+            Float monto
+    ) {
         if (usuario == null) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
@@ -213,30 +253,50 @@ public class PujaService {
             );
         }
 
-        if (usuario.getEstado() != EstadoUsuario.VALIDADO) {
+        /*
+         * El estado técnico de Usuario solamente conserva reglas
+         * relacionadas con el acceso a la cuenta.
+         */
+        if (usuario.getEstado() == EstadoUsuario.BLOQUEADO) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "El usuario no está validado"
+                    "La cuenta se encuentra bloqueada"
             );
         }
 
-        if (usuario.getClienteLegacy() == null) {
+        Cliente cliente = usuario.getClienteLegacy();
+
+        if (cliente == null) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "El usuario no está vinculado a un cliente legacy"
+                    "El usuario todavía no fue registrado como cliente"
             );
         }
 
-        if (usuario.getCategoria() == null
-                || usuario.getCategoria().ordinal()
+        if (!cliente.estaAdmitido()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "El cliente no está admitido para participar"
+            );
+        }
+
+        CategoriaUsuario categoriaCliente =
+                cliente.getCategoria();
+
+        if (categoriaCliente == null
+                || categoriaCliente.ordinal()
                 < subasta.getCategoriaMin().ordinal()) {
 
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "La categoría del usuario no permite participar en esta subasta"
+                    "La categoría del cliente no permite participar en esta subasta"
             );
         }
 
+        /*
+         * La configuración financiera sigue temporalmente relacionada
+         * con Usuario. Será migrada hacia Cliente en una etapa posterior.
+         */
         if (usuario.getCuenta() == null
                 || tarjetaCreditoRepository.countByUsuario(usuario) == 0) {
 
@@ -246,18 +306,24 @@ public class PujaService {
             );
         }
 
-        validarGarantiaDisponible(usuario, subasta, monto);
+        validarGarantiaDisponible(
+                usuario,
+                subasta,
+                monto
+        );
     }
 
-    private void validarGarantiaDisponible(Usuario usuario,
-                                           Subasta subasta,
-                                           Float monto) {
-
+    private void validarGarantiaDisponible(
+            Usuario usuario,
+            Subasta subasta,
+            Float monto
+    ) {
         boolean tieneGarantia =
                 usuario.getMediosDePago()
                         .stream()
                         .filter(medio ->
-                                medio.getMoneda()
+                                medio.getMoneda() != null
+                                        && medio.getMoneda()
                                         .esMismaMoneda(subasta.getMoneda())
                         )
                         .anyMatch(medio ->
@@ -274,9 +340,10 @@ public class PujaService {
         }
     }
 
-    private boolean puedeGarantizar(MedioDePago medio,
-                                    Float monto) {
-
+    private boolean puedeGarantizar(
+            MedioDePago medio,
+            Float monto
+    ) {
         if (medio instanceof TarjetaCredito tarjeta) {
             return tarjeta.getLimiteCredito() >= monto;
         }
@@ -288,11 +355,12 @@ public class PujaService {
         return false;
     }
 
-    private void validarMonto(Subasta subasta,
-                              ItemCatalogo itemActual,
-                              Usuario usuario,
-                              PujaRequestDTO request) {
-
+    private void validarMonto(
+            Subasta subasta,
+            ItemCatalogo itemActual,
+            Usuario usuario,
+            PujaRequestDTO request
+    ) {
         if (request.getMonto() == null
                 || request.getMonto() <= 0) {
 
@@ -309,7 +377,7 @@ public class PujaService {
         if (esPujaDelUsuario(pujaActual, usuario)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Ya sos el mejor postor!. Espera a que te superen tu oferta para realizar otra puja en el mismo item!"
+                    "Ya sos el mejor postor. Esperá a que otra persona supere tu oferta antes de volver a pujar"
             );
         }
 
@@ -317,7 +385,9 @@ public class PujaService {
                 ? pujaActual.getMonto()
                 : itemActual.getPrecioBase();
 
-        Float ofertaMinima = mejorOferta + itemActual.calcularIncrementoMinimo();
+        Float ofertaMinima =
+                mejorOferta
+                        + itemActual.calcularIncrementoMinimo();
 
         if (request.getMonto() < ofertaMinima) {
             throw new ResponseStatusException(
@@ -331,7 +401,9 @@ public class PujaService {
                         || subasta.getCategoriaMin() == CategoriaUsuario.PLATINO;
 
         if (!sinLimiteMaximo) {
-            Float ofertaMaxima = mejorOferta + itemActual.calcularIncrementoMaximo();
+            Float ofertaMaxima =
+                    mejorOferta
+                            + itemActual.calcularIncrementoMaximo();
 
             if (request.getMonto() > ofertaMaxima) {
                 throw new ResponseStatusException(
@@ -342,27 +414,33 @@ public class PujaService {
         }
     }
 
-    private boolean esPujaDelUsuario(Puja puja,
-                                     Usuario usuario) {
-
+    private boolean esPujaDelUsuario(
+            Puja puja,
+            Usuario usuario
+    ) {
         if (puja == null
                 || usuario == null
                 || usuario.getClienteLegacy() == null
                 || puja.getAsistente() == null
                 || puja.getAsistente().getCliente() == null) {
+
             return false;
         }
 
         return puja.getAsistente()
                 .getCliente()
                 .getIdentificador()
-                .equals(usuario.getClienteLegacy().getIdentificador());
+                .equals(
+                        usuario.getClienteLegacy()
+                                .getIdentificador()
+                );
     }
 
-    private PujaResponseDTO toResponseDTO(Puja puja,
-                                          Subasta subasta,
-                                          boolean mejorOferta) {
-
+    private PujaResponseDTO toResponseDTO(
+            Puja puja,
+            Subasta subasta,
+            boolean mejorOferta
+    ) {
         return new PujaResponseDTO(
                 puja.getIdPuja(),
                 subasta.getIdSubasta(),

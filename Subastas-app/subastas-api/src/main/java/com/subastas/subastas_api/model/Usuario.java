@@ -16,9 +16,9 @@ public class Usuario {
     @JoinColumn(name = "persona_id", nullable = false, unique = true)
     private Persona persona;
 
-    /*
-     * Puente entre el modelo moderno de autenticación
-     * y el Cliente del modelo legacy.
+    /**
+     * Vincula la cuenta técnica de autenticación con el cliente
+     * de negocio perteneciente al modelo legacy.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_legacy_id")
@@ -28,14 +28,27 @@ public class Usuario {
     @Column(nullable = false)
     private Rol rol = Rol.USER;
 
+    /**
+     * Se conserva temporalmente para compatibilidad con el flujo
+     * moderno de registro y con los datos existentes.
+     *
+     * La admisión de negocio debe consultarse principalmente
+     * desde Cliente.admitido.
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoUsuario estado = EstadoUsuario.PENDIENTE_VALIDACION;
 
+    /**
+     * Se conserva temporalmente como fallback.
+     *
+     * La categoría de negocio debe obtenerse principalmente
+     * desde Cliente.categoria.
+     */
     @Enumerated(EnumType.STRING)
     private CategoriaUsuario categoria;
 
-    @Column(nullable = true)
+    @Column
     private String password;
 
     @ManyToMany
@@ -96,6 +109,47 @@ public class Usuario {
 
     public boolean tieneSubastaGuardada(Subasta subasta) {
         return guardadas.contains(subasta);
+    }
+
+    /**
+     * Fuente de verdad progresiva para la categoría.
+     *
+     * Si ya existe Cliente, usa Cliente.categoria.
+     * Si todavía no existe, mantiene compatibilidad con Usuario.categoria.
+     */
+    public CategoriaUsuario getCategoriaNegocio() {
+        if (clienteLegacy != null && clienteLegacy.getCategoria() != null) {
+            return clienteLegacy.getCategoria();
+        }
+
+        return categoria;
+    }
+
+    /**
+     * Un usuario está validado como cliente cuando existe su entidad
+     * Cliente y la empresa lo marcó como admitido.
+     */
+    public boolean estaValidadoComoCliente() {
+        return clienteLegacy != null && clienteLegacy.estaAdmitido();
+    }
+
+    /**
+     * Estado efectivo para exponer al frontend durante la transición.
+     *
+     * BLOQUEADO y RECHAZADO conservan prioridad.
+     * Si existe un cliente admitido, se considera VALIDADO.
+     */
+    public EstadoUsuario getEstadoEfectivo() {
+        if (estado == EstadoUsuario.BLOQUEADO
+                || estado == EstadoUsuario.RECHAZADO) {
+            return estado;
+        }
+
+        if (estaValidadoComoCliente()) {
+            return EstadoUsuario.VALIDADO;
+        }
+
+        return estado;
     }
 
     public Long getIdUsuario() {
