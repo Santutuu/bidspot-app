@@ -1,10 +1,21 @@
 package com.subastas.subastas_api.service;
 
-import com.subastas.subastas_api.DTO.auth.*;
+import com.subastas.subastas_api.DTO.auth.AuthResponseDTO;
+import com.subastas.subastas_api.DTO.auth.CompleteRegistrationRequestDTO;
+import com.subastas.subastas_api.DTO.auth.LoginRequestDTO;
+import com.subastas.subastas_api.DTO.auth.PreRegisterRequestDTO;
+import com.subastas.subastas_api.DTO.auth.PreRegisterResponseDTO;
+import com.subastas.subastas_api.DTO.auth.RegistrationStatusDTO;
 import com.subastas.subastas_api.exception.EmailAlreadyExistsException;
 import com.subastas.subastas_api.exception.InvalidCredentialsException;
 import com.subastas.subastas_api.exception.UserBlockedException;
-import com.subastas.subastas_api.model.*;
+import com.subastas.subastas_api.model.CategoriaUsuario;
+import com.subastas.subastas_api.model.DocumentoPersona;
+import com.subastas.subastas_api.model.EstadoUsuario;
+import com.subastas.subastas_api.model.Persona;
+import com.subastas.subastas_api.model.Rol;
+import com.subastas.subastas_api.model.TipoDocumentoPersona;
+import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.TarjetaCreditoRepository;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.security.JwtService;
@@ -40,9 +51,9 @@ public class AuthService {
         this.tarjetaCreditoRepository = tarjetaCreditoRepository;
     }
 
-    public PreRegisterResponseDTO preRegister(
-            PreRegisterRequestDTO request
-    ) {
+    public PreRegisterResponseDTO preRegister(PreRegisterRequestDTO request) {
+        validarPreRegister(request);
+
         String mailNormalizado =
                 request.getMail().trim().toLowerCase();
 
@@ -50,30 +61,37 @@ public class AuthService {
             throw new EmailAlreadyExistsException(mailNormalizado);
         }
 
-        validarPreRegister(request);
-
         Persona persona = new Persona(
                 request.getNombre().trim(),
                 request.getApellido().trim(),
+                request.getDocumento().trim(),
                 mailNormalizado,
-                request.getFrenteDNIUrl(),
-                request.getDorsoDNIUrl(),
                 request.getDomicilio()
         );
 
-        /*
-         * Primera etapa:
-         *
-         * Se crea Persona y la cuenta técnica Usuario.
-         * Todavía no existe Cliente porque la empresa no verificó
-         * ni admitió a la persona.
-         */
+        DocumentoPersona frenteDni = new DocumentoPersona(
+                persona,
+                TipoDocumentoPersona.DNI_FRENTE,
+                request.getFrenteDNIUrl()
+        );
+
+        DocumentoPersona dorsoDni = new DocumentoPersona(
+                persona,
+                TipoDocumentoPersona.DNI_DORSO,
+                request.getDorsoDNIUrl()
+        );
+
+        persona.agregarDocumento(frenteDni);
+        persona.agregarDocumento(dorsoDni);
+
         Usuario usuario = new Usuario(
                 persona,
                 null,
                 Rol.USER,
                 EstadoUsuario.PENDIENTE_VALIDACION
         );
+
+        persona.setUsuario(usuario);
 
         Usuario usuarioGuardado =
                 usuarioRepository.save(usuario);
@@ -92,11 +110,9 @@ public class AuthService {
         );
     }
 
-    public RegistrationStatusDTO obtenerEstadoRegistro(
-            String mail
-    ) {
+    public RegistrationStatusDTO obtenerEstadoRegistro(String mail) {
         String mailNormalizado =
-                mail.trim().toLowerCase();
+                normalizarMail(mail);
 
         Usuario usuario = usuarioRepository
                 .findByMail(mailNormalizado)
@@ -147,7 +163,7 @@ public class AuthService {
             CompleteRegistrationRequestDTO request
     ) {
         String mailNormalizado =
-                request.getMail().trim().toLowerCase();
+                normalizarMail(request.getMail());
 
         Usuario usuario = usuarioRepository
                 .findByMail(mailNormalizado)
@@ -213,11 +229,9 @@ public class AuthService {
         return toAuthResponse(usuarioGuardado, token);
     }
 
-    public AuthResponseDTO login(
-            LoginRequestDTO request
-    ) {
+    public AuthResponseDTO login(LoginRequestDTO request) {
         String mailNormalizado =
-                request.getMail().trim().toLowerCase();
+                normalizarMail(request.getMail());
 
         Usuario usuario = usuarioRepository
                 .findByMail(mailNormalizado)
@@ -241,7 +255,7 @@ public class AuthService {
                             request.getPassword()
                     )
             );
-        } catch (BadCredentialsException ex) {
+        } catch (BadCredentialsException exception) {
             throw new InvalidCredentialsException();
         }
 
@@ -252,10 +266,8 @@ public class AuthService {
         return toAuthResponse(usuario, token);
     }
 
-    private AuthResponseDTO toAuthResponse(
-            Usuario usuario,
-            String token
-    ) {
+    private AuthResponseDTO toAuthResponse(Usuario usuario,
+                                           String token) {
         CategoriaUsuario categoriaNegocio =
                 usuario.getCategoriaNegocio();
 
@@ -267,7 +279,8 @@ public class AuthService {
                 tarjetaCreditoRepository.countByUsuario(usuario) > 0;
 
         boolean configuracionFinancieraCompleta =
-                usuario.getCuenta() != null && tieneTarjeta;
+                usuario.getCuenta() != null
+                        && tieneTarjeta;
 
         return new AuthResponseDTO(
                 token,
@@ -282,12 +295,16 @@ public class AuthService {
         );
     }
 
-    private void validarPreRegister(
-            PreRegisterRequestDTO request
-    ) {
+    private void validarPreRegister(PreRegisterRequestDTO request) {
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Los datos del registro son obligatorios"
+            );
+        }
+
         if (request.getNombre() == null
                 || request.getNombre().trim().length() < 2) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Nombre inválido"
@@ -296,16 +313,22 @@ public class AuthService {
 
         if (request.getApellido() == null
                 || request.getApellido().trim().length() < 2) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Apellido inválido"
             );
         }
 
+        if (request.getDocumento() == null
+                || request.getDocumento().trim().isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El número de documento es obligatorio"
+            );
+        }
+
         if (request.getMail() == null
                 || !request.getMail().contains("@")) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Email inválido"
@@ -314,7 +337,6 @@ public class AuthService {
 
         if (request.getFrenteDNIUrl() == null
                 || request.getFrenteDNIUrl().isBlank()) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Falta frente del DNI"
@@ -323,7 +345,6 @@ public class AuthService {
 
         if (request.getDorsoDNIUrl() == null
                 || request.getDorsoDNIUrl().isBlank()) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Falta dorso del DNI"
@@ -338,10 +359,8 @@ public class AuthService {
         }
     }
 
-    private void validarPassword(
-            String password,
-            String confirmPassword
-    ) {
+    private void validarPassword(String password,
+                                 String confirmPassword) {
         if (password == null || confirmPassword == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -383,5 +402,16 @@ public class AuthService {
                     "La contraseña debe tener al menos un carácter especial"
             );
         }
+    }
+
+    private String normalizarMail(String mail) {
+        if (mail == null || mail.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El email es obligatorio"
+            );
+        }
+
+        return mail.trim().toLowerCase();
     }
 }

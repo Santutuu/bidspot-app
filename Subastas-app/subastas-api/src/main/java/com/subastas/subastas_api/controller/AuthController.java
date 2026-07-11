@@ -3,7 +3,6 @@ package com.subastas.subastas_api.controller;
 import com.subastas.subastas_api.DTO.auth.AuthResponseDTO;
 import com.subastas.subastas_api.DTO.auth.CompleteRegistrationRequestDTO;
 import com.subastas.subastas_api.DTO.auth.LoginRequestDTO;
-import com.subastas.subastas_api.DTO.auth.PreRegisterRequestDTO;
 import com.subastas.subastas_api.DTO.auth.PreRegisterResponseDTO;
 import com.subastas.subastas_api.DTO.auth.RegistrationStatusDTO;
 import com.subastas.subastas_api.DTO.auth.UsuarioActualDTO;
@@ -16,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import com.subastas.subastas_api.DTO.auth.PreRegisterRequestDTO;
 
 @RestController
 @RequestMapping("/auth")

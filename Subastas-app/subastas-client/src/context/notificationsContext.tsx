@@ -9,7 +9,7 @@ import {
     addDismissedNotificationId,
     getDismissedNotificationIds,
     getStoredNotifications,
-  getWatchedBids,
+    getWatchedBids,
     saveNotifications,
     saveWatchedBids,
     WatchedBid,

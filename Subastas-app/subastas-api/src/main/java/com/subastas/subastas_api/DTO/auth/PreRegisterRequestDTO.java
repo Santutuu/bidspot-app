@@ -6,6 +6,7 @@ public class PreRegisterRequestDTO {
 
     private String nombre;
     private String apellido;
+    private String documento;
     private String mail;
     private String frenteDNIUrl;
     private String dorsoDNIUrl;
@@ -17,6 +18,10 @@ public class PreRegisterRequestDTO {
 
     public String getApellido() {
         return apellido;
+    }
+
+    public String getDocumento() {
+        return documento;
     }
 
     public String getMail() {

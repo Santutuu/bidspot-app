@@ -1,6 +1,7 @@
 export interface PreRegisterRequestDTO {
   nombre: string;
   apellido: string;
+  documento: string;
   mail: string;
 
   frenteDNIUrl: string;

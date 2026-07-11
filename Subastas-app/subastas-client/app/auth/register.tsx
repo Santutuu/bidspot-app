@@ -6,20 +6,42 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 type DocumentSide = "front" | "back";
+
+function normalizePreRegisterErrorMessage(error: any) {
+  const rawMessage = String(
+    error?.response?.data?.message ??
+      error?.response?.data?.error ??
+      "No se pudo completar el registro.",
+  );
+  const normalized = rawMessage.toLowerCase();
+
+  const isMailAlreadyUsed =
+    normalized.includes("mail") &&
+    (normalized.includes("utiliz") ||
+      normalized.includes("usad") ||
+      normalized.includes("registr") ||
+      normalized.includes("exist"));
+
+  if (isMailAlreadyUsed) {
+    return "mail ya utilizado";
+  }
+
+  return rawMessage;
+}
 
 export default function RegisterScreen() {
   const { setPendingMail } = useAuth();
@@ -29,6 +51,7 @@ export default function RegisterScreen() {
 
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
+  const [documento, setDocumento] = useState("");
   const [mail, setMail] = useState("");
 
   const [pais, setPais] = useState("");
@@ -42,12 +65,18 @@ export default function RegisterScreen() {
 
   function validatePersonalData() {
     if (nombre.trim().length < 2) {
-      Alert.alert("Nombre inválido", "El nombre debe tener al menos 2 caracteres.");
+      Alert.alert(
+        "Nombre inválido",
+        "El nombre debe tener al menos 2 caracteres.",
+      );
       return;
     }
 
     if (apellido.trim().length < 2) {
-      Alert.alert("Apellido inválido", "El apellido debe tener al menos 2 caracteres.");
+      Alert.alert(
+        "Apellido inválido",
+        "El apellido debe tener al menos 2 caracteres.",
+      );
       return;
     }
 
@@ -56,12 +85,42 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (!documento.trim()) {
+      Alert.alert("Documento obligatorio", "Ingresá tu número de documento.");
+      return;
+    }
+
+    if (!/^\d+$/.test(documento.trim())) {
+      Alert.alert(
+        "Documento inválido",
+        "El documento debe contener solo dígitos.",
+      );
+      return;
+    }
+
+    if (documento.trim().length < 7 || documento.trim().length > 10) {
+      Alert.alert(
+        "Documento inválido",
+        "El documento debe tener entre 7 y 10 dígitos.",
+      );
+      return;
+    }
+
     setStep(2);
   }
 
   function validateAddress() {
-    if (!pais.trim() || !provincia.trim() || !ciudad.trim() || !cp.trim() || !direccion.trim()) {
-      Alert.alert("Campos obligatorios", "Completá todos los datos del domicilio.");
+    if (
+      !pais.trim() ||
+      !provincia.trim() ||
+      !ciudad.trim() ||
+      !cp.trim() ||
+      !direccion.trim()
+    ) {
+      Alert.alert(
+        "Campos obligatorios",
+        "Completá todos los datos del domicilio.",
+      );
       return;
     }
 
@@ -83,6 +142,7 @@ export default function RegisterScreen() {
       const response = await preRegisterUser({
         nombre: nombre.trim(),
         apellido: apellido.trim(),
+        documento: documento.trim(),
         mail: mail.trim().toLowerCase(),
         frenteDNIUrl,
         dorsoDNIUrl,
@@ -104,10 +164,7 @@ export default function RegisterScreen() {
         params: { mail: response.mail },
       });
     } catch (error: any) {
-      const message =
-        error.response?.data?.message ??
-        error.response?.data?.error ??
-        "No se pudo completar el registro.";
+      const message = normalizePreRegisterErrorMessage(error);
 
       Alert.alert("Error", message);
     } finally {
@@ -189,12 +246,42 @@ export default function RegisterScreen() {
             <Text style={styles.sectionEmoji}>👤</Text>
             <Text style={styles.sectionTitle}>Datos personales</Text>
             <Text style={styles.sectionDescription}>
-              En esta primera etapa no generás contraseña. Primero la empresa debe validar tus datos.
+              En esta primera etapa no generás contraseña. Primero la empresa
+              debe validar tus datos.
             </Text>
 
-            <TextInput style={styles.input} placeholder="Nombre" placeholderTextColor="#9CA3AF" value={nombre} onChangeText={setNombre} />
-            <TextInput style={styles.input} placeholder="Apellido" placeholderTextColor="#9CA3AF" value={apellido} onChangeText={setApellido} />
-            <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#9CA3AF" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} value={mail} onChangeText={setMail} />
+            <TextInput
+              style={styles.input}
+              placeholder="Nombre"
+              placeholderTextColor="#9CA3AF"
+              value={nombre}
+              onChangeText={setNombre}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Apellido"
+              placeholderTextColor="#9CA3AF"
+              value={apellido}
+              onChangeText={setApellido}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={mail}
+              onChangeText={setMail}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Número de documento"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              value={documento}
+              onChangeText={(value) => setDocumento(value.replace(/\D/g, ""))}
+            />
 
             <Pressable style={styles.button} onPress={validatePersonalData}>
               <Text style={styles.buttonText}>Continuar</Text>
@@ -206,20 +293,59 @@ export default function RegisterScreen() {
           <View style={styles.panel}>
             <Text style={styles.sectionEmoji}>📍</Text>
             <Text style={styles.sectionTitle}>Domicilio legal</Text>
-            <Text style={styles.sectionDescription}>Indicá tu domicilio legal y país de origen.</Text>
+            <Text style={styles.sectionDescription}>
+              Indicá tu domicilio legal y país de origen.
+            </Text>
 
-            <TextInput style={styles.input} placeholder="País de origen" placeholderTextColor="#9CA3AF" value={pais} onChangeText={setPais} />
-            <TextInput style={styles.input} placeholder="Provincia" placeholderTextColor="#9CA3AF" value={provincia} onChangeText={setProvincia} />
-            <TextInput style={styles.input} placeholder="Ciudad" placeholderTextColor="#9CA3AF" value={ciudad} onChangeText={setCiudad} />
-            <TextInput style={styles.input} placeholder="Código postal" placeholderTextColor="#9CA3AF" keyboardType="numeric" value={cp} onChangeText={setCp} />
-            <TextInput style={styles.input} placeholder="Dirección" placeholderTextColor="#9CA3AF" value={direccion} onChangeText={setDireccion} />
+            <TextInput
+              style={styles.input}
+              placeholder="País de origen"
+              placeholderTextColor="#9CA3AF"
+              value={pais}
+              onChangeText={setPais}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Provincia"
+              placeholderTextColor="#9CA3AF"
+              value={provincia}
+              onChangeText={setProvincia}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Ciudad"
+              placeholderTextColor="#9CA3AF"
+              value={ciudad}
+              onChangeText={setCiudad}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Código postal"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              value={cp}
+              onChangeText={setCp}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Dirección"
+              placeholderTextColor="#9CA3AF"
+              value={direccion}
+              onChangeText={setDireccion}
+            />
 
             <View style={styles.actionsRow}>
-              <Pressable style={styles.secondaryButton} onPress={() => setStep(1)}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => setStep(1)}
+              >
                 <Text style={styles.secondaryButtonText}>Volver</Text>
               </Pressable>
 
-              <Pressable style={styles.primarySmallButton} onPress={validateAddress}>
+              <Pressable
+                style={styles.primarySmallButton}
+                onPress={validateAddress}
+              >
                 <Text style={styles.buttonText}>Continuar</Text>
               </Pressable>
             </View>
@@ -230,18 +356,44 @@ export default function RegisterScreen() {
           <View style={styles.panel}>
             <Text style={styles.sectionEmoji}>🪪</Text>
             <Text style={styles.sectionTitle}>Documento de identidad</Text>
-            <Text style={styles.sectionDescription}>Subí imágenes claras del frente y dorso del DNI.</Text>
+            <Text style={styles.sectionDescription}>
+              Subí imágenes claras del frente y dorso del DNI.
+            </Text>
 
-            <DocumentUploadBox title="Frente del DNI" imageUri={frontDniImage} onPick={() => pickImage("front")} onCamera={() => takePhoto("front")} />
-            <DocumentUploadBox title="Dorso del DNI" imageUri={backDniImage} onPick={() => pickImage("back")} onCamera={() => takePhoto("back")} />
+            <DocumentUploadBox
+              title="Frente del DNI"
+              imageUri={frontDniImage}
+              onPick={() => pickImage("front")}
+              onCamera={() => takePhoto("front")}
+            />
+            <DocumentUploadBox
+              title="Dorso del DNI"
+              imageUri={backDniImage}
+              onPick={() => pickImage("back")}
+              onCamera={() => takePhoto("back")}
+            />
 
             <View style={styles.actionsRow}>
-              <Pressable style={styles.secondaryButton} onPress={() => setStep(2)}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => setStep(2)}
+              >
                 <Text style={styles.secondaryButtonText}>Volver</Text>
               </Pressable>
 
-              <Pressable style={[styles.primarySmallButton, loading && styles.buttonDisabled]} disabled={loading} onPress={submitPreRegister}>
-                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Enviar solicitud</Text>}
+              <Pressable
+                style={[
+                  styles.primarySmallButton,
+                  loading && styles.buttonDisabled,
+                ]}
+                disabled={loading}
+                onPress={submitPreRegister}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Enviar solicitud</Text>
+                )}
               </Pressable>
             </View>
           </View>
@@ -251,22 +403,38 @@ export default function RegisterScreen() {
           <Text style={styles.link}>Ya tengo una clave</Text>
         </Pressable>
 
-        <Pressable onPress={() => router.push("/(tabs)/auth/registration-status" as any)}>
-          <Text style={styles.secondaryLink}>Consultar estado de solicitud</Text>
+        <Pressable
+          onPress={() => router.push("/(tabs)/auth/registration-status" as any)}
+        >
+          <Text style={styles.secondaryLink}>
+            Consultar estado de solicitud
+          </Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-function StepDot({ active, done, label }: { active: boolean; done: boolean; label: string }) {
+function StepDot({
+  active,
+  done,
+  label,
+}: {
+  active: boolean;
+  done: boolean;
+  label: string;
+}) {
   return (
     <View style={styles.stepItem}>
-      <View style={[styles.dot, active && styles.dotActive, done && styles.dotDone]}>
+      <View
+        style={[styles.dot, active && styles.dotActive, done && styles.dotDone]}
+      >
         {done ? <Ionicons name="checkmark" size={14} color="white" /> : null}
       </View>
 
-      <Text style={[styles.stepLabel, active && styles.stepLabelActive]}>{label}</Text>
+      <Text style={[styles.stepLabel, active && styles.stepLabelActive]}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -285,12 +453,18 @@ function DocumentUploadBox({
   return (
     <View style={styles.uploadBox}>
       {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.previewImage}
+          resizeMode="cover"
+        />
       ) : (
         <View style={styles.emptyPreview}>
           <Ionicons name="document-text-outline" size={32} color="#4B5563" />
           <Text style={styles.uploadTitle}>{title}</Text>
-          <Text style={styles.uploadSubtitle}>Imagen clara, completa y legible.</Text>
+          <Text style={styles.uploadSubtitle}>
+            Imagen clara, completa y legible.
+          </Text>
         </View>
       )}
 
@@ -318,42 +492,173 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F5F6FA" },
   container: { paddingHorizontal: 22, paddingTop: 54, paddingBottom: 140 },
 
-  kicker: { color: "#2F63F6", fontSize: 13, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 8 },
-  title: { fontSize: 32, fontWeight: "800", color: "#111827", marginBottom: 10 },
-  subtitle: { fontSize: 15, color: "#6B7280", lineHeight: 22, marginBottom: 26 },
+  kicker: {
+    color: "#2F63F6",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "#6B7280",
+    lineHeight: 22,
+    marginBottom: 26,
+  },
 
   stepper: { flexDirection: "row", alignItems: "center", marginBottom: 24 },
   stepItem: { alignItems: "center", width: 70 },
-  dot: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: "#9CA3AF", backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center" },
+  dot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#9CA3AF",
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   dotActive: { borderColor: "#2F63F6", backgroundColor: "#2F63F6" },
   dotDone: { borderColor: "#2F63F6", backgroundColor: "#2F63F6" },
-  stepLabel: { marginTop: 6, fontSize: 11, color: "#6B7280", fontWeight: "600" },
+  stepLabel: {
+    marginTop: 6,
+    fontSize: 11,
+    color: "#6B7280",
+    fontWeight: "600",
+  },
   stepLabelActive: { color: "#111827" },
-  stepLine: { flex: 1, height: 1, backgroundColor: "#D1D5DB", marginBottom: 22 },
+  stepLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#D1D5DB",
+    marginBottom: 22,
+  },
 
-  panel: { backgroundColor: "#FFFFFF", borderRadius: 22, padding: 20, borderWidth: 1, borderColor: "#E5E7EB" },
+  panel: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
   sectionEmoji: { fontSize: 30, marginBottom: 8 },
-  sectionTitle: { fontSize: 22, fontWeight: "800", color: "#111827", marginBottom: 6 },
-  sectionDescription: { fontSize: 14, color: "#6B7280", lineHeight: 20, marginBottom: 18 },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: "#6B7280",
+    lineHeight: 20,
+    marginBottom: 18,
+  },
 
-  input: { backgroundColor: "#FAFAFA", borderRadius: 0, paddingHorizontal: 15, paddingVertical: 14, fontSize: 15, marginBottom: 18, borderWidth: 1, borderColor: "#E5E7EB", color: "#111827", height: 55 },
-  button: { backgroundColor: "#2F63F6", paddingVertical: 15, borderRadius: 13, alignItems: "center", marginTop: 4 },
+  input: {
+    backgroundColor: "#FAFAFA",
+    borderRadius: 0,
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+    fontSize: 15,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    color: "#111827",
+    height: 55,
+  },
+  button: {
+    backgroundColor: "#2F63F6",
+    paddingVertical: 15,
+    borderRadius: 13,
+    alignItems: "center",
+    marginTop: 4,
+  },
   buttonDisabled: { opacity: 0.7 },
   actionsRow: { flexDirection: "row", gap: 12, marginTop: 4 },
-  secondaryButton: { flex: 1, borderWidth: 1, borderColor: "#CBD5E1", paddingVertical: 14, borderRadius: 13, alignItems: "center", backgroundColor: "#FFFFFF" },
-  primarySmallButton: { flex: 1, backgroundColor: "#2F63F6", paddingVertical: 14, borderRadius: 13, alignItems: "center" },
+  secondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    paddingVertical: 14,
+    borderRadius: 13,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  primarySmallButton: {
+    flex: 1,
+    backgroundColor: "#2F63F6",
+    paddingVertical: 14,
+    borderRadius: 13,
+    alignItems: "center",
+  },
   secondaryButtonText: { color: "#1F2937", fontSize: 15, fontWeight: "700" },
   buttonText: { color: "white", fontSize: 15, fontWeight: "800" },
 
   uploadBox: { marginBottom: 14 },
-  emptyPreview: { height: 142, borderRadius: 14, borderWidth: 1, borderStyle: "dashed", borderColor: "#CBD5E1", justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA", paddingHorizontal: 16 },
-  previewImage: { width: "100%", height: 160, borderRadius: 14, backgroundColor: "#EEE" },
-  uploadTitle: { marginTop: 8, fontSize: 15, fontWeight: "800", color: "#111827" },
-  uploadSubtitle: { marginTop: 4, fontSize: 13, color: "#6B7280", textAlign: "center" },
+  emptyPreview: {
+    height: 142,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#CBD5E1",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FAFAFA",
+    paddingHorizontal: 16,
+  },
+  previewImage: {
+    width: "100%",
+    height: 160,
+    borderRadius: 14,
+    backgroundColor: "#EEE",
+  },
+  uploadTitle: {
+    marginTop: 8,
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  uploadSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#6B7280",
+    textAlign: "center",
+  },
   uploadActions: { flexDirection: "row", gap: 10, marginTop: 10 },
-  uploadButton: { flex: 1, borderWidth: 1, borderColor: "#D1D5DB", backgroundColor: "#FFFFFF", borderRadius: 12, paddingVertical: 11, justifyContent: "center", alignItems: "center", flexDirection: "row", gap: 6 },
+  uploadButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 11,
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
   uploadButtonText: { color: "#1F2937", fontWeight: "700", fontSize: 14 },
 
-  link: { textAlign: "center", color: "#2F63F6", fontSize: 15, fontWeight: "700", marginTop: 22 },
-  secondaryLink: { textAlign: "center", color: "#6B7280", fontSize: 14, fontWeight: "700", marginTop: 12 },
+  link: {
+    textAlign: "center",
+    color: "#2F63F6",
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 22,
+  },
+  secondaryLink: {
+    textAlign: "center",
+    color: "#6B7280",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 12,
+  },
 });

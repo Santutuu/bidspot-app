@@ -5,20 +5,42 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 type DocumentSide = "front" | "back";
+
+function normalizePreRegisterErrorMessage(error: any) {
+  const rawMessage = String(
+    error?.response?.data?.message ??
+      error?.response?.data?.error ??
+      "No se pudo completar el registro.",
+  );
+  const normalized = rawMessage.toLowerCase();
+
+  const isMailAlreadyUsed =
+    normalized.includes("mail") &&
+    (normalized.includes("utiliz") ||
+      normalized.includes("usad") ||
+      normalized.includes("registr") ||
+      normalized.includes("exist"));
+
+  if (isMailAlreadyUsed) {
+    return "mail ya utilizado";
+  }
+
+  return rawMessage;
+}
 
 export default function RegisterScreen() {
   const [step, setStep] = useState(1);
@@ -26,6 +48,7 @@ export default function RegisterScreen() {
 
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
+  const [documento, setDocumento] = useState("");
   const [mail, setMail] = useState("");
 
   const [pais, setPais] = useState("");
@@ -39,17 +62,44 @@ export default function RegisterScreen() {
 
   function validatePersonalData() {
     if (nombre.trim().length < 2) {
-      Alert.alert("Nombre inválido", "El nombre debe tener al menos 2 caracteres.");
+      Alert.alert(
+        "Nombre inválido",
+        "El nombre debe tener al menos 2 caracteres.",
+      );
       return;
     }
 
     if (apellido.trim().length < 2) {
-      Alert.alert("Apellido inválido", "El apellido debe tener al menos 2 caracteres.");
+      Alert.alert(
+        "Apellido inválido",
+        "El apellido debe tener al menos 2 caracteres.",
+      );
       return;
     }
 
     if (!isValidEmail(mail)) {
       Alert.alert("Email inválido", "Ingresá un email válido.");
+      return;
+    }
+
+    if (!documento.trim()) {
+      Alert.alert("Documento obligatorio", "Ingresá tu número de documento.");
+      return;
+    }
+
+    if (!/^\d+$/.test(documento.trim())) {
+      Alert.alert(
+        "Documento inválido",
+        "El documento debe contener solo dígitos.",
+      );
+      return;
+    }
+
+    if (documento.trim().length < 7 || documento.trim().length > 10) {
+      Alert.alert(
+        "Documento inválido",
+        "El documento debe tener entre 7 y 10 dígitos.",
+      );
       return;
     }
 
@@ -100,6 +150,7 @@ export default function RegisterScreen() {
       const response = await preRegisterUser({
         nombre: nombre.trim(),
         apellido: apellido.trim(),
+        documento: documento.trim(),
         mail: mail.trim().toLowerCase(),
         frenteDNIUrl,
         dorsoDNIUrl,
@@ -119,11 +170,7 @@ export default function RegisterScreen() {
         params: { mail: response.mail },
       });
     } catch (error: any) {
-      const data = error.response?.data;
-      const message =
-        data?.message ??
-        data?.error ??
-        "No se pudo completar el registro.";
+      const message = normalizePreRegisterErrorMessage(error);
 
       Alert.alert("Error", message);
     } finally {
@@ -245,6 +292,15 @@ export default function RegisterScreen() {
               onChangeText={setMail}
             />
 
+            <TextInput
+              style={styles.input}
+              placeholder="Número de documento"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numeric"
+              value={documento}
+              onChangeText={(value) => setDocumento(value.replace(/\D/g, ""))}
+            />
+
             <Pressable style={styles.button} onPress={validatePersonalData}>
               <Text style={styles.buttonText}>Continuar</Text>
             </Pressable>
@@ -303,11 +359,17 @@ export default function RegisterScreen() {
             />
 
             <View style={styles.actionsRow}>
-              <Pressable style={styles.secondaryButton} onPress={() => setStep(1)}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => setStep(1)}
+              >
                 <Text style={styles.secondaryButtonText}>Volver</Text>
               </Pressable>
 
-              <Pressable style={styles.primarySmallButton} onPress={validateAddress}>
+              <Pressable
+                style={styles.primarySmallButton}
+                onPress={validateAddress}
+              >
                 <Text style={styles.buttonText}>Continuar</Text>
               </Pressable>
             </View>
@@ -339,12 +401,18 @@ export default function RegisterScreen() {
             />
 
             <View style={styles.actionsRow}>
-              <Pressable style={styles.secondaryButton} onPress={() => setStep(2)}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => setStep(2)}
+              >
                 <Text style={styles.secondaryButtonText}>Volver</Text>
               </Pressable>
 
               <Pressable
-                style={[styles.primarySmallButton, loading && styles.buttonDisabled]}
+                style={[
+                  styles.primarySmallButton,
+                  loading && styles.buttonDisabled,
+                ]}
                 disabled={loading}
                 onPress={submitPreRegister}
               >
@@ -363,7 +431,9 @@ export default function RegisterScreen() {
         </Pressable>
 
         <Pressable onPress={() => router.push("/auth/registration-status")}>
-          <Text style={styles.secondaryLink}>Consultar estado de solicitud</Text>
+          <Text style={styles.secondaryLink}>
+            Consultar estado de solicitud
+          </Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -381,7 +451,9 @@ function StepDot({
 }) {
   return (
     <View style={styles.stepItem}>
-      <View style={[styles.dot, active && styles.dotActive, done && styles.dotDone]}>
+      <View
+        style={[styles.dot, active && styles.dotActive, done && styles.dotDone]}
+      >
         {done ? <Ionicons name="checkmark" size={14} color="white" /> : null}
       </View>
 
