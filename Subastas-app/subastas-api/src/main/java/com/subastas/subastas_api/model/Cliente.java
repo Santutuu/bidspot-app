@@ -3,16 +3,13 @@ package com.subastas.subastas_api.model;
 import com.subastas.subastas_api.converter.CategoriaUsuarioConverter;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "clientes")
 public class Cliente {
 
-    /*
-     * Clave primaria compartida con Persona.
-     *
-     * Para un Cliente nuevo, este valor debe permanecer null antes
-     * de persistir. @MapsId lo obtiene automáticamente desde Persona.
-     */
     @Id
     @Column(name = "identificador")
     private Long identificador;
@@ -36,6 +33,20 @@ public class Cliente {
     @JoinColumn(name = "verificador", nullable = false)
     private Empleado verificador;
 
+    @OneToOne(
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @JoinColumn(name = "cuenta_id", unique = true)
+    private CuentaBanco cuenta;
+
+    @OneToMany(
+            mappedBy = "cliente",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<MedioDePago> mediosDePago = new ArrayList<>();
+
     public Cliente() {
     }
 
@@ -43,11 +54,6 @@ public class Cliente {
                    CategoriaUsuario categoria,
                    Empleado verificador) {
         this.persona = persona;
-
-        /*
-         * No asignar identificador manualmente.
-         * @MapsId lo copiará desde persona.getIdPersona().
-         */
         this.admitido = "si";
         this.categoria = categoria;
         this.verificador = verificador;
@@ -88,6 +94,14 @@ public class Cliente {
         return verificador;
     }
 
+    public CuentaBanco getCuenta() {
+        return cuenta;
+    }
+
+    public List<MedioDePago> getMediosDePago() {
+        return mediosDePago;
+    }
+
     public boolean estaAdmitido() {
         return "si".equalsIgnoreCase(admitido);
     }
@@ -110,5 +124,27 @@ public class Cliente {
 
     public void rechazar() {
         this.admitido = "no";
+    }
+
+    public void setCuenta(CuentaBanco cuenta) {
+        this.cuenta = cuenta;
+    }
+
+    public void agregarMedioDePago(MedioDePago medioDePago) {
+        if (medioDePago == null) {
+            return;
+        }
+
+        mediosDePago.add(medioDePago);
+        medioDePago.setCliente(this);
+    }
+
+    public void eliminarMedioDePago(MedioDePago medioDePago) {
+        if (medioDePago == null) {
+            return;
+        }
+
+        mediosDePago.remove(medioDePago);
+        medioDePago.setCliente(null);
     }
 }

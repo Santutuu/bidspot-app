@@ -23,14 +23,14 @@ public class TarjetaCredito extends MedioDePago {
     public TarjetaCredito() {
     }
 
-    public TarjetaCredito(Usuario usuario,
+    public TarjetaCredito(Cliente cliente,
                           String numero,
                           String nombre,
                           String fechaVto,
                           String cvv,
                           Moneda moneda,
                           Float limiteCredito) {
-        super(usuario, moneda);
+        super(cliente, moneda);
         this.numero = numero;
         this.nombre = nombre;
         this.fechaVto = fechaVto;

@@ -56,7 +56,7 @@ public class SubastaController {
         Usuario usuarioActual = obtenerUsuarioActual(authentication);
 
         DetalleSubastaDTO response =
-                detalleSubastaService.obtenerDetalleSubasta(id, usuarioActual);
+                detalleSubastaService.obtenerDetalle(id, usuarioActual);
 
         return ResponseEntity.ok(response);
     }

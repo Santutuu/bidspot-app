@@ -16,35 +16,34 @@ public class Subasta {
     @Column(name = "identificador")
     private Long idSubasta;
 
+    /*
+     * Extensión del modelo legacy.
+     *
+     * Contiene el estado detallado utilizado por la aplicación:
+     * PROGRAMADA, ACTIVA, FINALIZADA o CANCELADA.
+     */
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "estadosubasta", nullable = false)
+    @JoinColumn(name = "estadosubasta")
     private EstadoSubastaEntity estado;
 
     /*
-     * Campo legacy.
+     * Campo original legacy.
      *
-     * Se mantiene sincronizado con estadosubasta:
-     *
-     * ACTIVA      -> abierta
-     * PROGRAMADA  -> programada
-     * FINALIZADA  -> cerrada
-     * CANCELADA   -> cancelada
+     * El CHECK de la base solamente admite:
+     * abierta / carrada.
      */
     @Column(name = "estado")
     private String estadoLegacy;
 
-    /*
-     * En la base legacy las categorías están guardadas en minúsculas:
-     * comun, especial, plata, oro, platino.
-     *
-     * El converter transforma esos valores a CategoriaUsuario.
-     */
     @Convert(converter = CategoriaUsuarioConverter.class)
-    @Column(name = "categoria", nullable = false)
+    @Column(name = "categoria")
     private CategoriaUsuario categoriaMin;
 
+    /*
+     * Extensión necesaria para la aplicación.
+     */
     @Enumerated(EnumType.STRING)
-    @Column(name = "moneda", nullable = false)
+    @Column(name = "moneda")
     private Moneda moneda;
 
     @Column(name = "ubicacion")
@@ -57,29 +56,40 @@ public class Subasta {
     @JoinColumn(name = "subastador")
     private Rematador rematador;
 
-    @Column(name = "fecha", nullable = false)
+    @Column(name = "fecha")
     private LocalDate fecha;
 
     @Column(name = "hora", nullable = false)
     private LocalTime hora;
 
+    @Column(name = "capacidadasistentes")
+    private Integer capacidadAsistentes;
+
+    @Column(name = "tienedeposito")
+    private String tieneDeposito;
+
+    @Column(name = "seguridadpropia")
+    private String seguridadPropia;
+
     @OneToOne(
             mappedBy = "subasta",
             cascade = CascadeType.ALL,
-            orphanRemoval = true
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
     )
     private Catalogo catalogo;
 
     public Subasta() {
     }
 
-    public Subasta(CategoriaUsuario categoriaMin,
-                   Moneda moneda,
-                   String ubicacion,
-                   String linkVivo,
-                   Rematador rematador,
-                   LocalDateTime fechaInicio) {
-
+    public Subasta(
+            CategoriaUsuario categoriaMin,
+            Moneda moneda,
+            String ubicacion,
+            String linkVivo,
+            Rematador rematador,
+            LocalDateTime fechaInicio
+    ) {
         this.categoriaMin = categoriaMin;
         this.moneda = moneda;
         this.ubicacion = ubicacion;
@@ -89,34 +99,53 @@ public class Subasta {
         setFechaInicio(fechaInicio);
     }
 
+    @PrePersist
+    @PreUpdate
+    private void sincronizarEstadoLegacy() {
+        if (estado != null && estado.getNombre() != null) {
+            this.estadoLegacy =
+                    convertirEstadoLegacy(estado.getNombre());
+        }
+    }
+
     public Long getIdSubasta() {
         return idSubasta;
     }
 
     public EstadoSubasta getEstadoSubasta() {
-        return estado == null
-                ? null
-                : estado.getNombre();
+        if (estado != null && estado.getNombre() != null) {
+            return estado.getNombre();
+        }
+
+        /*
+         * Fallback para filas legacy que todavía no tienen
+         * estadosubasta configurado.
+         */
+        if ("abierta".equalsIgnoreCase(estadoLegacy)) {
+            return EstadoSubasta.ACTIVA;
+        }
+
+        if ("carrada".equalsIgnoreCase(estadoLegacy)
+                || "cerrada".equalsIgnoreCase(estadoLegacy)) {
+            return EstadoSubasta.FINALIZADA;
+        }
+
+        return null;
     }
 
     public EstadoSubastaEntity getEstado() {
         return estado;
     }
 
-    /*
-     * Método principal para asignar una entidad de estado persistente.
-     *
-     * Este es el método que deberían utilizar los services que obtienen
-     * EstadoSubastaEntity desde EstadoSubastaRepository.
-     */
-    public void setEstado(EstadoSubastaEntity estado) {
+    public void setEstado(
+            EstadoSubastaEntity estado
+    ) {
         this.estado = estado;
 
-        if (estado == null || estado.getNombre() == null) {
-            return;
+        if (estado != null && estado.getNombre() != null) {
+            this.estadoLegacy =
+                    convertirEstadoLegacy(estado.getNombre());
         }
-
-        this.estadoLegacy = convertirEstadoLegacy(estado.getNombre());
     }
 
     public String getEstadoLegacy() {
@@ -143,8 +172,27 @@ public class Subasta {
         return rematador;
     }
 
-    public LocalDateTime getFechaInicio() {
+    public LocalDate getFecha() {
+        return fecha;
+    }
 
+    public LocalTime getHora() {
+        return hora;
+    }
+
+    public Integer getCapacidadAsistentes() {
+        return capacidadAsistentes;
+    }
+
+    public String getTieneDeposito() {
+        return tieneDeposito;
+    }
+
+    public String getSeguridadPropia() {
+        return seguridadPropia;
+    }
+
+    public LocalDateTime getFechaInicio() {
         if (fecha == null || hora == null) {
             return null;
         }
@@ -152,8 +200,9 @@ public class Subasta {
         return LocalDateTime.of(fecha, hora);
     }
 
-    public void setFechaInicio(LocalDateTime fechaInicio) {
-
+    public void setFechaInicio(
+            LocalDateTime fechaInicio
+    ) {
         if (fechaInicio == null) {
             this.fecha = null;
             this.hora = null;
@@ -168,58 +217,82 @@ public class Subasta {
         return catalogo;
     }
 
-    public void setCatalogo(Catalogo catalogo) {
-
+    public void setCatalogo(
+            Catalogo catalogo
+    ) {
         this.catalogo = catalogo;
 
-        if (catalogo != null && catalogo.getSubasta() != this) {
+        if (catalogo != null
+                && catalogo.getSubasta() != this) {
             catalogo.setSubasta(this);
         }
     }
 
-    /*
-     * Se conserva temporalmente por compatibilidad con services existentes.
-     *
-     * ATENCIÓN:
-     * EstadoSubastaEntity es una entidad persistente.
-     *
-     * Crear una instancia nueva acá puede provocar TransientObjectException
-     * si posteriormente Hibernate intenta persistir la Subasta.
-     *
-     * Los services refactorizados deberían utilizar:
-     *
-     * EstadoSubastaRepository.findByNombre(...)
-     * subasta.setEstado(estadoEntity)
-     */
-    public void setEstadoSubasta(EstadoSubasta estadoSubasta) {
-
-        this.estado = new EstadoSubastaEntity(estadoSubasta);
-        this.estadoLegacy = convertirEstadoLegacy(estadoSubasta);
+    public void setCategoriaMin(
+            CategoriaUsuario categoriaMin
+    ) {
+        this.categoriaMin = categoriaMin;
     }
 
-    public void iniciarSubasta() {
-        setEstadoSubasta(EstadoSubasta.ACTIVA);
+    public void setMoneda(
+            Moneda moneda
+    ) {
+        this.moneda = moneda;
     }
 
-    public void finalizarSubasta() {
-        setEstadoSubasta(EstadoSubasta.FINALIZADA);
+    public void setUbicacion(
+            String ubicacion
+    ) {
+        this.ubicacion = ubicacion;
     }
 
-    public void cancelarSubasta() {
-        setEstadoSubasta(EstadoSubasta.CANCELADA);
+    public void setLinkVivo(
+            String linkVivo
+    ) {
+        this.linkVivo = linkVivo;
     }
 
-    private String convertirEstadoLegacy(EstadoSubasta estadoSubasta) {
+    public void setRematador(
+            Rematador rematador
+    ) {
+        this.rematador = rematador;
+    }
 
+    public void setCapacidadAsistentes(
+            Integer capacidadAsistentes
+    ) {
+        this.capacidadAsistentes = capacidadAsistentes;
+    }
+
+    public void setTieneDeposito(
+            String tieneDeposito
+    ) {
+        this.tieneDeposito = tieneDeposito;
+    }
+
+    public void setSeguridadPropia(
+            String seguridadPropia
+    ) {
+        this.seguridadPropia = seguridadPropia;
+    }
+
+    private String convertirEstadoLegacy(
+            EstadoSubasta estadoSubasta
+    ) {
         if (estadoSubasta == null) {
-            return null;
+            return estadoLegacy;
         }
 
         return switch (estadoSubasta) {
             case ACTIVA -> "abierta";
-            case PROGRAMADA -> "programada";
-            case FINALIZADA -> "carrada";
-            case CANCELADA -> "cancelada";
+
+            /*
+             * El legacy solamente distingue abierta/carrada.
+             * El detalle real se conserva en estadosubasta.
+             */
+            case PROGRAMADA,
+                 FINALIZADA,
+                 CANCELADA -> "carrada";
         };
     }
 }

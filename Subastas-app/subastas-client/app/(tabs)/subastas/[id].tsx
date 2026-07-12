@@ -424,6 +424,7 @@ export default function DetalleSubastaScreen() {
   const catalogo = detalle.catalogo ?? [];
   const proximosLotes = detalle.proximosLotes ?? [];
   const itemActual = esActiva ? detalle.itemActual : null;
+  const tituloSubasta = subasta.titulo;
   const tituloItemActual = itemActual?.titulo ?? subasta.titulo;
   const precioMostrado =
     esActiva && estadoPuja?.mejorOferta
@@ -689,7 +690,7 @@ export default function DetalleSubastaScreen() {
       </View>
 
       <View style={styles.auctionHeader}>
-        <Text style={styles.auctionTitle}>{tituloItemActual}</Text>
+        <Text style={styles.auctionTitle}>{tituloSubasta}</Text>
         <Text style={styles.status}>
           {getEstadoTexto(subasta.estadoSubasta)}
         </Text>

@@ -1,12 +1,25 @@
 package com.subastas.subastas_api.service;
 
-import com.subastas.subastas_api.DTO.venta.*;
-import com.subastas.subastas_api.model.*;
+import com.subastas.subastas_api.DTO.venta.ConfigurarEntregaRequestDTO;
+import com.subastas.subastas_api.DTO.venta.ConfirmarCompraRequestDTO;
+import com.subastas.subastas_api.DTO.venta.SeleccionarMedioPagoRequestDTO;
+import com.subastas.subastas_api.DTO.venta.VentaDetalleResponseDTO;
+import com.subastas.subastas_api.DTO.venta.VentaResumenResponseDTO;
+import com.subastas.subastas_api.model.Cliente;
+import com.subastas.subastas_api.model.EstadoVenta;
+import com.subastas.subastas_api.model.Item;
+import com.subastas.subastas_api.model.ItemCatalogo;
+import com.subastas.subastas_api.model.MedioDePago;
+import com.subastas.subastas_api.model.Subasta;
+import com.subastas.subastas_api.model.TipoEntrega;
+import com.subastas.subastas_api.model.Usuario;
+import com.subastas.subastas_api.model.VentaConcretada;
 import com.subastas.subastas_api.repository.MedioDePagoRepository;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.repository.VentaConcretadaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -20,39 +33,59 @@ public class CompraService {
     private final UsuarioRepository usuarioRepository;
     private final MedioDePagoRepository medioDePagoRepository;
 
-    public CompraService(VentaConcretadaRepository ventaRepository,
-                         UsuarioRepository usuarioRepository,
-                         MedioDePagoRepository medioDePagoRepository) {
+    public CompraService(
+            VentaConcretadaRepository ventaRepository,
+            UsuarioRepository usuarioRepository,
+            MedioDePagoRepository medioDePagoRepository
+    ) {
         this.ventaRepository = ventaRepository;
         this.usuarioRepository = usuarioRepository;
         this.medioDePagoRepository = medioDePagoRepository;
     }
 
-    public List<VentaResumenResponseDTO> listarMisCompras(String mail) {
-        Usuario usuario = obtenerUsuario(mail);
+    @Transactional(readOnly = true)
+    public List<VentaResumenResponseDTO> listarMisCompras(
+            String mail
+    ) {
+        Cliente cliente = obtenerClientePorMail(mail);
 
-        return ventaRepository.findByCompradorOrderByFechaVentaDesc(usuario)
+        return ventaRepository
+                .findByCompradorOrderByFechaVentaDesc(cliente)
                 .stream()
                 .map(this::toResumenDTO)
                 .toList();
     }
 
-    public VentaDetalleResponseDTO obtenerDetalleCompra(String mail, Long idVenta) {
-        Usuario usuario = obtenerUsuario(mail);
-        VentaConcretada venta = obtenerVentaDelUsuario(idVenta, usuario);
+    @Transactional(readOnly = true)
+    public VentaDetalleResponseDTO obtenerDetalleCompra(
+            String mail,
+            Long idVenta
+    ) {
+        Cliente cliente = obtenerClientePorMail(mail);
+
+        VentaConcretada venta =
+                obtenerVentaDelCliente(idVenta, cliente);
 
         return toDetalleDTO(venta);
     }
 
-    public VentaDetalleResponseDTO configurarEntrega(String mail,
-                                                     Long idVenta,
-                                                     ConfigurarEntregaRequestDTO request) {
-        Usuario usuario = obtenerUsuario(mail);
-        VentaConcretada venta = obtenerVentaDelUsuario(idVenta, usuario);
+    @Transactional
+    public VentaDetalleResponseDTO configurarEntrega(
+            String mail,
+            Long idVenta,
+            ConfigurarEntregaRequestDTO request
+    ) {
+        Cliente cliente = obtenerClientePorMail(mail);
+
+        VentaConcretada venta =
+                obtenerVentaDelCliente(idVenta, cliente);
 
         validarVentaPendientePago(venta);
 
-        if (request.getTipoEntrega() == null) {
+        if (request == null
+                || request.getTipoEntrega() == null
+                || request.getTipoEntrega().isBlank()) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "El tipo de entrega es obligatorio"
@@ -62,8 +95,12 @@ public class CompraService {
         TipoEntrega tipoEntrega;
 
         try {
-            tipoEntrega = TipoEntrega.valueOf(request.getTipoEntrega());
-        } catch (IllegalArgumentException e) {
+            tipoEntrega = TipoEntrega.valueOf(
+                    request.getTipoEntrega()
+                            .trim()
+                            .toUpperCase()
+            );
+        } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Tipo de entrega inválido"
@@ -71,7 +108,9 @@ public class CompraService {
         }
 
         if (tipoEntrega == TipoEntrega.DOMICILIO) {
-            if (request.getDireccionEntrega() == null || request.getDireccionEntrega().isBlank()) {
+            if (request.getDireccionEntrega() == null
+                    || request.getDireccionEntrega().isBlank()) {
+
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
                         "La dirección de entrega es obligatoria"
@@ -83,21 +122,33 @@ public class CompraService {
                     COSTO_ENVIO_FIJO
             );
         } else {
-            venta.configurarRetiro(venta.getUbicacionRetiro());
+            venta.configurarRetiro(
+                    venta.getUbicacionRetiro()
+            );
         }
 
-        return toDetalleDTO(ventaRepository.save(venta));
+        VentaConcretada ventaGuardada =
+                ventaRepository.save(venta);
+
+        return toDetalleDTO(ventaGuardada);
     }
 
-    public VentaDetalleResponseDTO seleccionarMedioPago(String mail,
-                                                        Long idVenta,
-                                                        SeleccionarMedioPagoRequestDTO request) {
-        Usuario usuario = obtenerUsuario(mail);
-        VentaConcretada venta = obtenerVentaDelUsuario(idVenta, usuario);
+    @Transactional
+    public VentaDetalleResponseDTO seleccionarMedioPago(
+            String mail,
+            Long idVenta,
+            SeleccionarMedioPagoRequestDTO request
+    ) {
+        Cliente cliente = obtenerClientePorMail(mail);
+
+        VentaConcretada venta =
+                obtenerVentaDelCliente(idVenta, cliente);
 
         validarVentaPendientePago(venta);
 
-        if (request.getIdMedioPago() == null) {
+        if (request == null
+                || request.getIdMedioPago() == null) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Debe seleccionar un medio de pago"
@@ -105,33 +156,69 @@ public class CompraService {
         }
 
         MedioDePago medioPago = medioDePagoRepository
-                .findByIdMedioPagoAndUsuario(request.getIdMedioPago(), usuario)
+                .findByIdMedioPagoAndCliente(
+                        request.getIdMedioPago(),
+                        cliente
+                )
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "No existe un medio de pago con ese id"
+                        "No existe un medio de pago con ese id para este cliente"
                 ));
 
         venta.seleccionarMedioPago(medioPago);
 
-        return toDetalleDTO(ventaRepository.save(venta));
+        VentaConcretada ventaGuardada =
+                ventaRepository.save(venta);
+
+        return toDetalleDTO(ventaGuardada);
     }
 
-    public VentaDetalleResponseDTO confirmarCompra(String mail,
-                                                   Long idVenta,
-                                                   ConfirmarCompraRequestDTO request) {
-        Usuario usuario = obtenerUsuario(mail);
-        VentaConcretada venta = obtenerVentaDelUsuario(idVenta, usuario);
+    @Transactional
+    public VentaDetalleResponseDTO confirmarCompra(
+            String mail,
+            Long idVenta,
+            ConfirmarCompraRequestDTO request
+    ) {
+        Cliente cliente = obtenerClientePorMail(mail);
+
+        VentaConcretada venta =
+                obtenerVentaDelCliente(idVenta, cliente);
 
         validarVentaPendientePago(venta);
 
-        if (request.getTipoEntrega() != null) {
-            configurarEntrega(mail, idVenta, new ConfigurarEntregaRequestDTOAdapter(request));
-            venta = obtenerVentaDelUsuario(idVenta, usuario);
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Los datos de confirmación son obligatorios"
+            );
+        }
+
+        if (request.getTipoEntrega() != null
+                && !request.getTipoEntrega().isBlank()) {
+
+            configurarEntrega(
+                    mail,
+                    idVenta,
+                    new ConfigurarEntregaRequestDTOAdapter(request)
+            );
+
+            venta = obtenerVentaDelCliente(
+                    idVenta,
+                    cliente
+            );
         }
 
         if (request.getIdMedioPago() != null) {
-            seleccionarMedioPago(mail, idVenta, new SeleccionarMedioPagoRequestDTOAdapter(request));
-            venta = obtenerVentaDelUsuario(idVenta, usuario);
+            seleccionarMedioPago(
+                    mail,
+                    idVenta,
+                    new SeleccionarMedioPagoRequestDTOAdapter(request)
+            );
+
+            venta = obtenerVentaDelCliente(
+                    idVenta,
+                    cliente
+            );
         }
 
         if (venta.getTipoEntrega() == null) {
@@ -150,30 +237,80 @@ public class CompraService {
 
         venta.confirmarPago();
 
-        return toDetalleDTO(ventaRepository.save(venta));
+        VentaConcretada ventaGuardada =
+                ventaRepository.save(venta);
+
+        return toDetalleDTO(ventaGuardada);
     }
 
-    public VentaDetalleResponseDTO obtenerEstadoCompra(String mail, Long idVenta) {
-        return obtenerDetalleCompra(mail, idVenta);
+    @Transactional(readOnly = true)
+    public VentaDetalleResponseDTO obtenerEstadoCompra(
+            String mail,
+            Long idVenta
+    ) {
+        Cliente cliente = obtenerClientePorMail(mail);
+
+        VentaConcretada venta =
+                obtenerVentaDelCliente(idVenta, cliente);
+
+        return toDetalleDTO(venta);
     }
 
     private Usuario obtenerUsuario(String mail) {
-        return usuarioRepository.findByMail(mail)
+        if (mail == null || mail.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Usuario no autenticado"
+            );
+        }
+
+        return usuarioRepository
+                .findByMail(mail.trim().toLowerCase())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
                         "Usuario no autenticado"
                 ));
     }
 
-    private VentaConcretada obtenerVentaDelUsuario(Long idVenta, Usuario usuario) {
-        return ventaRepository.findByIdVentaAndComprador(idVenta, usuario)
+    private Cliente obtenerClientePorMail(String mail) {
+        Usuario usuario = obtenerUsuario(mail);
+        Cliente cliente = usuario.getCliente();
+
+        if (cliente == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El usuario no tiene un perfil de cliente asociado"
+            );
+        }
+
+        if (!cliente.estaAdmitido()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "El cliente no está admitido"
+            );
+        }
+
+        return cliente;
+    }
+
+    private VentaConcretada obtenerVentaDelCliente(
+            Long idVenta,
+            Cliente cliente
+    ) {
+        return ventaRepository
+                .findByIdVentaAndComprador(
+                        idVenta,
+                        cliente
+                )
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "No existe una compra con ese id para este usuario"
+                        "No existe una compra con ese id para este cliente"
                 ));
     }
 
-    private void validarVentaPendientePago(VentaConcretada venta) {
+    private void validarVentaPendientePago(
+            VentaConcretada venta
+    ) {
         if (venta.getEstado() != EstadoVenta.PENDIENTE_PAGO) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -182,24 +319,42 @@ public class CompraService {
         }
     }
 
-    private VentaResumenResponseDTO toResumenDTO(VentaConcretada venta) {
-        Item item = venta.getItemCatalogo().getItem();
-        Subasta subasta = venta.getItemCatalogo().getCatalogo().getSubasta();
+    private VentaResumenResponseDTO toResumenDTO(
+            VentaConcretada venta
+    ) {
+        Item item =
+                venta.getItemCatalogo().getItem();
+
+        Subasta subasta =
+                venta.getItemCatalogo()
+                        .getCatalogo()
+                        .getSubasta();
 
         return new VentaResumenResponseDTO(
                 venta.getIdVenta(),
                 item.getTitulo(),
                 item.getPrimeraImagen(),
                 venta.getTotal(),
-                subasta.getMoneda() != null ? subasta.getMoneda().name() : null,
+                subasta.getMoneda() != null
+                        ? subasta.getMoneda().name()
+                        : null,
                 venta.getEstado().name()
         );
     }
 
-    private VentaDetalleResponseDTO toDetalleDTO(VentaConcretada venta) {
-        ItemCatalogo itemCatalogo = venta.getItemCatalogo();
-        Item item = itemCatalogo.getItem();
-        Subasta subasta = itemCatalogo.getCatalogo().getSubasta();
+    private VentaDetalleResponseDTO toDetalleDTO(
+            VentaConcretada venta
+    ) {
+        ItemCatalogo itemCatalogo =
+                venta.getItemCatalogo();
+
+        Item item =
+                itemCatalogo.getItem();
+
+        Subasta subasta =
+                itemCatalogo
+                        .getCatalogo()
+                        .getSubasta();
 
         return new VentaDetalleResponseDTO(
                 venta.getIdVenta(),
@@ -212,20 +367,31 @@ public class CompraService {
                 venta.getComision(),
                 venta.getCostoEnvio(),
                 venta.getTotal(),
-                subasta.getMoneda() != null ? subasta.getMoneda().name() : null,
-                venta.getTipoEntrega() != null ? venta.getTipoEntrega().name() : null,
+                subasta.getMoneda() != null
+                        ? subasta.getMoneda().name()
+                        : null,
+                venta.getTipoEntrega() != null
+                        ? venta.getTipoEntrega().name()
+                        : null,
                 venta.getDireccionEntrega(),
                 venta.getUbicacionRetiro(),
-                venta.getMedioPago() != null ? venta.getMedioPago().getIdMedioPago() : null,
+                venta.getMedioPago() != null
+                        ? venta.getMedioPago()
+                        .getIdMedioPago()
+                        : null,
                 venta.getFechaVenta(),
                 venta.getFechaPagoConfirmado()
         );
     }
 
-    private static class ConfigurarEntregaRequestDTOAdapter extends ConfigurarEntregaRequestDTO {
+    private static class ConfigurarEntregaRequestDTOAdapter
+            extends ConfigurarEntregaRequestDTO {
+
         private final ConfirmarCompraRequestDTO request;
 
-        public ConfigurarEntregaRequestDTOAdapter(ConfirmarCompraRequestDTO request) {
+        private ConfigurarEntregaRequestDTOAdapter(
+                ConfirmarCompraRequestDTO request
+        ) {
             this.request = request;
         }
 
@@ -240,10 +406,14 @@ public class CompraService {
         }
     }
 
-    private static class SeleccionarMedioPagoRequestDTOAdapter extends SeleccionarMedioPagoRequestDTO {
+    private static class SeleccionarMedioPagoRequestDTOAdapter
+            extends SeleccionarMedioPagoRequestDTO {
+
         private final ConfirmarCompraRequestDTO request;
 
-        public SeleccionarMedioPagoRequestDTOAdapter(ConfirmarCompraRequestDTO request) {
+        private SeleccionarMedioPagoRequestDTOAdapter(
+                ConfirmarCompraRequestDTO request
+        ) {
             this.request = request;
         }
 

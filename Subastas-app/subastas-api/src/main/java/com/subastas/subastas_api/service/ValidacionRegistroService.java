@@ -2,7 +2,11 @@ package com.subastas.subastas_api.service;
 
 import com.subastas.subastas_api.DTO.admin.AprobacionUsuarioResponseDTO;
 import com.subastas.subastas_api.DTO.admin.AprobarUsuarioRequestDTO;
-import com.subastas.subastas_api.model.*;
+import com.subastas.subastas_api.model.Cliente;
+import com.subastas.subastas_api.model.Empleado;
+import com.subastas.subastas_api.model.EstadoRegistro;
+import com.subastas.subastas_api.model.Persona;
+import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.ClienteRepository;
 import com.subastas.subastas_api.repository.EmpleadoRepository;
 import com.subastas.subastas_api.repository.UsuarioRepository;
@@ -23,9 +27,14 @@ public class ValidacionRegistroService {
             ClienteRepository clienteRepository,
             EmpleadoRepository empleadoRepository
     ) {
-        this.usuarioRepository = usuarioRepository;
-        this.clienteRepository = clienteRepository;
-        this.empleadoRepository = empleadoRepository;
+        this.usuarioRepository =
+                usuarioRepository;
+
+        this.clienteRepository =
+                clienteRepository;
+
+        this.empleadoRepository =
+                empleadoRepository;
     }
 
     @Transactional
@@ -35,52 +44,47 @@ public class ValidacionRegistroService {
     ) {
         validarRequest(request);
 
-        Usuario usuario = usuarioRepository
-                .findById(idUsuario)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No existe un usuario con id " + idUsuario
-                ));
+        Usuario usuario =
+                obtenerUsuario(idUsuario);
 
-        if (usuario.getEstado() == EstadoUsuario.BLOQUEADO) {
+        if (usuario.estaBloqueado()) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "La cuenta se encuentra bloqueada"
             );
         }
 
-        if (usuario.getEstado() == EstadoUsuario.RECHAZADO) {
+        Persona persona =
+                obtenerPersonaValida(usuario);
+
+        if (persona.getEstadoRegistro()
+                == EstadoRegistro.RECHAZADO) {
+
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "La solicitud fue rechazada anteriormente"
             );
         }
 
-        Persona persona = usuario.getPersona();
+        Empleado verificador =
+                empleadoRepository
+                        .findById(
+                                request.getIdVerificador()
+                        )
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "No existe el empleado verificador con id "
+                                                + request.getIdVerificador()
+                                )
+                        );
 
-        if (persona == null || persona.getIdPersona() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "El usuario no tiene una persona válida asociada"
-            );
-        }
-
-        Empleado verificador = empleadoRepository
-                .findById(request.getIdVerificador())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No existe el empleado verificador con id "
-                                + request.getIdVerificador()
-                ));
-
-        /*
-         * En legacy:
-         *
-         * clientes.identificador = personas.identificador
-         */
-        Cliente cliente = clienteRepository
-                .findById(persona.getIdPersona())
-                .orElse(null);
+        Cliente cliente =
+                clienteRepository
+                        .findById(
+                                persona.getIdPersona()
+                        )
+                        .orElse(null);
 
         if (cliente == null) {
             cliente = new Cliente(
@@ -98,19 +102,12 @@ public class ValidacionRegistroService {
         Cliente clienteGuardado =
                 clienteRepository.save(cliente);
 
-        /*
-         * Puente temporal.
-         *
-         * Se mantiene hasta eliminar usuario.cliente_legacy_id.
-         */
-        usuario.setClienteLegacy(clienteGuardado);
+        persona.aprobarRegistro();
 
         /*
-         * También se mantienen temporalmente sincronizados los campos
-         * modernos de Usuario para no romper servicios antiguos.
+         * El usuario debe quedar técnicamente activo.
          */
-        usuario.setEstado(EstadoUsuario.VALIDADO);
-        usuario.setCategoria(request.getCategoria());
+        usuario.activar();
 
         usuarioRepository.save(usuario);
 
@@ -119,46 +116,86 @@ public class ValidacionRegistroService {
                 persona.getIdPersona(),
                 clienteGuardado.getIdentificador(),
                 persona.getMail(),
-                usuario.getEstadoEfectivo().name(),
+                usuario.getEstadoExpuesto(),
                 clienteGuardado.getAdmitido(),
                 clienteGuardado.getCategoria() != null
-                        ? clienteGuardado.getCategoria().name()
+                        ? clienteGuardado
+                        .getCategoria()
+                        .name()
                         : null
         );
     }
 
     @Transactional
-    public AprobacionUsuarioResponseDTO rechazarUsuario(Long idUsuario) {
-        Usuario usuario = usuarioRepository
-                .findById(idUsuario)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No existe un usuario con id " + idUsuario
-                ));
+    public AprobacionUsuarioResponseDTO rechazarUsuario(
+            Long idUsuario
+    ) {
+        Usuario usuario =
+                obtenerUsuario(idUsuario);
 
-        if (usuario.getEstado() == EstadoUsuario.VALIDADO
+        Persona persona =
+                obtenerPersonaValida(usuario);
+
+        if (persona.getEstadoRegistro()
+                == EstadoRegistro.VALIDADO
                 || usuario.estaValidadoComoCliente()) {
+
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "No se puede rechazar una solicitud ya aprobada"
             );
         }
 
-        usuario.setEstado(EstadoUsuario.RECHAZADO);
+        persona.rechazarRegistro();
+
         usuarioRepository.save(usuario);
 
         return new AprobacionUsuarioResponseDTO(
                 usuario.getIdUsuario(),
-                usuario.getPersona().getIdPersona(),
+                persona.getIdPersona(),
                 null,
-                usuario.getPersona().getMail(),
-                usuario.getEstadoEfectivo().name(),
+                persona.getMail(),
+                usuario.getEstadoExpuesto(),
                 "no",
                 null
         );
     }
 
-    private void validarRequest(AprobarUsuarioRequestDTO request) {
+    private Usuario obtenerUsuario(
+            Long idUsuario
+    ) {
+        return usuarioRepository
+                .findById(idUsuario)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "No existe un usuario con id "
+                                        + idUsuario
+                        )
+                );
+    }
+
+    private Persona obtenerPersonaValida(
+            Usuario usuario
+    ) {
+        Persona persona =
+                usuario.getPersona();
+
+        if (persona == null
+                || persona.getIdPersona() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El usuario no tiene una persona válida asociada"
+            );
+        }
+
+        return persona;
+    }
+
+    private void validarRequest(
+            AprobarUsuarioRequestDTO request
+    ) {
         if (request == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -172,8 +209,6 @@ public class ValidacionRegistroService {
                     "La categoría es obligatoria"
             );
         }
-
-
 
         if (request.getIdVerificador() == null) {
             throw new ResponseStatusException(

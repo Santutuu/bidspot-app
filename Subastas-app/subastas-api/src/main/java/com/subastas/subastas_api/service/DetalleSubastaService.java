@@ -1,15 +1,14 @@
 package com.subastas.subastas_api.service;
 
 import com.subastas.subastas_api.DTO.subasta.DetalleSubastaDTO;
-import com.subastas.subastas_api.exception.InsufficientUserCategoryException;
 import com.subastas.subastas_api.mapper.SubastaMapper;
-import com.subastas.subastas_api.model.EstadoSubasta;
-import com.subastas.subastas_api.model.EstadoUsuario;
+import com.subastas.subastas_api.model.CategoriaUsuario;
 import com.subastas.subastas_api.model.Subasta;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.SubastaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -18,62 +17,93 @@ public class DetalleSubastaService {
     private final SubastaRepository subastaRepository;
     private final SubastaMapper subastaMapper;
 
-    public DetalleSubastaService(SubastaRepository subastaRepository,
-                                 SubastaMapper subastaMapper) {
+    public DetalleSubastaService(
+            SubastaRepository subastaRepository,
+            SubastaMapper subastaMapper
+    ) {
         this.subastaRepository = subastaRepository;
         this.subastaMapper = subastaMapper;
     }
 
-    public DetalleSubastaDTO obtenerDetalleSubasta(Long idSubasta,
-                                                   Usuario usuarioActual) {
-
-        Subasta subasta = subastaRepository.findById(idSubasta)
+    @Transactional(readOnly = true)
+    public DetalleSubastaDTO obtenerDetalle(
+            Long idSubasta,
+            Usuario usuarioActual
+    ) {
+        Subasta subasta = subastaRepository
+                .findById(idSubasta)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "No existe una subasta con id " + idSubasta
                 ));
 
-        validarSubastaVisible(subasta);
-        validarAccesoDetalle(subasta, usuarioActual);
+        validarAccesoDetalle(
+                subasta,
+                usuarioActual
+        );
 
-        return subastaMapper.toDetalleDTO(subasta, usuarioActual);
+        return subastaMapper.toDetalleDTO(
+                subasta,
+                usuarioActual
+        );
     }
 
-    private void validarSubastaVisible(Subasta subasta) {
-        if (subasta.getEstadoSubasta() == EstadoSubasta.FINALIZADA ||
-                subasta.getEstadoSubasta() == EstadoSubasta.CANCELADA) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "La subasta no se encuentra disponible"
-            );
-        }
-    }
-
-    private void validarAccesoDetalle(Subasta subasta, Usuario usuarioActual) {
+    private void validarAccesoDetalle(
+            Subasta subasta,
+            Usuario usuarioActual
+    ) {
         if (usuarioActual == null) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "Debe iniciar sesión para ver el detalle de la subasta"
+                    "Debe iniciar sesión para acceder al detalle de la subasta"
             );
         }
 
-        if (usuarioActual.getEstado() != EstadoUsuario.VALIDADO) {
+        /*
+         * Estado técnico de la cuenta.
+         */
+        if (usuarioActual.estaBloqueado()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "El usuario no está validado"
+                    "La cuenta se encuentra bloqueada"
             );
         }
 
-        if (usuarioActual.getPassword() == null || usuarioActual.getPassword().isBlank()) {
+        /*
+         * Validación comercial:
+         *
+         * - Persona.estadoRegistro debe ser VALIDADO.
+         * - Debe existir Cliente.
+         * - Cliente.admitido debe ser "si".
+         */
+        if (!usuarioActual.estaValidadoComoCliente()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "El usuario todavía no completó su contraseña"
+                    "El usuario todavía no fue validado como cliente"
             );
         }
 
-        if (usuarioActual.getCategoria() == null ||
-                usuarioActual.getCategoria().ordinal() < subasta.getCategoriaMin().ordinal()) {
-            throw new InsufficientUserCategoryException();
+        CategoriaUsuario categoriaUsuario =
+                usuarioActual.getCategoriaNegocio();
+
+        if (categoriaUsuario == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "El cliente todavía no tiene una categoría asignada"
+            );
+        }
+
+        CategoriaUsuario categoriaMinima =
+                subasta.getCategoriaMin();
+
+        if (categoriaMinima != null
+                && categoriaUsuario.ordinal()
+                < categoriaMinima.ordinal()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "La categoría del cliente no permite acceder a esta subasta"
+            );
         }
     }
 }

@@ -18,31 +18,51 @@ public class Catalogo {
     private String descripcion;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subasta", unique = true)
+    @JoinColumn(name = "subasta")
     private Subasta subasta;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "responsable", nullable = false)
     private Empleado responsable;
 
-    @OneToMany(mappedBy = "catalogo", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ItemCatalogo> items = new ArrayList<>();
+    @OneToMany(
+            mappedBy = "catalogo",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<ItemCatalogo> items =
+            new ArrayList<>();
 
     public Catalogo() {
     }
 
-    public Catalogo(String descripcion) {
+    public Catalogo(
+            String descripcion,
+            Empleado responsable
+    ) {
         this.descripcion = descripcion;
+        this.responsable = responsable;
     }
 
-    public void agregarItem(ItemCatalogo itemCatalogo) {
+    public void agregarItem(
+            ItemCatalogo itemCatalogo
+    ) {
+        if (itemCatalogo == null) {
+            return;
+        }
+
         items.add(itemCatalogo);
         itemCatalogo.setCatalogo(this);
     }
 
-    public void eliminarItem(ItemCatalogo itemCatalogo) {
+    public void eliminarItem(
+            ItemCatalogo itemCatalogo
+    ) {
         items.remove(itemCatalogo);
-        itemCatalogo.setCatalogo(null);
+
+        if (itemCatalogo != null) {
+            itemCatalogo.setCatalogo(null);
+        }
     }
 
     public Long getIdCatalogo() {
@@ -65,11 +85,21 @@ public class Catalogo {
         return items;
     }
 
-    public void setSubasta(Subasta subasta) {
+    public void setDescripcion(
+            String descripcion
+    ) {
+        this.descripcion = descripcion;
+    }
+
+    public void setSubasta(
+            Subasta subasta
+    ) {
         this.subasta = subasta;
     }
 
-    public void setResponsable(Empleado responsable) {
+    public void setResponsable(
+            Empleado responsable
+    ) {
         this.responsable = responsable;
     }
 }

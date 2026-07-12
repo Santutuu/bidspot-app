@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 @Service
@@ -17,81 +18,137 @@ public class CierreLoteService {
     private final ItemCatalogoRepository itemCatalogoRepository;
     private final PujaRepository pujaRepository;
     private final VentaConcretadaRepository ventaRepository;
+    private final RegistroSubastaRepository registroSubastaRepository;
     private final EstadoItemCatalogoRepository estadoItemCatalogoRepository;
     private final EstadoSubastaRepository estadoSubastaRepository;
-    private final UsuarioRepository usuarioRepository;
 
-    public CierreLoteService(SubastaRepository subastaRepository,
-                             ItemCatalogoRepository itemCatalogoRepository,
-                             PujaRepository pujaRepository,
-                             VentaConcretadaRepository ventaRepository,
-                             EstadoItemCatalogoRepository estadoItemCatalogoRepository,
-                             EstadoSubastaRepository estadoSubastaRepository,
-                             UsuarioRepository usuarioRepository) {
+    public CierreLoteService(
+            SubastaRepository subastaRepository,
+            ItemCatalogoRepository itemCatalogoRepository,
+            PujaRepository pujaRepository,
+            VentaConcretadaRepository ventaRepository,
+            RegistroSubastaRepository registroSubastaRepository,
+            EstadoItemCatalogoRepository estadoItemCatalogoRepository,
+            EstadoSubastaRepository estadoSubastaRepository
+    ) {
         this.subastaRepository = subastaRepository;
         this.itemCatalogoRepository = itemCatalogoRepository;
         this.pujaRepository = pujaRepository;
         this.ventaRepository = ventaRepository;
-        this.estadoItemCatalogoRepository = estadoItemCatalogoRepository;
-        this.estadoSubastaRepository = estadoSubastaRepository;
-        this.usuarioRepository = usuarioRepository;
+        this.registroSubastaRepository =
+                registroSubastaRepository;
+        this.estadoItemCatalogoRepository =
+                estadoItemCatalogoRepository;
+        this.estadoSubastaRepository =
+                estadoSubastaRepository;
     }
 
     @Transactional
-    public CierreLoteResponseDTO cerrarLote(Long idSubasta, Long idItemCatalogo) {
-        Subasta subasta = obtenerSubasta(idSubasta);
-        ItemCatalogo lote = obtenerLote(idItemCatalogo);
+    public CierreLoteResponseDTO cerrarLote(
+            Long idSubasta,
+            Long idItemCatalogo
+    ) {
+        Subasta subasta =
+                obtenerSubasta(idSubasta);
 
-        validarLotePerteneceASubasta(lote, subasta);
+        ItemCatalogo lote =
+                obtenerLote(idItemCatalogo);
+
+        validarLotePerteneceASubasta(
+                lote,
+                subasta
+        );
 
         Puja pujaGanadora = pujaRepository
                 .findTopByItemCatalogoOrderByMontoDesc(lote)
                 .orElse(null);
 
         VentaConcretada venta = null;
-        Usuario comprador = null;
+        Cliente comprador = null;
 
         if (pujaGanadora != null) {
             pujaGanadora.marcarGanadora();
             pujaRepository.save(pujaGanadora);
 
-            comprador = obtenerUsuarioComprador(pujaGanadora);
+            lote.setPujaActual(pujaGanadora);
 
-            Float montoPuja = pujaGanadora.getMonto();
-            Float comision = calcularComision(lote, montoPuja);
-            Float costoEnvioInicial = 0f;
-            Float total = montoPuja + comision + costoEnvioInicial;
+            comprador =
+                    obtenerClienteComprador(pujaGanadora);
 
-            Usuario compradorFinal = comprador;
+            Float montoPuja =
+                    pujaGanadora.getMonto();
 
-            venta = ventaRepository.findByItemCatalogo(lote)
-                    .orElseGet(() -> new VentaConcretada(
-                            compradorFinal,
+            Float comision =
+                    calcularComision(
                             lote,
-                            pujaGanadora,
-                            montoPuja,
-                            comision,
-                            costoEnvioInicial,
-                            total,
-                            subasta.getUbicacion()
-                    ));
+                            montoPuja
+                    );
+
+            Float costoEnvioInicial = 0f;
+
+            Float total =
+                    montoPuja
+                            + comision
+                            + costoEnvioInicial;
+
+            registrarResultadoLegacy(
+                    subasta,
+                    lote,
+                    comprador,
+                    montoPuja,
+                    comision
+            );
+
+            Cliente compradorFinal =
+                    comprador;
+
+            venta = ventaRepository
+                    .findByItemCatalogo(lote)
+                    .orElseGet(() ->
+                            new VentaConcretada(
+                                    compradorFinal,
+                                    lote,
+                                    pujaGanadora,
+                                    montoPuja,
+                                    comision,
+                                    costoEnvioInicial,
+                                    total,
+                                    subasta.getUbicacion()
+                            )
+                    );
 
             ventaRepository.save(venta);
 
-            cambiarEstadoLote(lote, EstadoItemCatalogo.VENDIDO);
+            cambiarEstadoLote(
+                    lote,
+                    EstadoItemCatalogo.VENDIDO
+            );
         } else {
-            cambiarEstadoLote(lote, EstadoItemCatalogo.SIN_OFERTAS);
+            lote.setPujaActual(null);
+
+            cambiarEstadoLote(
+                    lote,
+                    EstadoItemCatalogo.SIN_OFERTAS
+            );
         }
 
         itemCatalogoRepository.save(lote);
 
-        Long idProximoLote = abrirProximoLoteOSubastaFinalizada(lote, subasta);
+        Long idProximoLote =
+                abrirProximoLoteOSubastaFinalizada(
+                        lote,
+                        subasta
+                );
 
         return new CierreLoteResponseDTO(
                 subasta.getIdSubasta(),
                 lote.getIdItemCatalogo(),
-                venta != null ? venta.getIdVenta() : null,
-                comprador != null ? comprador.getIdUsuario() : null,
+                venta != null
+                        ? venta.getIdVenta()
+                        : null,
+                comprador != null
+                        ? comprador.getIdentificador()
+                        : null,
                 lote.getEstado().name(),
                 subasta.getEstadoSubasta().name(),
                 idProximoLote
@@ -99,35 +156,82 @@ public class CierreLoteService {
     }
 
     @Transactional
-    public CierreLoteResponseDTO reabrirLote(Long idSubasta, Long idItemCatalogo) {
-        Subasta subasta = obtenerSubasta(idSubasta);
-        ItemCatalogo lote = obtenerLote(idItemCatalogo);
+    public CierreLoteResponseDTO reabrirLote(
+            Long idSubasta,
+            Long idItemCatalogo
+    ) {
+        Subasta subasta =
+                obtenerSubasta(idSubasta);
 
-        validarLotePerteneceASubasta(lote, subasta);
+        ItemCatalogo lote =
+                obtenerLote(idItemCatalogo);
+
+        validarLotePerteneceASubasta(
+                lote,
+                subasta
+        );
 
         ventaRepository.deleteByItemCatalogo(lote);
 
-        pujaRepository.findTopByItemCatalogoOrderByMontoDesc(lote)
-                .ifPresent(puja -> {
-                    puja.marcarRegistrada();
-                    pujaRepository.save(puja);
-                });
+        /*
+         * El registro legacy representa una operación cerrada.
+         * Al reabrir el lote se elimina para mantener consistencia.
+         */
+        registroSubastaRepository
+                .findBySubastaAndProducto(
+                        subasta,
+                        lote.getItem()
+                )
+                .ifPresent(
+                        registroSubastaRepository::delete
+                );
 
-        itemCatalogoRepository.findByCatalogoAndEstado(
+        Puja pujaAnterior = pujaRepository
+                .findTopByItemCatalogoOrderByMontoDesc(lote)
+                .orElse(null);
+
+        if (pujaAnterior != null) {
+            pujaAnterior.marcarRegistrada();
+            pujaRepository.save(pujaAnterior);
+        }
+
+        lote.setPujaActual(pujaAnterior);
+
+        itemCatalogoRepository
+                .findByCatalogoAndEstado(
                         lote.getCatalogo(),
                         EstadoItemCatalogo.EN_REMATE
                 )
-                .forEach(l -> {
-                    if (!l.getIdItemCatalogo().equals(lote.getIdItemCatalogo())) {
-                        cambiarEstadoLote(l, EstadoItemCatalogo.PENDIENTE);
-                        itemCatalogoRepository.save(l);
+                .forEach(loteActual -> {
+                    if (!loteActual
+                            .getIdItemCatalogo()
+                            .equals(
+                                    lote.getIdItemCatalogo()
+                            )) {
+
+                        cambiarEstadoLote(
+                                loteActual,
+                                EstadoItemCatalogo.PENDIENTE
+                        );
+
+                        itemCatalogoRepository.save(
+                                loteActual
+                        );
                     }
                 });
 
-        cambiarEstadoLote(lote, EstadoItemCatalogo.EN_REMATE);
+        cambiarEstadoLote(
+                lote,
+                EstadoItemCatalogo.EN_REMATE
+        );
+
         itemCatalogoRepository.save(lote);
 
-        cambiarEstadoSubasta(subasta, EstadoSubasta.ACTIVA);
+        cambiarEstadoSubasta(
+                subasta,
+                EstadoSubasta.ACTIVA
+        );
+
         subastaRepository.save(subasta);
 
         return new CierreLoteResponseDTO(
@@ -141,93 +245,207 @@ public class CierreLoteService {
         );
     }
 
-    private Long abrirProximoLoteOSubastaFinalizada(ItemCatalogo loteCerrado, Subasta subasta) {
-        Optional<ItemCatalogo> proximoLote = itemCatalogoRepository
-                .findFirstByCatalogoAndEstadoOrderByIdItemCatalogoAsc(
-                        loteCerrado.getCatalogo(),
-                        EstadoItemCatalogo.PENDIENTE
-                );
+    private void registrarResultadoLegacy(
+            Subasta subasta,
+            ItemCatalogo lote,
+            Cliente comprador,
+            Float montoPuja,
+            Float comision
+    ) {
+        Item producto = lote.getItem();
 
-        if (proximoLote.isPresent()) {
-            ItemCatalogo siguiente = proximoLote.get();
-            cambiarEstadoLote(siguiente, EstadoItemCatalogo.EN_REMATE);
-            itemCatalogoRepository.save(siguiente);
-            return siguiente.getIdItemCatalogo();
+        if (producto == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El lote no tiene producto asociado"
+            );
         }
 
-        cambiarEstadoSubasta(subasta, EstadoSubasta.FINALIZADA);
-        subastaRepository.save(subasta);
+        Duenio duenio = producto.getDuenio();
 
-        return null;
+        if (duenio == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El producto no tiene dueño legacy asociado"
+            );
+        }
+
+        Optional<RegistroSubasta> existente =
+                registroSubastaRepository
+                        .findBySubastaAndProducto(
+                                subasta,
+                                producto
+                        );
+
+        if (existente.isPresent()) {
+            return;
+        }
+
+        RegistroSubasta registro =
+                new RegistroSubasta(
+                        subasta,
+                        duenio,
+                        producto,
+                        comprador,
+                        BigDecimal.valueOf(montoPuja),
+                        BigDecimal.valueOf(comision)
+                );
+
+        registroSubastaRepository.save(registro);
     }
 
-    private Usuario obtenerUsuarioComprador(Puja pujaGanadora) {
+    private Cliente obtenerClienteComprador(
+            Puja pujaGanadora
+    ) {
         if (pujaGanadora.getAsistente() == null
-                || pujaGanadora.getAsistente().getCliente() == null) {
+                || pujaGanadora
+                .getAsistente()
+                .getCliente() == null) {
+
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "La puja ganadora no tiene cliente asociado"
             );
         }
 
-        return usuarioRepository
-                .findByClienteLegacy(pujaGanadora.getAsistente().getCliente())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "No existe usuario vinculado al cliente ganador"
-                ));
+        return pujaGanadora
+                .getAsistente()
+                .getCliente();
     }
 
-    private void cambiarEstadoLote(ItemCatalogo lote, EstadoItemCatalogo estado) {
-        EstadoItemCatalogoEntity estadoEntity = estadoItemCatalogoRepository
-                .findByNombre(estado)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "No existe el estado de lote " + estado
-                ));
+    private Long abrirProximoLoteOSubastaFinalizada(
+            ItemCatalogo loteCerrado,
+            Subasta subasta
+    ) {
+        Optional<ItemCatalogo> proximoLote =
+                itemCatalogoRepository
+                        .findFirstByCatalogoAndEstadoOrderByIdItemCatalogoAsc(
+                                loteCerrado.getCatalogo(),
+                                EstadoItemCatalogo.PENDIENTE
+                        );
+
+        if (proximoLote.isPresent()) {
+            ItemCatalogo siguiente =
+                    proximoLote.get();
+
+            cambiarEstadoLote(
+                    siguiente,
+                    EstadoItemCatalogo.EN_REMATE
+            );
+
+            itemCatalogoRepository.save(siguiente);
+
+            return siguiente.getIdItemCatalogo();
+        }
+
+        cambiarEstadoSubasta(
+                subasta,
+                EstadoSubasta.FINALIZADA
+        );
+
+        subastaRepository.save(subasta);
+
+        return null;
+    }
+
+    private void cambiarEstadoLote(
+            ItemCatalogo lote,
+            EstadoItemCatalogo estado
+    ) {
+        EstadoItemCatalogoEntity estadoEntity =
+                estadoItemCatalogoRepository
+                        .findByNombre(estado)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "No existe el estado de lote "
+                                                + estado
+                                )
+                        );
 
         lote.setEstadoEntity(estadoEntity);
     }
 
-    private void cambiarEstadoSubasta(Subasta subasta, EstadoSubasta estado) {
-        EstadoSubastaEntity estadoEntity = estadoSubastaRepository
-                .findByNombre(estado)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "No existe el estado de subasta " + estado
-                ));
+    private void cambiarEstadoSubasta(
+            Subasta subasta,
+            EstadoSubasta estado
+    ) {
+        EstadoSubastaEntity estadoEntity =
+                estadoSubastaRepository
+                        .findByNombre(estado)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "No existe el estado de subasta "
+                                                + estado
+                                )
+                        );
 
         subasta.setEstado(estadoEntity);
     }
 
-    private Float calcularComision(ItemCatalogo lote, Float montoPuja) {
+    private Float calcularComision(
+            ItemCatalogo lote,
+            Float montoPuja
+    ) {
         if (montoPuja == null) {
             return 0f;
         }
 
-        return montoPuja * lote.getComision() / 100f;
+        return montoPuja
+                * lote.getComision()
+                / 100f;
     }
 
-    private Subasta obtenerSubasta(Long idSubasta) {
-        return subastaRepository.findById(idSubasta)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No existe una subasta con id " + idSubasta
-                ));
+    private Subasta obtenerSubasta(
+            Long idSubasta
+    ) {
+        return subastaRepository
+                .findById(idSubasta)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "No existe una subasta con id "
+                                        + idSubasta
+                        )
+                );
     }
 
-    private ItemCatalogo obtenerLote(Long idItemCatalogo) {
-        return itemCatalogoRepository.findById(idItemCatalogo)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No existe un lote con id " + idItemCatalogo
-                ));
+    private ItemCatalogo obtenerLote(
+            Long idItemCatalogo
+    ) {
+        return itemCatalogoRepository
+                .findById(idItemCatalogo)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "No existe un lote con id "
+                                        + idItemCatalogo
+                        )
+                );
     }
 
-    private void validarLotePerteneceASubasta(ItemCatalogo lote, Subasta subasta) {
-        Long idSubastaDelLote = lote.getCatalogo().getSubasta().getIdSubasta();
+    private void validarLotePerteneceASubasta(
+            ItemCatalogo lote,
+            Subasta subasta
+    ) {
+        if (lote.getCatalogo() == null
+                || lote.getCatalogo().getSubasta() == null) {
 
-        if (!idSubastaDelLote.equals(subasta.getIdSubasta())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El lote no está asociado a una subasta"
+            );
+        }
+
+        Long idSubastaDelLote =
+                lote.getCatalogo()
+                        .getSubasta()
+                        .getIdSubasta();
+
+        if (!idSubastaDelLote.equals(
+                subasta.getIdSubasta()
+        )) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "El lote no pertenece a la subasta indicada"

@@ -2,6 +2,7 @@ package com.subastas.subastas_api.service;
 
 import com.subastas.subastas_api.DTO.poliza.AumentarPolizaRequestDTO;
 import com.subastas.subastas_api.DTO.poliza.PolizaSolicitudResponseDTO;
+import com.subastas.subastas_api.model.Cliente;
 import com.subastas.subastas_api.model.Item;
 import com.subastas.subastas_api.model.Poliza;
 import com.subastas.subastas_api.model.SolicitudPublicacion;
@@ -22,41 +23,75 @@ public class PolizaSolicitudService {
     private final ItemRepository itemRepository;
     private final UsuarioRepository usuarioRepository;
 
-    public PolizaSolicitudService(SolicitudPublicacionRepository solicitudRepository,
-                                  ItemRepository itemRepository,
-                                  UsuarioRepository usuarioRepository) {
+    public PolizaSolicitudService(
+            SolicitudPublicacionRepository solicitudRepository,
+            ItemRepository itemRepository,
+            UsuarioRepository usuarioRepository
+    ) {
         this.solicitudRepository = solicitudRepository;
         this.itemRepository = itemRepository;
         this.usuarioRepository = usuarioRepository;
     }
 
-    public PolizaSolicitudResponseDTO obtenerPoliza(Long idSolicitud,
-                                                    Authentication authentication) {
-        Usuario usuario = obtenerUsuario(authentication);
-        SolicitudPublicacion solicitud = obtenerSolicitudDelUsuario(idSolicitud, usuario);
-        Item item = obtenerItemDeSolicitud(idSolicitud);
-        Poliza poliza = obtenerPolizaDeItem(item);
+    @Transactional(readOnly = true)
+    public PolizaSolicitudResponseDTO obtenerPoliza(
+            Long idSolicitud,
+            Authentication authentication
+    ) {
+        Cliente cliente =
+                obtenerCliente(authentication);
 
-        return toDTO(solicitud, item, poliza);
+        SolicitudPublicacion solicitud =
+                obtenerSolicitudDelCliente(
+                        idSolicitud,
+                        cliente
+                );
+
+        Item item =
+                obtenerItemDeSolicitud(idSolicitud);
+
+        Poliza poliza =
+                obtenerPolizaDeItem(item);
+
+        return toDTO(
+                solicitud,
+                item,
+                poliza
+        );
     }
 
     @Transactional
-    public PolizaSolicitudResponseDTO aumentarPoliza(Long idSolicitud,
-                                                     AumentarPolizaRequestDTO request,
-                                                     Authentication authentication) {
-        Usuario usuario = obtenerUsuario(authentication);
-        SolicitudPublicacion solicitud = obtenerSolicitudDelUsuario(idSolicitud, usuario);
-        Item item = obtenerItemDeSolicitud(idSolicitud);
-        Poliza poliza = obtenerPolizaDeItem(item);
+    public PolizaSolicitudResponseDTO aumentarPoliza(
+            Long idSolicitud,
+            AumentarPolizaRequestDTO request,
+            Authentication authentication
+    ) {
+        Cliente cliente =
+                obtenerCliente(authentication);
 
-        if (request == null || request.getNuevoMontoAsegurado() == null) {
+        SolicitudPublicacion solicitud =
+                obtenerSolicitudDelCliente(
+                        idSolicitud,
+                        cliente
+                );
+
+        Item item =
+                obtenerItemDeSolicitud(idSolicitud);
+
+        Poliza poliza =
+                obtenerPolizaDeItem(item);
+
+        if (request == null
+                || request.getNuevoMontoAsegurado() == null) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "El nuevo monto asegurado es obligatorio"
             );
         }
 
-        Float nuevoMonto = request.getNuevoMontoAsegurado();
+        Float nuevoMonto =
+                request.getNuevoMontoAsegurado();
 
         if (nuevoMonto <= poliza.getMontoAsegurado()) {
             throw new ResponseStatusException(
@@ -67,51 +102,93 @@ public class PolizaSolicitudService {
 
         poliza.solicitarAumento(nuevoMonto);
 
-        return toDTO(solicitud, item, poliza);
+        return toDTO(
+                solicitud,
+                item,
+                poliza
+        );
     }
 
-    private Usuario obtenerUsuario(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null) {
+    private Cliente obtenerCliente(
+            Authentication authentication
+    ) {
+        if (authentication == null
+                || authentication.getName() == null) {
+
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "Usuario no autenticado"
             );
         }
 
-        return usuarioRepository.findByMail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Usuario no autenticado"
-                ));
-    }
+        Usuario usuario = usuarioRepository
+                .findByMail(
+                        authentication.getName()
+                                .trim()
+                                .toLowerCase()
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "Usuario no autenticado"
+                        )
+                );
 
-    private SolicitudPublicacion obtenerSolicitudDelUsuario(Long idSolicitud, Usuario usuario) {
-        SolicitudPublicacion solicitud = solicitudRepository.findById(idSolicitud)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Solicitud no encontrada"
-                ));
-
-        if (solicitud.getUsuario() == null ||
-                !solicitud.getUsuario().getIdUsuario().equals(usuario.getIdUsuario())) {
+        if (usuario.estaBloqueado()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "La solicitud no pertenece al usuario autenticado"
+                    "La cuenta se encuentra bloqueada"
             );
         }
 
-        return solicitud;
+        Cliente cliente =
+                usuario.getCliente();
+
+        if (cliente == null
+                || !usuario.estaValidadoComoCliente()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "El usuario no está validado como cliente"
+            );
+        }
+
+        return cliente;
     }
 
-    private Item obtenerItemDeSolicitud(Long idSolicitud) {
-        return itemRepository.findByIdSolicitudPublicacion(idSolicitud)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Todavía no existe un item asociado a esta solicitud"
-                ));
+    private SolicitudPublicacion obtenerSolicitudDelCliente(
+            Long idSolicitud,
+            Cliente cliente
+    ) {
+        return solicitudRepository
+                .findByIdSolicitudAndCliente(
+                        idSolicitud,
+                        cliente
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Solicitud no encontrada para el cliente autenticado"
+                        )
+                );
     }
 
-    private Poliza obtenerPolizaDeItem(Item item) {
+    private Item obtenerItemDeSolicitud(
+            Long idSolicitud
+    ) {
+        return itemRepository
+                .findByIdSolicitudPublicacion(idSolicitud)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Todavía no existe un item asociado a esta solicitud"
+                        )
+                );
+    }
+
+    private Poliza obtenerPolizaDeItem(
+            Item item
+    ) {
         if (item.getPoliza() == null) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
@@ -122,9 +199,11 @@ public class PolizaSolicitudService {
         return item.getPoliza();
     }
 
-    private PolizaSolicitudResponseDTO toDTO(SolicitudPublicacion solicitud,
-                                             Item item,
-                                             Poliza poliza) {
+    private PolizaSolicitudResponseDTO toDTO(
+            SolicitudPublicacion solicitud,
+            Item item,
+            Poliza poliza
+    ) {
         return new PolizaSolicitudResponseDTO(
                 solicitud.getIdSolicitud(),
                 item.getIdItem(),

@@ -21,7 +21,9 @@ public class CuentaBanco {
     public CuentaBanco() {
     }
 
-    public CuentaBanco(String cbu, String banco, String titular) {
+    public CuentaBanco(String cbu,
+                       String banco,
+                       String titular) {
         this.cbu = cbu;
         this.banco = banco;
         this.titular = titular;

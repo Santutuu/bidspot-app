@@ -11,9 +11,14 @@ public class VentaConcretada {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idVenta;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "comprador_id")
-    private Usuario comprador;
+    /*
+     * El comprador de negocio es Cliente.
+     *
+     * La cuenta Usuario queda solamente como autenticación.
+     */
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "comprador_id", nullable = false)
+    private Cliente comprador;
 
     @OneToOne(optional = false)
     @JoinColumn(name = "item_catalogo_id")
@@ -53,7 +58,7 @@ public class VentaConcretada {
     public VentaConcretada() {
     }
 
-    public VentaConcretada(Usuario comprador,
+    public VentaConcretada(Cliente comprador,
                            ItemCatalogo itemCatalogo,
                            Puja pujaGanadora,
                            Float montoPuja,
@@ -77,7 +82,7 @@ public class VentaConcretada {
         return idVenta;
     }
 
-    public Usuario getComprador() {
+    public Cliente getComprador() {
         return comprador;
     }
 
@@ -133,7 +138,8 @@ public class VentaConcretada {
         return fechaPagoConfirmado;
     }
 
-    public void configurarEntregaDomicilio(String direccionEntrega, Float costoEnvio) {
+    public void configurarEntregaDomicilio(String direccionEntrega,
+                                           Float costoEnvio) {
         this.tipoEntrega = TipoEntrega.DOMICILIO;
         this.direccionEntrega = direccionEntrega;
         this.costoEnvio = costoEnvio;

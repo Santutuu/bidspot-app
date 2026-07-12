@@ -87,6 +87,12 @@ export default function HomeScreen() {
     useCallback(() => {
       void recargar();
 
+      return;
+    }, [recargar]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
       if (showSplash) return;
 
       void actualizarPreciosVisibles();
@@ -101,7 +107,7 @@ export default function HomeScreen() {
         clearInterval(intervalId);
         unsubscribeReconnect();
       };
-    }, [actualizarPreciosVisibles, onReconnect, recargar, showSplash]),
+    }, [actualizarPreciosVisibles, onReconnect, showSplash]),
   );
 
   useEffect(() => {

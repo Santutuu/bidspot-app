@@ -1,17 +1,21 @@
 package com.subastas.subastas_api.repository;
 
 import com.subastas.subastas_api.model.Cheque;
-import com.subastas.subastas_api.model.Usuario;
+import com.subastas.subastas_api.model.Cliente;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface ChequeRepository extends JpaRepository<Cheque, Long> {
+public interface ChequeRepository
+        extends JpaRepository<Cheque, Long> {
 
-    List<Cheque> findByUsuario(Usuario usuario);
+    List<Cheque> findByCliente(Cliente cliente);
 
-    long countByUsuario(Usuario usuario);
+    long countByCliente(Cliente cliente);
 
-    Optional<Cheque> findByIdMedioPagoAndUsuario(Long idMedioPago, Usuario usuario);
+    Optional<Cheque> findByIdMedioPagoAndCliente(
+            Long idMedioPago,
+            Cliente cliente
+    );
 }

@@ -1,6 +1,9 @@
 package com.subastas.subastas_api.controller;
 
-import com.subastas.subastas_api.DTO.publicacion.*;
+import com.subastas.subastas_api.DTO.publicacion.ResponderAccionRequestDTO;
+import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionDetalleDTO;
+import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionRequestDTO;
+import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionResumenDTO;
 import com.subastas.subastas_api.model.AccionRequerida;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.UsuarioRepository;
@@ -20,49 +23,85 @@ public class SolicitudPublicacionController {
     private final SolicitudPublicacionService solicitudService;
     private final UsuarioRepository usuarioRepository;
 
-    public SolicitudPublicacionController(SolicitudPublicacionService solicitudService,
-                                          UsuarioRepository usuarioRepository) {
+    public SolicitudPublicacionController(
+            SolicitudPublicacionService solicitudService,
+            UsuarioRepository usuarioRepository
+    ) {
         this.solicitudService = solicitudService;
         this.usuarioRepository = usuarioRepository;
     }
 
     @PostMapping
-    public ResponseEntity<SolicitudPublicacionDetalleDTO> crearSolicitud(
+    public ResponseEntity<SolicitudPublicacionDetalleDTO>
+    crearSolicitud(
             @RequestBody SolicitudPublicacionRequestDTO request,
             Authentication authentication
     ) {
-        Usuario usuario = obtenerUsuarioActual(authentication);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(solicitudService.crearSolicitud(usuario, request));
+        Usuario usuario =
+                obtenerUsuarioActual(authentication);
+
+        SolicitudPublicacionDetalleDTO response =
+                solicitudService.crearSolicitud(
+                        usuario,
+                        request
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<SolicitudPublicacionResumenDTO>> listarMisSolicitudes(
+    public ResponseEntity<List<SolicitudPublicacionResumenDTO>>
+    listarMisSolicitudes(
             Authentication authentication
     ) {
-        Usuario usuario = obtenerUsuarioActual(authentication);
-        return ResponseEntity.ok(solicitudService.listarMisSolicitudes(usuario));
+        Usuario usuario =
+                obtenerUsuarioActual(authentication);
+
+        return ResponseEntity.ok(
+                solicitudService
+                        .listarMisSolicitudes(usuario)
+        );
     }
 
     @GetMapping("/{idSolicitud}")
-    public ResponseEntity<SolicitudPublicacionDetalleDTO> obtenerDetalle(
+    public ResponseEntity<SolicitudPublicacionDetalleDTO>
+    obtenerDetalle(
             @PathVariable Long idSolicitud,
             Authentication authentication
     ) {
-        Usuario usuario = obtenerUsuarioActual(authentication);
-        return ResponseEntity.ok(solicitudService.obtenerDetalle(idSolicitud, usuario));
+        Usuario usuario =
+                obtenerUsuarioActual(authentication);
+
+        return ResponseEntity.ok(
+                solicitudService.obtenerDetalle(
+                        idSolicitud,
+                        usuario
+                )
+        );
     }
 
-    @PostMapping("/{idSolicitud}/acciones/{accion}/resolver")
-    public ResponseEntity<SolicitudPublicacionDetalleDTO> responderAccion(
+    @PostMapping(
+            "/{idSolicitud}/acciones/{accion}/resolver"
+    )
+    public ResponseEntity<SolicitudPublicacionDetalleDTO>
+    responderAccion(
             @PathVariable Long idSolicitud,
             @PathVariable AccionRequerida accion,
             @RequestBody ResponderAccionRequestDTO request,
             Authentication authentication
     ) {
-        Usuario usuario = obtenerUsuarioActual(authentication);
+        Usuario usuario =
+                obtenerUsuarioActual(authentication);
+
         return ResponseEntity.ok(
-                solicitudService.responderAccion(idSolicitud, accion, usuario, request)
+                solicitudService.responderAccion(
+                        idSolicitud,
+                        accion,
+                        usuario,
+                        request
+                )
         );
     }
 
@@ -71,20 +110,40 @@ public class SolicitudPublicacionController {
             @PathVariable Long idSolicitud,
             Authentication authentication
     ) {
-        Usuario usuario = obtenerUsuarioActual(authentication);
-        solicitudService.cancelarSolicitud(idSolicitud, usuario);
+        Usuario usuario =
+                obtenerUsuarioActual(authentication);
+
+        solicitudService.cancelarSolicitud(
+                idSolicitud,
+                usuario
+        );
+
         return ResponseEntity.noContent().build();
     }
 
-    private Usuario obtenerUsuarioActual(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado");
+    private Usuario obtenerUsuarioActual(
+            Authentication authentication
+    ) {
+        if (authentication == null
+                || authentication.getName() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Usuario no autenticado"
+            );
         }
 
-        return usuarioRepository.findByMail(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Usuario no autenticado"
-                ));
+        return usuarioRepository
+                .findByMail(
+                        authentication.getName()
+                                .trim()
+                                .toLowerCase()
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "Usuario no autenticado"
+                        )
+                );
     }
 }

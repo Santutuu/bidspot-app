@@ -14,18 +14,22 @@ public class Asistente {
     @Column(name = "numeropostor", nullable = false)
     private Integer numeroPostor;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente", nullable = false)
     private Cliente cliente;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "subasta", nullable = false)
     private Subasta subasta;
 
     public Asistente() {
     }
 
-    public Asistente(Integer numeroPostor, Cliente cliente, Subasta subasta) {
+    public Asistente(
+            Integer numeroPostor,
+            Cliente cliente,
+            Subasta subasta
+    ) {
         this.numeroPostor = numeroPostor;
         this.cliente = cliente;
         this.subasta = subasta;
@@ -45,5 +49,23 @@ public class Asistente {
 
     public Subasta getSubasta() {
         return subasta;
+    }
+
+    public void setNumeroPostor(
+            Integer numeroPostor
+    ) {
+        this.numeroPostor = numeroPostor;
+    }
+
+    public void setCliente(
+            Cliente cliente
+    ) {
+        this.cliente = cliente;
+    }
+
+    public void setSubasta(
+            Subasta subasta
+    ) {
+        this.subasta = subasta;
     }
 }

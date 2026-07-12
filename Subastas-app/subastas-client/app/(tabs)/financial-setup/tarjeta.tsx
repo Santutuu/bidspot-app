@@ -80,7 +80,10 @@ export default function TarjetasScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={refrescar} />
       }
     >
-      <Pressable style={styles.backButton} onPress={() => router.back()}>
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/(tabs)/financial-setup" as any)}
+      >
         <Ionicons name="chevron-back" size={28} color="#111827" />
       </Pressable>
 

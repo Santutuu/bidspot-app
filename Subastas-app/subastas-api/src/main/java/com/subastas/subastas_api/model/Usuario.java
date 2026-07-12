@@ -6,47 +6,39 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "usuario")
 public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_usuario")
     private Long idUsuario;
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "persona_id", nullable = false, unique = true)
+    @OneToOne(
+            cascade = CascadeType.ALL,
+            optional = false
+    )
+    @JoinColumn(
+            name = "persona_id",
+            nullable = false,
+            unique = true
+    )
     private Persona persona;
-
-    /**
-     * Vincula la cuenta técnica de autenticación con el cliente
-     * de negocio perteneciente al modelo legacy.
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cliente_legacy_id")
-    private Cliente clienteLegacy;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Rol rol = Rol.USER;
 
-    /**
-     * Se conserva temporalmente para compatibilidad con el flujo
-     * moderno de registro y con los datos existentes.
+    /*
+     * Estado técnico de la cuenta.
      *
-     * La admisión de negocio debe consultarse principalmente
-     * desde Cliente.admitido.
+     * La validación comercial vive en Persona.estadoRegistro
+     * y Cliente.admitido.
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EstadoUsuario estado = EstadoUsuario.PENDIENTE_VALIDACION;
-
-    /**
-     * Se conserva temporalmente como fallback.
-     *
-     * La categoría de negocio debe obtenerse principalmente
-     * desde Cliente.categoria.
-     */
-    @Enumerated(EnumType.STRING)
-    private CategoriaUsuario categoria;
+    private EstadoUsuario estado =
+            EstadoUsuario.ACTIVO;
 
     @Column
     private String password;
@@ -57,99 +49,114 @@ public class Usuario {
             joinColumns = @JoinColumn(name = "usuario_id"),
             inverseJoinColumns = @JoinColumn(name = "subasta_id")
     )
-    private List<Subasta> guardadas = new ArrayList<>();
-
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "cuenta_id")
-    private CuentaBanco cuenta;
-
-    @OneToMany(
-            mappedBy = "usuario",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
-    private List<MedioDePago> mediosDePago = new ArrayList<>();
+    private List<Subasta> guardadas =
+            new ArrayList<>();
 
     public Usuario() {
     }
 
-    public Usuario(Persona persona,
-                   String password,
-                   Rol rol,
-                   EstadoUsuario estado) {
+    public Usuario(
+            Persona persona,
+            String password,
+            Rol rol,
+            EstadoUsuario estado
+    ) {
         this.persona = persona;
         this.password = password;
         this.rol = rol;
-        this.estado = estado;
+        this.estado = estado != null
+                ? estado
+                : EstadoUsuario.ACTIVO;
     }
 
     public boolean tieneClaveGenerada() {
-        return password != null && !password.isBlank();
+        return password != null
+                && !password.isBlank();
     }
 
-    public void agregarMedioDePago(MedioDePago medioDePago) {
-        mediosDePago.add(medioDePago);
-        medioDePago.setUsuario(this);
+    public boolean estaBloqueado() {
+        return estado == EstadoUsuario.BLOQUEADO;
     }
 
-    public void eliminarMedioDePago(MedioDePago medioDePago) {
-        mediosDePago.remove(medioDePago);
-        medioDePago.setUsuario(null);
+    public Cliente getCliente() {
+        return persona != null
+                ? persona.getCliente()
+                : null;
     }
 
-    public void guardarSubasta(Subasta subasta) {
-        if (!guardadas.contains(subasta)) {
+    public CategoriaUsuario getCategoriaNegocio() {
+        Cliente cliente = getCliente();
+
+        return cliente != null
+                ? cliente.getCategoria()
+                : null;
+    }
+
+    public EstadoRegistro getEstadoRegistro() {
+        if (persona == null
+                || persona.getEstadoRegistro() == null) {
+
+            return EstadoRegistro.PENDIENTE_VALIDACION;
+        }
+
+        return persona.getEstadoRegistro();
+    }
+
+    public boolean estaValidadoComoCliente() {
+        Cliente cliente = getCliente();
+
+        return getEstadoRegistro()
+                == EstadoRegistro.VALIDADO
+                && cliente != null
+                && cliente.estaAdmitido();
+    }
+
+    /**
+     * Mantiene el formato de estado esperado por los DTO y el frontend.
+     *
+     * Puede devolver:
+     *
+     * BLOQUEADO
+     * PENDIENTE_VALIDACION
+     * VALIDADO
+     * RECHAZADO
+     */
+    public String getEstadoExpuesto() {
+        if (estaBloqueado()) {
+            return EstadoUsuario.BLOQUEADO.name();
+        }
+
+        return getEstadoRegistro().name();
+    }
+
+    public void bloquear() {
+        this.estado = EstadoUsuario.BLOQUEADO;
+    }
+
+    public void activar() {
+        this.estado = EstadoUsuario.ACTIVO;
+    }
+
+    public void guardarSubasta(
+            Subasta subasta
+    ) {
+        if (subasta != null
+                && !guardadas.contains(subasta)) {
+
             guardadas.add(subasta);
         }
     }
 
-    public void eliminarSubasta(Subasta subasta) {
+    public void eliminarSubasta(
+            Subasta subasta
+    ) {
         guardadas.remove(subasta);
     }
 
-    public boolean tieneSubastaGuardada(Subasta subasta) {
+    public boolean tieneSubastaGuardada(
+            Subasta subasta
+    ) {
         return guardadas.contains(subasta);
-    }
-
-    /**
-     * Fuente de verdad progresiva para la categoría.
-     *
-     * Si ya existe Cliente, usa Cliente.categoria.
-     * Si todavía no existe, mantiene compatibilidad con Usuario.categoria.
-     */
-    public CategoriaUsuario getCategoriaNegocio() {
-        if (clienteLegacy != null && clienteLegacy.getCategoria() != null) {
-            return clienteLegacy.getCategoria();
-        }
-
-        return categoria;
-    }
-
-    /**
-     * Un usuario está validado como cliente cuando existe su entidad
-     * Cliente y la empresa lo marcó como admitido.
-     */
-    public boolean estaValidadoComoCliente() {
-        return clienteLegacy != null && clienteLegacy.estaAdmitido();
-    }
-
-    /**
-     * Estado efectivo para exponer al frontend durante la transición.
-     *
-     * BLOQUEADO y RECHAZADO conservan prioridad.
-     * Si existe un cliente admitido, se considera VALIDADO.
-     */
-    public EstadoUsuario getEstadoEfectivo() {
-        if (estado == EstadoUsuario.BLOQUEADO
-                || estado == EstadoUsuario.RECHAZADO) {
-            return estado;
-        }
-
-        if (estaValidadoComoCliente()) {
-            return EstadoUsuario.VALIDADO;
-        }
-
-        return estado;
     }
 
     public Long getIdUsuario() {
@@ -158,10 +165,6 @@ public class Usuario {
 
     public Persona getPersona() {
         return persona;
-    }
-
-    public Cliente getClienteLegacy() {
-        return clienteLegacy;
     }
 
     public String getPassword() {
@@ -176,39 +179,19 @@ public class Usuario {
         return estado;
     }
 
-    public CategoriaUsuario getCategoria() {
-        return categoria;
-    }
-
-    public CuentaBanco getCuenta() {
-        return cuenta;
-    }
-
-    public List<MedioDePago> getMediosDePago() {
-        return mediosDePago;
-    }
-
     public List<Subasta> getGuardadas() {
         return guardadas;
     }
 
-    public void setClienteLegacy(Cliente clienteLegacy) {
-        this.clienteLegacy = clienteLegacy;
-    }
-
-    public void setEstado(EstadoUsuario estado) {
+    public void setEstado(
+            EstadoUsuario estado
+    ) {
         this.estado = estado;
     }
 
-    public void setCategoria(CategoriaUsuario categoria) {
-        this.categoria = categoria;
-    }
-
-    public void setCuenta(CuentaBanco cuenta) {
-        this.cuenta = cuenta;
-    }
-
-    public void setPassword(String password) {
+    public void setPassword(
+            String password
+    ) {
         this.password = password;
     }
 }

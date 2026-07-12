@@ -1,34 +1,79 @@
 package com.subastas.subastas_api.model;
+
 import jakarta.persistence.*;
 
-
 @Entity
+@Table(name = "subastadores")
 public class Rematador {
 
+    /*
+     * Clave primaria compartida con personas.identificador.
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "identificador")
     private Long idRematador;
 
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId
+    @JoinColumn(name = "identificador")
+    private Persona persona;
+
+    @Column(name = "matricula")
     private String matricula;
-    private String nombre;
-    private String apellido;
 
-    public Rematador() {}
+    @Column(name = "region")
+    private String region;
 
-    public Rematador(String matricula, String nombre, String apellido) {
-        this.matricula = matricula;
-        this.nombre = nombre;
-        this.apellido = apellido;
+    public Rematador() {
     }
 
-    public Long getIdRematador() { return idRematador; }
+    public Rematador(
+            Persona persona,
+            String matricula,
+            String region
+    ) {
+        this.persona = persona;
+        this.matricula = matricula;
+        this.region = region;
+    }
 
-    public String getMatricula() { return matricula; }
-    public void setMatricula(String matricula) { this.matricula = matricula; }
+    public Long getIdRematador() {
+        return idRematador;
+    }
 
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
+    public Persona getPersona() {
+        return persona;
+    }
 
-    public String getApellido() { return apellido; }
-    public void setApellido(String apellido) { this.apellido = apellido; }
+    public String getMatricula() {
+        return matricula;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public String getNombre() {
+        return persona != null
+                ? persona.getNombre()
+                : null;
+    }
+
+    public String getApellido() {
+        return persona != null
+                ? persona.getApellido()
+                : null;
+    }
+
+    public void setPersona(Persona persona) {
+        this.persona = persona;
+    }
+
+    public void setMatricula(String matricula) {
+        this.matricula = matricula;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
 }

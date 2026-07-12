@@ -7,15 +7,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "solicitud_publicacion")
 public class SolicitudPublicacion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_solicitud")
     private Long idSolicitud;
 
-    @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false)
-    private Usuario usuario;
+    /*
+     * La solicitud pertenece comercialmente a un Cliente.
+     *
+     * El Usuario se utiliza únicamente para autenticar la petición.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private Cliente cliente;
 
     @OneToOne
     @JoinColumn(name = "item_id")
@@ -53,10 +60,16 @@ public class SolicitudPublicacion {
     )
     @Enumerated(EnumType.STRING)
     @Column(name = "accion")
-    private List<AccionRequerida> accionesRequeridas = new ArrayList<>();
+    private List<AccionRequerida> accionesRequeridas =
+            new ArrayList<>();
 
-    @OneToMany(mappedBy = "solicitudPublicacion", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RespuestaAccionRequerida> respuestasAcciones = new ArrayList<>();
+    @OneToMany(
+            mappedBy = "solicitudPublicacion",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<RespuestaAccionRequerida> respuestasAcciones =
+            new ArrayList<>();
 
     @Column(length = 1000)
     private String motivoRechazo;
@@ -70,17 +83,23 @@ public class SolicitudPublicacion {
     public SolicitudPublicacion() {
     }
 
-    public SolicitudPublicacion(Usuario usuario,
-                                Categoria categoria,
-                                String titulo,
-                                String descripcion,
-                                List<String> imagenesUrl,
-                                boolean declaracionPropiedad) {
-        this.usuario = usuario;
+    public SolicitudPublicacion(
+            Cliente cliente,
+            Categoria categoria,
+            String titulo,
+            String descripcion,
+            List<String> imagenesUrl,
+            boolean declaracionPropiedad
+    ) {
+        this.cliente = cliente;
         this.categoria = categoria;
         this.titulo = titulo;
         this.descripcion = descripcion;
-        this.imagenesUrl = imagenesUrl;
+
+        this.imagenesUrl = imagenesUrl != null
+                ? new ArrayList<>(imagenesUrl)
+                : new ArrayList<>();
+
         this.declaracionPropiedad = declaracionPropiedad;
         this.estado = EstadoSolicitud.PENDIENTE;
     }
@@ -104,8 +123,8 @@ public class SolicitudPublicacion {
         return idSolicitud;
     }
 
-    public Usuario getUsuario() {
-        return usuario;
+    public Cliente getCliente() {
+        return cliente;
     }
 
     public Item getItem() {
@@ -161,11 +180,11 @@ public class SolicitudPublicacion {
     }
 
     public String getPrimeraImagen() {
-        if (imagenesUrl != null && !imagenesUrl.isEmpty()) {
-            return imagenesUrl.get(0);
+        if (imagenesUrl == null || imagenesUrl.isEmpty()) {
+            return null;
         }
 
-        return null;
+        return imagenesUrl.get(0);
     }
 
     public void setEstado(EstadoSolicitud estado) {
@@ -184,11 +203,18 @@ public class SolicitudPublicacion {
         this.ubicacionDeposito = ubicacionDeposito;
     }
 
-    public void agregarAccionRequerida(AccionRequerida accion) {
-        this.accionesRequeridas.add(accion);
+    public void agregarAccionRequerida(
+            AccionRequerida accion
+    ) {
+        if (accion != null
+                && !accionesRequeridas.contains(accion)) {
+            accionesRequeridas.add(accion);
+        }
     }
 
-    public void eliminarAccionRequerida(AccionRequerida accion) {
-        this.accionesRequeridas.remove(accion);
+    public void eliminarAccionRequerida(
+            AccionRequerida accion
+    ) {
+        accionesRequeridas.remove(accion);
     }
 }

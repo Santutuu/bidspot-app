@@ -14,39 +14,81 @@ public class Puja {
     @Column(name = "identificador")
     private Long idPuja;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "asistente", nullable = false)
+    @ManyToOne(
+            optional = false,
+            fetch = FetchType.LAZY
+    )
+    @JoinColumn(
+            name = "asistente",
+            nullable = false
+    )
     private Asistente asistente;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "item", nullable = false)
+    @ManyToOne(
+            optional = false,
+            fetch = FetchType.LAZY
+    )
+    @JoinColumn(
+            name = "item",
+            nullable = false
+    )
     private ItemCatalogo itemCatalogo;
 
     @Column(name = "importe", nullable = false)
     private BigDecimal monto;
 
+    /*
+     * Extensión del modelo legacy.
+     */
     @Column(name = "fecha_hora")
     private LocalDateTime fechaHora;
 
+    /*
+     * Extensión del modelo legacy.
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "estado_puja")
-    private EstadoPuja estado = EstadoPuja.REGISTRADA;
+    private EstadoPuja estado =
+            EstadoPuja.REGISTRADA;
 
+    /*
+     * Campo original legacy.
+     */
     @Column(name = "ganador")
     private String ganador = "no";
 
     public Puja() {
     }
 
-    public Puja(Asistente asistente,
-                ItemCatalogo itemCatalogo,
-                Float monto) {
+    public Puja(
+            Asistente asistente,
+            ItemCatalogo itemCatalogo,
+            Float monto
+    ) {
         this.asistente = asistente;
         this.itemCatalogo = itemCatalogo;
-        this.monto = BigDecimal.valueOf(monto);
+        this.monto = monto != null
+                ? BigDecimal.valueOf(monto)
+                : null;
+
         this.fechaHora = LocalDateTime.now();
         this.estado = EstadoPuja.REGISTRADA;
         this.ganador = "no";
+    }
+
+    @PrePersist
+    private void prePersist() {
+        if (fechaHora == null) {
+            fechaHora = LocalDateTime.now();
+        }
+
+        if (estado == null) {
+            estado = EstadoPuja.REGISTRADA;
+        }
+
+        if (ganador == null) {
+            ganador = "no";
+        }
     }
 
     public Long getIdPuja() {
@@ -54,11 +96,22 @@ public class Puja {
     }
 
     public Usuario getUsuario() {
-        return null;
+        if (asistente == null
+                || asistente.getCliente() == null
+                || asistente.getCliente().getPersona() == null) {
+            return null;
+        }
+
+        return asistente
+                .getCliente()
+                .getPersona()
+                .getUsuario();
     }
 
     public Subasta getSubasta() {
-        return asistente == null ? null : asistente.getSubasta();
+        return asistente == null
+                ? null
+                : asistente.getSubasta();
     }
 
     public Asistente getAsistente() {
@@ -70,7 +123,9 @@ public class Puja {
     }
 
     public Float getMonto() {
-        return monto == null ? null : monto.floatValue();
+        return monto == null
+                ? null
+                : monto.floatValue();
     }
 
     public BigDecimal getMontoDecimal() {
@@ -89,11 +144,15 @@ public class Puja {
         return ganador;
     }
 
-    public void setItemCatalogo(ItemCatalogo itemCatalogo) {
+    public void setItemCatalogo(
+            ItemCatalogo itemCatalogo
+    ) {
         this.itemCatalogo = itemCatalogo;
     }
 
-    public void setAsistente(Asistente asistente) {
+    public void setAsistente(
+            Asistente asistente
+    ) {
         this.asistente = asistente;
     }
 

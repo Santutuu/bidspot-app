@@ -10,9 +10,9 @@ public abstract class MedioDePago {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idMedioPago;
 
-    @ManyToOne
-    @JoinColumn(name = "usuario_id")
-    private Usuario usuario;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private Cliente cliente;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -21,8 +21,9 @@ public abstract class MedioDePago {
     public MedioDePago() {
     }
 
-    public MedioDePago(Usuario usuario, Moneda moneda) {
-        this.usuario = usuario;
+    public MedioDePago(Cliente cliente,
+                       Moneda moneda) {
+        this.cliente = cliente;
         this.moneda = moneda;
     }
 
@@ -30,16 +31,16 @@ public abstract class MedioDePago {
         return idMedioPago;
     }
 
-    public Usuario getUsuario() {
-        return usuario;
+    public Cliente getCliente() {
+        return cliente;
     }
 
     public Moneda getMoneda() {
         return moneda;
     }
 
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
+    public void setCliente(Cliente cliente) {
+        this.cliente = cliente;
     }
 
     public void setMoneda(Moneda moneda) {
