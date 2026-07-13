@@ -35,7 +35,7 @@ export default function MensajeriaScreen() {
           </View>
           <View style={styles.bubbleSupport}>
             <Text style={styles.messageTextSupport}>
-              Felicitaciones Santino, el item "nombre" es suyo.{"\n"}
+              Felicitaciones Santino, el item{" \"nombre\" "}es suyo.{"\n"}
               Los costos del item a continuacion
             </Text>
           </View>

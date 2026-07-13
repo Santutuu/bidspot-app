@@ -1,6 +1,7 @@
 import {
     useAumentarPolizaSolicitud,
     usePolizaSolicitud,
+    useResolverPolizaSolicitud,
 } from "@/src/hooks/useSolicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -44,6 +45,7 @@ export default function PolizaSolicitudScreen() {
     validIdSolicitud ? String(idSolicitud) : undefined,
   );
   const { aumentar, loading: submitting } = useAumentarPolizaSolicitud();
+  const { aceptar, rechazar, loading: resolving } = useResolverPolizaSolicitud();
   const [nuevoMonto, setNuevoMonto] = useState("");
   const [validation, setValidation] = useState<string | null>(null);
 
@@ -96,6 +98,38 @@ export default function PolizaSolicitudScreen() {
     }
   }
 
+  async function aceptarPoliza() {
+    try {
+      const updated = await aceptar(idSolicitud);
+      if (updated) {
+        setPoliza(updated);
+        await recargar();
+        Alert.alert("Póliza aceptada", "La póliza quedó confirmada.");
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "No pudimos aceptar la póliza",
+        err.response?.data?.message ?? err.response?.data?.error ?? "Intentá nuevamente.",
+      );
+    }
+  }
+
+  async function rechazarPoliza() {
+    try {
+      const updated = await rechazar(idSolicitud);
+      if (updated) {
+        setPoliza(updated);
+        await recargar();
+        Alert.alert("Póliza rechazada", "Actualizamos el estado con la respuesta del backend.");
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "No pudimos rechazar la póliza",
+        err.response?.data?.message ?? err.response?.data?.error ?? "Intentá nuevamente.",
+      );
+    }
+  }
+
   if (!validIdSolicitud) {
     return (
       <View style={styles.stateContainer}>
@@ -104,7 +138,7 @@ export default function PolizaSolicitudScreen() {
         </Text>
         <Pressable
           style={styles.retryButton}
-          onPress={() => router.replace("/(tabs)/profile" as any)}
+          onPress={() => router.replace("/(tabs)/profile/publicaciones" as any)}
         >
           <Text style={styles.retryText}>Volver</Text>
         </Pressable>
@@ -142,7 +176,12 @@ export default function PolizaSolicitudScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
         <Pressable
-          onPress={() => router.replace("/(tabs)/profile" as any)}
+          onPress={() =>
+            router.replace({
+              pathname: "/(tabs)/profile/publicaciones/[id]" as any,
+              params: { id },
+            })
+          }
           style={styles.iconButton}
         >
           <Ionicons name="chevron-back" size={30} color="#111827" />
@@ -239,6 +278,26 @@ export default function PolizaSolicitudScreen() {
             {submitting ? "Enviando..." : "Solicitar aumento"}
           </Text>
         </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Responder póliza</Text>
+        <View style={styles.actionRow}>
+          <Pressable
+            style={[styles.acceptButton, resolving && styles.disabled]}
+            disabled={resolving}
+            onPress={aceptarPoliza}
+          >
+            <Text style={styles.acceptText}>Aceptar</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.rejectButton, resolving && styles.disabled]}
+            disabled={resolving}
+            onPress={rechazarPoliza}
+          >
+            <Text style={styles.rejectText}>Rechazar</Text>
+          </Pressable>
+        </View>
       </View>
     </ScrollView>
   );
@@ -368,6 +427,34 @@ const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: "#FFFFFF",
+    fontWeight: "900",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  acceptButton: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#16A34A",
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  rejectButton: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F97316",
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  acceptText: {
+    color: "#15803D",
+    fontWeight: "900",
+  },
+  rejectText: {
+    color: "#EA580C",
     fontWeight: "900",
   },
   disabled: {

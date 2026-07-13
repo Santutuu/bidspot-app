@@ -1,10 +1,11 @@
 import { uploadSubastaImages } from "@/src/api/uploadAPI";
+import { useTarjetas } from "@/src/hooks/useTarjetas";
 import { useCrearSolicitudPublicacion } from "@/src/hooks/useSolicitudesPublicacion";
 import { Categoria } from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -25,6 +26,11 @@ export default function PublicarDetalleScreen() {
   const [declaraPropiedad, setDeclaraPropiedad] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { crear, loading: creando } = useCrearSolicitudPublicacion();
+  const { tarjetas, cargarTarjetas } = useTarjetas();
+
+  useEffect(() => {
+    void cargarTarjetas();
+  }, [cargarTarjetas]);
 
   function handleBack() {
     router.replace("/(tabs)/profile" as any);
@@ -69,6 +75,22 @@ export default function PublicarDetalleScreen() {
       Alert.alert(
         "Declaración requerida",
         "Tenés que declarar que sos propietario del producto.",
+      );
+      return;
+    }
+
+    const tieneTarjetaPesos = tarjetas.some((tarjeta) => tarjeta.moneda === "PESOS");
+    if (!tieneTarjetaPesos) {
+      Alert.alert(
+        "Tarjeta en pesos requerida",
+        "Para solicitar una publicación necesitás tener al menos una tarjeta de crédito registrada en pesos.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Ir a medios de pago",
+            onPress: () => router.push("/(tabs)/financial-setup/medios-pago" as any),
+          },
+        ],
       );
       return;
     }

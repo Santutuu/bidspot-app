@@ -1,13 +1,14 @@
-import { AccionRequerida } from "@/src/types/solicitudesPublicacion";
+import { TipoAccionSolicitud } from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   action: {
     id: string;
-    tipo: AccionRequerida;
+    tipo: TipoAccionSolicitud;
     titulo: string;
     descripcion: string;
+    icon?: string;
     estado: "PENDIENTE" | "RESPONDIDA";
   };
   onPress?: () => void;
@@ -17,7 +18,7 @@ export default function RequiredActionCard({ action, onPress }: Props) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.iconBox}>
-        <Ionicons name="alert-circle-outline" size={22} color="#D97706" />
+        <Ionicons name={(action.icon as any) ?? "alert-circle-outline"} size={22} color="#D97706" />
       </View>
 
       <View style={styles.content}>

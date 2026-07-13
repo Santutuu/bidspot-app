@@ -76,13 +76,13 @@ async function createAcceptedNotification(
     const detalle = await obtenerDetalleSolicitudPublicacion(
       solicitud.idSolicitud,
     );
-    ubicacionDeposito = detalle.ubicacionDeposito;
+    ubicacionDeposito = detalle.direccionDeposito;
   } catch {
     ubicacionDeposito = null;
   }
 
   return {
-    id: `solicitud-${solicitud.idSolicitud}-ACEPTADA`,
+    id: `solicitud-${solicitud.idSolicitud}-INTERES_EMPRESA`,
     solicitudId: solicitud.idSolicitud,
     kind: "PUBLICACION_ACEPTADA",
     title: "Solicitud aceptada",
@@ -241,8 +241,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const existingIds = new Set(stored.map((item) => item.id));
 
       for (const solicitud of solicitudes) {
-        if (solicitud.estado === "ACEPTADA") {
-          const id = `solicitud-${solicitud.idSolicitud}-ACEPTADA`;
+        if (solicitud.estado === "INTERES_EMPRESA") {
+          const id = `solicitud-${solicitud.idSolicitud}-INTERES_EMPRESA`;
 
           if (!existingIds.has(id) && !dismissedIds.has(id)) {
             next.unshift(await createAcceptedNotification(solicitud));

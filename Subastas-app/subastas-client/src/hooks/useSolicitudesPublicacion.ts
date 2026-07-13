@@ -1,13 +1,17 @@
 import {
+  aceptarPolizaSolicitud,
   aumentarPolizaSolicitud,
+  configurarDevolucionSolicitud,
+  confirmarPagoDevolucionSolicitud,
   crearSolicitudPublicacion,
   obtenerDetalleSolicitudPublicacion,
   obtenerMisSolicitudesPublicacion,
   obtenerPolizaSolicitud,
+  rechazarPolizaSolicitud,
   responderAccionSolicitud,
 } from "@/src/api/solicitudesPublicacionAPI";
 import {
-  AccionRequerida,
+  ConfigurarDevolucionRequest,
   PolizaSolicitudResponse,
   ResponderAccionRequest,
   SolicitudPublicacionDetalle,
@@ -129,13 +133,13 @@ export function useResponderAccionSolicitud() {
 
   async function responder(
     idSolicitud: string | number,
-    accion: AccionRequerida,
+    idAccion: string | number,
     request: ResponderAccionRequest,
   ) {
     try {
       setLoading(true);
       setError(null);
-      return await responderAccionSolicitud(idSolicitud, accion, request);
+      return await responderAccionSolicitud(idSolicitud, idAccion, request);
     } catch (err: any) {
       if (handleAuthError(err)) return null;
       const message =
@@ -212,4 +216,81 @@ export function useAumentarPolizaSolicitud() {
   }
 
   return { aumentar, loading, error };
+}
+
+export function useResolverPolizaSolicitud() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function aceptar(idSolicitud: string | number) {
+    try {
+      setLoading(true);
+      setError(null);
+      return await aceptarPolizaSolicitud(idSolicitud);
+    } catch (err: any) {
+      if (handleAuthError(err)) return null;
+      const message = getMessage(err, "No pudimos aceptar la póliza.");
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function rechazar(idSolicitud: string | number) {
+    try {
+      setLoading(true);
+      setError(null);
+      return await rechazarPolizaSolicitud(idSolicitud);
+    } catch (err: any) {
+      if (handleAuthError(err)) return null;
+      const message = getMessage(err, "No pudimos rechazar la póliza.");
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return { aceptar, rechazar, loading, error };
+}
+
+export function useDevolucionSolicitud() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function configurar(
+    idSolicitud: string | number,
+    request: ConfigurarDevolucionRequest,
+  ) {
+    try {
+      setLoading(true);
+      setError(null);
+      return await configurarDevolucionSolicitud(idSolicitud, request);
+    } catch (err: any) {
+      if (handleAuthError(err)) return null;
+      const message = getMessage(err, "No pudimos configurar la devolución.");
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmarPago(idSolicitud: string | number) {
+    try {
+      setLoading(true);
+      setError(null);
+      return await confirmarPagoDevolucionSolicitud(idSolicitud);
+    } catch (err: any) {
+      if (handleAuthError(err)) return null;
+      const message = getMessage(err, "No pudimos confirmar el pago.");
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return { configurar, confirmarPago, loading, error };
 }
