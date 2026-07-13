@@ -18,6 +18,8 @@ import {
     View,
 } from "react-native";
 
+const MIN_IMAGES = 6;
+
 export default function PublicarDetalleScreen() {
   const { categoria } = useLocalSearchParams<{ categoria?: Categoria }>();
   const [imagenes, setImagenes] = useState<string[]>([]);
@@ -41,13 +43,18 @@ export default function PublicarDetalleScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.85,
-      selectionLimit: Math.max(1, 6 - imagenes.length),
     });
 
     if (result.canceled) return;
 
     const nuevasImagenes = result.assets.map((asset) => asset.uri);
-    setImagenes((current) => [...current, ...nuevasImagenes].slice(0, 6));
+    setImagenes((current) => [...current, ...nuevasImagenes]);
+  }
+
+  function handleEliminarFoto(indexToRemove: number) {
+    setImagenes((current) =>
+      current.filter((_, index) => index !== indexToRemove),
+    );
   }
 
   async function handlePublicar() {
@@ -66,7 +73,7 @@ export default function PublicarDetalleScreen() {
       return;
     }
 
-    if (imagenes.length < 6) {
+    if (imagenes.length < MIN_IMAGES) {
       Alert.alert("Fotos requeridas", "Agregá al menos 6 fotos del producto.");
       return;
     }
@@ -121,6 +128,7 @@ export default function PublicarDetalleScreen() {
   }
 
   const submitting = uploading || creando;
+  const puedePublicar = declaraPropiedad && imagenes.length >= MIN_IMAGES;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -133,17 +141,12 @@ export default function PublicarDetalleScreen() {
         <View style={styles.photoHeader}>
           <View>
             <Text style={styles.label}>Fotos</Text>
-            <Text style={styles.helperText}>{imagenes.length}/6 agregadas</Text>
+            <Text style={styles.helperText}>
+              {imagenes.length} imÃ¡genes seleccionadas Â· mÃ­nimo {MIN_IMAGES}
+            </Text>
           </View>
 
-          <Pressable
-            style={[
-              styles.addPhotoButton,
-              imagenes.length >= 6 && styles.disabledButton,
-            ]}
-            onPress={handleAgregarFotos}
-            disabled={imagenes.length >= 6}
-          >
+          <Pressable style={styles.addPhotoButton} onPress={handleAgregarFotos}>
             <Ionicons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.addPhotoText}>Agregar</Text>
           </Pressable>
@@ -166,11 +169,15 @@ export default function PublicarDetalleScreen() {
             contentContainerStyle={styles.photosRow}
           >
             {imagenes.map((image, index) => (
-              <Image
-                key={`${image}-${index}`}
-                source={{ uri: image }}
-                style={styles.photo}
-              />
+              <View key={`${image}-${index}`} style={styles.photoWrap}>
+                <Image source={{ uri: image }} style={styles.photo} />
+                <Pressable
+                  style={styles.removePhotoButton}
+                  onPress={() => handleEliminarFoto(index)}
+                >
+                  <Ionicons name="close" size={14} color="#FFFFFF" />
+                </Pressable>
+              </View>
             ))}
           </ScrollView>
         )}
@@ -224,9 +231,9 @@ export default function PublicarDetalleScreen() {
           onPress={handlePublicar}
           style={[
             styles.primaryButton,
-            (!declaraPropiedad || submitting) && styles.disabledButton,
+            (!puedePublicar || submitting) && styles.disabledButton,
           ]}
-          disabled={!declaraPropiedad || submitting}
+          disabled={!puedePublicar || submitting}
         >
           {submitting ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -334,6 +341,9 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingBottom: 18,
   },
+  photoWrap: {
+    position: "relative",
+  },
   photo: {
     width: 96,
     height: 96,
@@ -341,6 +351,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#CBD5E1",
     backgroundColor: "#E5E7EB",
+  },
+  removePhotoButton: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(15, 23, 42, 0.72)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   titleInput: {
     height: 54,

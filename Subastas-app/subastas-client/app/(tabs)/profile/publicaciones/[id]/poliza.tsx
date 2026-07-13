@@ -45,7 +45,11 @@ export default function PolizaSolicitudScreen() {
     validIdSolicitud ? String(idSolicitud) : undefined,
   );
   const { aumentar, loading: submitting } = useAumentarPolizaSolicitud();
-  const { aceptar, rechazar, loading: resolving } = useResolverPolizaSolicitud();
+  const {
+    aceptar,
+    rechazar,
+    loading: resolving,
+  } = useResolverPolizaSolicitud();
   const [nuevoMonto, setNuevoMonto] = useState("");
   const [validation, setValidation] = useState<string | null>(null);
 
@@ -109,7 +113,9 @@ export default function PolizaSolicitudScreen() {
     } catch (err: any) {
       Alert.alert(
         "No pudimos aceptar la póliza",
-        err.response?.data?.message ?? err.response?.data?.error ?? "Intentá nuevamente.",
+        err.response?.data?.message ??
+          err.response?.data?.error ??
+          "Intentá nuevamente.",
       );
     }
   }
@@ -120,12 +126,17 @@ export default function PolizaSolicitudScreen() {
       if (updated) {
         setPoliza(updated);
         await recargar();
-        Alert.alert("Póliza rechazada", "Actualizamos el estado con la respuesta del backend.");
+        Alert.alert(
+          "Póliza rechazada",
+          "Actualizamos el estado con la respuesta del backend.",
+        );
       }
     } catch (err: any) {
       Alert.alert(
         "No pudimos rechazar la póliza",
-        err.response?.data?.message ?? err.response?.data?.error ?? "Intentá nuevamente.",
+        err.response?.data?.message ??
+          err.response?.data?.error ??
+          "Intentá nuevamente.",
       );
     }
   }

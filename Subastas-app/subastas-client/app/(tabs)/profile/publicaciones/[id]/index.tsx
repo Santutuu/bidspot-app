@@ -82,6 +82,21 @@ export default function PublicacionDetalleScreen() {
 
   const ui = derivePublicationUIState(detalle);
   const firstImage = detalle.imagenesUrl[0];
+  const idSubasta = detalle.idSubasta;
+  const tieneSubasta = idSubasta !== null && idSubasta !== undefined;
+  const polizaCompletada = detalle.estado === "LISTA_PARA_SUBASTA";
+  const puedeAbrirSubasta = tieneSubasta && polizaCompletada;
+
+  function handleVerSubasta() {
+    if (!puedeAbrirSubasta || !idSubasta) {
+      return;
+    }
+
+    router.push({
+      pathname: "/(tabs)/subastas/[id]" as any,
+      params: { id: String(idSubasta) },
+    });
+  }
 
   return (
     <ScrollView
@@ -188,17 +203,21 @@ export default function PublicacionDetalleScreen() {
         </View>
       )}
 
-      {detalle.idSubasta && (
+      {tieneSubasta && (
         <View style={styles.card}>
           <AuctionInfoCard auction={auctionFromDetalle(detalle)} />
+          {!puedeAbrirSubasta && (
+            <Text style={styles.lockedAuctionText}>
+              CompletÃ¡ la pÃ³liza para acceder a la subasta.
+            </Text>
+          )}
           <Pressable
-            style={styles.auctionButton}
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/subastas/[id]" as any,
-                params: { id: String(detalle.idSubasta) },
-              })
-            }
+            style={[
+              styles.auctionButton,
+              !puedeAbrirSubasta && styles.auctionButtonDisabled,
+            ]}
+            disabled={!puedeAbrirSubasta}
+            onPress={handleVerSubasta}
           >
             <Text style={styles.auctionButtonText}>Ver subasta</Text>
             <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
@@ -242,7 +261,9 @@ const styles = StyleSheet.create({
   text: { fontSize: 14, color: "#475569", lineHeight: 22, fontWeight: "600" },
   linkText: { fontSize: 14, color: "#2F63F6", fontWeight: "900" },
   auctionButton: { minHeight: 46, borderRadius: 13, backgroundColor: "#2F63F6", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  auctionButtonDisabled: { opacity: 0.45 },
   auctionButtonText: { color: "#FFFFFF", fontWeight: "900" },
+  lockedAuctionText: { fontSize: 13, color: "#92400E", fontWeight: "800", lineHeight: 19, marginBottom: 10 },
   stateContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "#FFFFFF", gap: 10 },
   stateText: { fontSize: 15, color: "#64748B", fontWeight: "700" },
   errorText: { fontSize: 15, color: "#B91C1C", fontWeight: "800", textAlign: "center" },

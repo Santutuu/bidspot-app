@@ -4,12 +4,15 @@ import {
   useDevolucionSolicitud,
   useResponderAccionSolicitud,
 } from "@/src/hooks/useSolicitudesPublicacion";
+import { MedioPagoResponseDTO } from "@/src/dto/me/MedioPagoDTO";
+import { useMediosPago } from "@/src/hooks/useMediosPago";
 import { AccionSolicitudPublicacion, ResponderAccionRequest } from "@/src/types/solicitudesPublicacion";
 import { getActionConfig } from "@/src/utils/publicationWorkflow";
+import { getCurrencyCode } from "@/src/utils/moneda";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -39,11 +42,35 @@ export default function AccionesRequeridasScreen() {
   const { detalle, loading, error, recargar, setDetalle } = useDetalleSolicitudPublicacion(id);
   const { responder, loading: responding } = useResponderAccionSolicitud();
   const { configurar, confirmarPago, loading: returning } = useDevolucionSolicitud();
+  const {
+    mediosPago,
+    loadingMediosPago,
+    errorMediosPago,
+    cargarMediosPago,
+  } = useMediosPago(false);
   const [comentarios, setComentarios] = useState<Record<string, string>>({});
   const [archivoUrls, setArchivoUrls] = useState<Record<string, string>>({});
   const [devolucionDireccion, setDevolucionDireccion] = useState("");
-  const [devolucionMedioPago, setDevolucionMedioPago] = useState("");
+  const [medioPagoSeleccionado, setMedioPagoSeleccionado] =
+    useState<MedioPagoResponseDTO | null>(null);
   const [uploadingAction, setUploadingAction] = useState<number | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      void cargarMediosPago();
+    }, [cargarMediosPago]),
+  );
+
+  useEffect(() => {
+    if (
+      medioPagoSeleccionado &&
+      !mediosPago.some(
+        (medio) => medio.idMedioPago === medioPagoSeleccionado.idMedioPago,
+      )
+    ) {
+      setMedioPagoSeleccionado(null);
+    }
+  }, [medioPagoSeleccionado, mediosPago]);
 
   async function submit(accion: AccionSolicitudPublicacion, request: ResponderAccionRequest) {
     try {
@@ -53,7 +80,7 @@ export default function AccionesRequeridasScreen() {
       setArchivoUrls((current) => ({ ...current, [accion.idAccion]: "" }));
       await recargar();
     } catch (err: any) {
-      Alert.alert("No pudimos responder", err.response?.data?.message ?? err.response?.data?.error ?? "Intentá nuevamente.");
+      Alert.alert("No pudimos responder", err.response?.data?.message ?? err.response?.data?.error ?? "IntentÃ¡ nuevamente.");
     }
   }
 
@@ -76,20 +103,20 @@ export default function AccionesRequeridasScreen() {
   }
 
   async function submitDevolucion() {
-    const idMedioPago = Number(devolucionMedioPago);
-    if (!devolucionDireccion.trim() || !Number.isFinite(idMedioPago)) {
-      Alert.alert("Datos requeridos", "Ingresá dirección e id de medio de pago.");
+    if (!devolucionDireccion.trim() || !medioPagoSeleccionado) {
+      Alert.alert("Datos requeridos", "IngresÃ¡ direcciÃ³n y elegÃ­ un medio de pago.");
       return;
     }
+
     try {
       const updated = await configurar(id, {
         direccionDestino: devolucionDireccion.trim(),
-        idMedioPago,
+        idMedioPago: medioPagoSeleccionado.idMedioPago,
       });
       if (updated) setDetalle(updated);
       await recargar();
     } catch (err: any) {
-      Alert.alert("No pudimos configurar devolución", err.response?.data?.message ?? "Intentá nuevamente.");
+      Alert.alert("No pudimos configurar devoluciÃ³n", err.response?.data?.message ?? "IntentÃ¡ nuevamente.");
     }
   }
 
@@ -99,7 +126,7 @@ export default function AccionesRequeridasScreen() {
       if (updated) setDetalle(updated);
       await recargar();
     } catch (err: any) {
-      Alert.alert("No pudimos confirmar pago", err.response?.data?.message ?? "Intentá nuevamente.");
+      Alert.alert("No pudimos confirmar pago", err.response?.data?.message ?? "IntentÃ¡ nuevamente.");
     }
   }
 
@@ -149,7 +176,7 @@ export default function AccionesRequeridasScreen() {
       {acciones.length === 0 ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Sin acciones pendientes</Text>
-          <Text style={styles.description}>Esta publicación no requiere respuestas por ahora.</Text>
+          <Text style={styles.description}>Esta publicaciÃ³n no requiere respuestas por ahora.</Text>
         </View>
       ) : (
         acciones.map((accion, index) => {
@@ -157,6 +184,10 @@ export default function AccionesRequeridasScreen() {
           const comentario = comentarios[accion.idAccion] ?? "";
           const archivoUrl = archivoUrls[accion.idAccion] ?? "";
           const busy = responding || returning || uploadingAction === accion.idAccion;
+          const puedeConfigurarDevolucion =
+            devolucionDireccion.trim().length > 0 &&
+            medioPagoSeleccionado !== null &&
+            !busy;
 
           return (
             <View key={accion.idAccion} style={styles.card}>
@@ -165,12 +196,12 @@ export default function AccionesRequeridasScreen() {
 
               {accion.tipo === "ACEPTAR_ENVIO_INSPECCION" && (
                 <>
-                  <Info label="Depósito" value={detalle.direccionDeposito ?? "Pendiente"} />
-                  <Info label="Fecha límite" value={formatFecha(detalle.fechaLimiteEnvio)} />
-                  <Text style={styles.noticeText}>Al confirmar, aceptás enviar el producto para inspección. Si luego corresponde devolución, puede quedar a tu cargo.</Text>
+                  <Info label="DepÃ³sito" value={detalle.direccionDeposito ?? "Pendiente"} />
+                  <Info label="Fecha lÃ­mite" value={formatFecha(detalle.fechaLimiteEnvio)} />
+                  <Text style={styles.noticeText}>Al confirmar, aceptÃ¡s enviar el producto para inspecciÃ³n. Si luego corresponde devoluciÃ³n, puede quedar a tu cargo.</Text>
                   <TextInput style={styles.input} placeholder="Comentario opcional" placeholderTextColor="#94A3B8" value={comentario} onChangeText={(value) => setComentarios((current) => ({ ...current, [accion.idAccion]: value }))} />
                   <Pressable style={styles.primaryAction} disabled={busy} onPress={() => submit(accion, { aceptada: true, comentario: comentario || undefined })}>
-                    <Text style={styles.primaryActionText}>{busy ? "Enviando..." : "Confirmar envío"}</Text>
+                    <Text style={styles.primaryActionText}>{busy ? "Enviando..." : "Confirmar envÃ­o"}</Text>
                   </Pressable>
                 </>
               )}
@@ -179,12 +210,12 @@ export default function AccionesRequeridasScreen() {
                 <>
                   <Info label="Subasta" value={detalle.propuestaVenta.tituloSubasta ?? `#${detalle.propuestaVenta.idSubasta}`} />
                   <Info label="Fecha" value={formatFecha(detalle.propuestaVenta.fechaSubasta)} />
-                  <Info label="Ubicación" value={detalle.propuestaVenta.ubicacionSubasta ?? "Pendiente"} />
+                  <Info label="UbicaciÃ³n" value={detalle.propuestaVenta.ubicacionSubasta ?? "Pendiente"} />
                   <Info label="Moneda" value={detalle.propuestaVenta.moneda ?? "Pendiente"} />
-                  <Info label="Categoría mínima" value={detalle.propuestaVenta.categoriaMinima ?? "Pendiente"} />
+                  <Info label="CategorÃ­a mÃ­nima" value={detalle.propuestaVenta.categoriaMinima ?? "Pendiente"} />
                   <Info label="Rematador" value={detalle.propuestaVenta.rematador ?? "Pendiente"} />
                   <Info label="Precio base" value={formatMoney(detalle.propuestaVenta.precioBase, detalle.propuestaVenta.moneda ?? "ARS")} />
-                  <Info label="Comisión" value={detalle.propuestaVenta.porcentajeComision !== null ? `${detalle.propuestaVenta.porcentajeComision}%` : "Pendiente"} />
+                  <Info label="ComisiÃ³n" value={detalle.propuestaVenta.porcentajeComision !== null ? `${detalle.propuestaVenta.porcentajeComision}%` : "Pendiente"} />
                   <View style={styles.actionRow}>
                     <Pressable style={styles.acceptButton} disabled={busy} onPress={() => submit(accion, { aceptada: true })}>
                       <Text style={styles.acceptText}>Aceptar</Text>
@@ -206,7 +237,7 @@ export default function AccionesRequeridasScreen() {
                     })
                   }
                 >
-                  <Text style={styles.primaryActionText}>Revisar póliza</Text>
+                  <Text style={styles.primaryActionText}>Revisar pÃ³liza</Text>
                 </Pressable>
               )}
 
@@ -214,13 +245,62 @@ export default function AccionesRequeridasScreen() {
                 <>
                   <Info label="Estado" value={detalle.devolucion?.estado ?? "Pendiente"} />
                   <Info label="Costo" value={formatMoney(detalle.devolucion?.costo, detalle.devolucion?.moneda ?? "ARS")} />
-                  <TextInput style={styles.input} placeholder="Dirección de devolución" placeholderTextColor="#94A3B8" value={devolucionDireccion} onChangeText={setDevolucionDireccion} />
-                  <TextInput style={styles.input} placeholder="Id medio de pago" placeholderTextColor="#94A3B8" keyboardType="numeric" value={devolucionMedioPago} onChangeText={setDevolucionMedioPago} />
+                  <TextInput style={styles.input} placeholder="DirecciÃ³n de devoluciÃ³n" placeholderTextColor="#94A3B8" value={devolucionDireccion} onChangeText={setDevolucionDireccion} />
+                  <Text style={styles.paymentSectionTitle}>Medio de pago</Text>
+                  {loadingMediosPago ? (
+                    <ActivityIndicator color="#2F63F6" />
+                  ) : null}
+                  {!loadingMediosPago && errorMediosPago ? (
+                    <Text style={styles.errorText}>{errorMediosPago}</Text>
+                  ) : null}
+                  {!loadingMediosPago && !errorMediosPago && mediosPago.length === 0 ? (
+                    <Text style={styles.emptyText}>No tenés medios de pago registrados.</Text>
+                  ) : null}
+                  {mediosPago.map((medio) => {
+                    const selected =
+                      medioPagoSeleccionado?.idMedioPago === medio.idMedioPago;
+
+                    return (
+                      <Pressable
+                        key={`${medio.tipo}-${medio.idMedioPago}`}
+                        style={[
+                          styles.methodCard,
+                          selected && styles.methodCardSelected,
+                        ]}
+                        onPress={() => setMedioPagoSeleccionado(medio)}
+                        disabled={busy}
+                      >
+                        <Ionicons
+                          name={medio.tipo === "TARJETA" ? "card-outline" : "document-text-outline"}
+                          size={24}
+                          color={medio.tipo === "TARJETA" ? "#1D4ED8" : "#0F172A"}
+                        />
+                        <View style={styles.methodCopy}>
+                          <Text style={styles.methodTitle}>{medio.descripcion}</Text>
+                          <Text style={styles.methodDetail}>
+                            {medio.tipo} · {getCurrencyCode(medio.moneda)} · capacidad {formatMoney(medio.capacidad, getCurrencyCode(medio.moneda))}
+                          </Text>
+                        </View>
+                        {selected ? (
+                          <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
                   <Pressable style={styles.secondaryAction} onPress={() => router.push("/(tabs)/financial-setup/medios-pago" as any)}>
-                    <Text style={styles.secondaryActionText}>Ir a medios de pago</Text>
+                    <Text style={styles.secondaryActionText}>Agregar medio de pago</Text>
                   </Pressable>
-                  <Pressable style={styles.primaryAction} disabled={busy} onPress={submitDevolucion}>
-                    <Text style={styles.primaryActionText}>Configurar devolución</Text>
+                  <Pressable
+                    style={[
+                      styles.primaryAction,
+                      !puedeConfigurarDevolucion && styles.disabled,
+                    ]}
+                    disabled={!puedeConfigurarDevolucion}
+                    onPress={submitDevolucion}
+                  >
+                    <Text style={styles.primaryActionText}>
+                      {returning ? "Configurando..." : "Configurar devolución"}
+                    </Text>
                   </Pressable>
                   <Pressable style={styles.primaryAction} disabled={busy} onPress={submitPagoDevolucion}>
                     <Text style={styles.primaryActionText}>Confirmar pago</Text>
@@ -232,7 +312,7 @@ export default function AccionesRequeridasScreen() {
                 <>
                   <Pressable style={styles.uploadBox} onPress={() => pickArchivo(accion)} disabled={busy}>
                     <Ionicons name="document-attach-outline" size={24} color="#2F63F6" />
-                    <Text style={styles.uploadText}>{archivoUrl ? "Archivo cargado" : "Añadir archivo"}</Text>
+                    <Text style={styles.uploadText}>{archivoUrl ? "Archivo cargado" : "AÃ±adir archivo"}</Text>
                   </Pressable>
                   <TextInput style={styles.input} placeholder="Comentario opcional" placeholderTextColor="#94A3B8" value={comentario} onChangeText={(value) => setComentarios((current) => ({ ...current, [accion.idAccion]: value }))} />
                   <Pressable style={[styles.primaryAction, !archivoUrl && styles.disabled]} disabled={busy || !archivoUrl} onPress={() => submit(accion, { archivoUrl, comentario: comentario || undefined })}>
@@ -285,6 +365,46 @@ const styles = StyleSheet.create({
   primaryActionText: { color: "#FFFFFF", fontWeight: "900" },
   secondaryAction: { borderRadius: 12, borderWidth: 1, borderColor: "#111827", paddingVertical: 12, alignItems: "center", marginTop: 10 },
   secondaryActionText: { color: "#111827", fontWeight: "900" },
+  paymentSectionTitle: {
+    marginTop: 14,
+    marginBottom: 10,
+    fontSize: 15,
+    color: "#0F172A",
+    fontWeight: "900",
+  },
+  methodCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DCE3F0",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+  },
+  methodCardSelected: {
+    borderColor: "#22C55E",
+    backgroundColor: "#F0FDF4",
+  },
+  methodCopy: { flex: 1 },
+  methodTitle: {
+    color: "#0F172A",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  methodDetail: {
+    marginTop: 4,
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "700",
+    lineHeight: 17,
+  },
+  emptyText: {
+    color: "#64748B",
+    fontWeight: "700",
+    marginBottom: 10,
+  },
   uploadBox: { minHeight: 92, borderRadius: 14, borderWidth: 1.5, borderStyle: "dashed", borderColor: "#93C5FD", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
   uploadText: { color: "#2F63F6", fontWeight: "900" },
   actionRow: { flexDirection: "row", gap: 10, marginTop: 12 },
@@ -297,3 +417,4 @@ const styles = StyleSheet.create({
   stateContainer: { flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", padding: 24 },
   errorText: { color: "#B91C1C", fontWeight: "800", marginBottom: 12, textAlign: "center" },
 });
+
