@@ -3,11 +3,12 @@ import {
   confirmarCompra,
   seleccionarMedioPago,
 } from "@/src/api/comprasAPI";
+import { getApiErrorMessage } from "@/src/api/errors";
 import { obtenerCheques, obtenerTarjetas } from "@/src/api/meAPI";
 import { ChequeResponseDTO } from "@/src/dto/me/ChequeDTO";
 import { TarjetaResponseDTO } from "@/src/dto/me/TarjetaDTO";
 import { useCompraDetalle } from "@/src/hooks/useCompraDetalle";
-import { getCurrencyCode } from "@/src/utils/moneda";
+import { formatCurrency, monedasCompatibles } from "@/src/utils/venta";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -20,13 +21,13 @@ import {
   View,
 } from "react-native";
 
-type PaymentOption =
-  | { kind: "TARJETA"; id: number; label: string; detail: string }
-  | { kind: "CHEQUE"; id: number; label: string; detail: string };
-
-function formatPrice(moneda: string, amount: number) {
-  return `${getCurrencyCode(moneda)} ${amount}`;
-}
+type PaymentOption = {
+  kind: "TARJETA" | "CHEQUE";
+  id: number;
+  label: string;
+  detail: string;
+  moneda: string;
+};
 
 function getTarjetaId(tarjeta: TarjetaResponseDTO) {
   return tarjeta.idMedioPago ?? tarjeta.idTarjeta;
@@ -43,6 +44,7 @@ export default function CompraPagoScreen() {
   const [cheques, setCheques] = useState<ChequeResponseDTO[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loadingMethods, setLoadingMethods] = useState(true);
+  const [savingMethod, setSavingMethod] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -55,12 +57,10 @@ export default function CompraPagoScreen() {
         ]);
         setTarjetas(cards);
         setCheques(checks);
-      } catch (err: any) {
+      } catch (err) {
         Alert.alert(
           "Medios de pago",
-          err.response?.data?.message ??
-            err.response?.data?.error ??
-            "No pudimos cargar tus medios de pago.",
+          getApiErrorMessage(err, "No pudimos cargar tus medios de pago."),
         );
       } finally {
         setLoadingMethods(false);
@@ -71,9 +71,7 @@ export default function CompraPagoScreen() {
   }, []);
 
   useEffect(() => {
-    if (compra?.idMedioPago) {
-      setSelectedId(compra.idMedioPago);
-    }
+    if (compra?.idMedioPago) setSelectedId(compra.idMedioPago);
   }, [compra?.idMedioPago]);
 
   const options = useMemo<PaymentOption[]>(() => {
@@ -81,14 +79,16 @@ export default function CompraPagoScreen() {
       kind: "TARJETA" as const,
       id: getTarjetaId(tarjeta),
       label: tarjeta.numeroEnmascarado,
-      detail: `${tarjeta.nombre} · vence ${tarjeta.fechaVto}`,
+      detail: `${tarjeta.nombre} - vence ${tarjeta.fechaVto}`,
+      moneda: tarjeta.moneda,
     }));
 
     const chequeOptions = cheques.map((cheque) => ({
       kind: "CHEQUE" as const,
       id: getChequeId(cheque),
       label: `Cheque #${cheque.nroCheque}`,
-      detail: `${cheque.beneficiario} · saldo ${formatPrice(cheque.moneda, cheque.saldo)}`,
+      detail: cheque.beneficiario,
+      moneda: cheque.moneda,
     }));
 
     return [...cardOptions, ...chequeOptions];
@@ -97,24 +97,25 @@ export default function CompraPagoScreen() {
   const selectedOption = options.find((option) => option.id === selectedId);
 
   async function guardarMetodo(idMedioPago: number) {
-    if (!idVenta) return;
+    if (!idVenta || savingMethod) return;
 
     try {
+      setSavingMethod(true);
       setSelectedId(idMedioPago);
       const updated = await seleccionarMedioPago(idVenta, { idMedioPago });
       setCompra(updated);
-    } catch (err: any) {
+    } catch (err) {
       Alert.alert(
         "Metodo de pago",
-        err.response?.data?.message ??
-          err.response?.data?.error ??
-          "No pudimos seleccionar este metodo.",
+        getApiErrorMessage(err, "No pudimos seleccionar este metodo."),
       );
+    } finally {
+      setSavingMethod(false);
     }
   }
 
   async function confirmar() {
-    if (!idVenta || !compra) return;
+    if (!idVenta || !compra || submitting) return;
 
     const medioPagoId = selectedId ?? compra.idMedioPago;
     if (!compra.tipoEntrega) {
@@ -132,11 +133,11 @@ export default function CompraPagoScreen() {
       return;
     }
 
+    const tipoEntrega = compra.tipoEntrega;
+
     Alert.alert(
       "Confirmar compra",
-      compra.tipoEntrega === "DOMICILIO"
-        ? `Aceptas pagar ${formatPrice(compra.moneda, compra.total)} y recibir el producto en ${compra.direccionEntrega}?`
-        : `Aceptas pagar ${formatPrice(compra.moneda, compra.total)} y retirar el producto en ${compra.ubicacionRetiro ?? "la ubicacion de la subasta"}?`,
+      `Se debitaran ${formatCurrency(compra.total, compra.moneda)} del medio seleccionado.`,
       [
         { text: "Volver", style: "cancel" },
         {
@@ -146,9 +147,9 @@ export default function CompraPagoScreen() {
               setSubmitting(true);
               const updated = await confirmarCompra(idVenta, {
                 idMedioPago: medioPagoId,
-                tipoEntrega: compra.tipoEntrega!,
+                tipoEntrega,
                 direccionEntrega:
-                  compra.tipoEntrega === "DOMICILIO"
+                  tipoEntrega === "DOMICILIO"
                     ? compra.direccionEntrega
                     : null,
               });
@@ -163,12 +164,10 @@ export default function CompraPagoScreen() {
                     }),
                 },
               ]);
-            } catch (err: any) {
+            } catch (err) {
               Alert.alert(
                 "No pudimos confirmar la compra",
-                err.response?.data?.message ??
-                  err.response?.data?.error ??
-                  "Intentalo nuevamente.",
+                getApiErrorMessage(err, "Intentalo nuevamente."),
               );
             } finally {
               setSubmitting(false);
@@ -191,7 +190,9 @@ export default function CompraPagoScreen() {
   if (error || !compra) {
     return (
       <View style={styles.stateScreen}>
-        <Text style={styles.errorText}>{error ?? "No pudimos cargar el pago."}</Text>
+        <Text style={styles.errorText}>
+          {error ?? "No pudimos cargar el pago."}
+        </Text>
       </View>
     );
   }
@@ -206,9 +207,18 @@ export default function CompraPagoScreen() {
       <Text style={styles.subtitle}>{compra.tituloItem}</Text>
 
       <View style={styles.summaryCard}>
-        <Text style={styles.totalLabel}>Monto total</Text>
+        <Text style={styles.totalLabel}>Total a pagar</Text>
         <Text style={styles.totalValue}>
-          {formatPrice(compra.moneda, compra.total)}
+          {formatCurrency(compra.total, compra.moneda)}
+        </Text>
+        <Text style={styles.breakdownLine}>
+          Puja: {formatCurrency(compra.montoPuja, compra.moneda)}
+        </Text>
+        <Text style={styles.breakdownLine}>
+          Comision: {formatCurrency(compra.comision, compra.moneda)}
+        </Text>
+        <Text style={styles.breakdownLine}>
+          Envio: {formatCurrency(compra.costoEnvio, compra.moneda)}
         </Text>
         <Text style={styles.summaryText}>
           {compra.tipoEntrega === "DOMICILIO"
@@ -225,18 +235,28 @@ export default function CompraPagoScreen() {
       {tarjetas.map((tarjeta) => {
         const id = getTarjetaId(tarjeta);
         const selected = selectedId === id;
+        const compatible = monedasCompatibles(tarjeta.moneda, compra.moneda);
         return (
           <Pressable
             key={`tarjeta-${id}`}
-            style={[styles.methodCard, selected && styles.methodCardSelected]}
+            style={[
+              styles.methodCard,
+              selected && styles.methodCardSelected,
+              !compatible && styles.methodCardDisabled,
+            ]}
             onPress={() => guardarMetodo(id)}
+            disabled={!compatible || savingMethod}
           >
             <Ionicons name="card-outline" size={24} color="#1D4ED8" />
             <View style={styles.methodCopy}>
               <Text style={styles.methodTitle}>{tarjeta.numeroEnmascarado}</Text>
               <Text style={styles.methodDetail}>
-                {tarjeta.nombre} · vence {tarjeta.fechaVto}
+                {tarjeta.nombre} - vence {tarjeta.fechaVto} -{" "}
+                {formatCurrency(tarjeta.limiteCredito, tarjeta.moneda)}
               </Text>
+              {!compatible ? (
+                <Text style={styles.incompatibleText}>Moneda incompatible</Text>
+              ) : null}
             </View>
             {selected ? (
               <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
@@ -252,18 +272,27 @@ export default function CompraPagoScreen() {
       {cheques.map((cheque) => {
         const id = getChequeId(cheque);
         const selected = selectedId === id;
+        const compatible = monedasCompatibles(cheque.moneda, compra.moneda);
         return (
           <Pressable
             key={`cheque-${id}`}
-            style={[styles.methodCard, selected && styles.methodCardSelected]}
+            style={[
+              styles.methodCard,
+              selected && styles.methodCardSelected,
+              !compatible && styles.methodCardDisabled,
+            ]}
             onPress={() => guardarMetodo(id)}
+            disabled={!compatible || savingMethod}
           >
             <Ionicons name="document-text-outline" size={24} color="#0F172A" />
             <View style={styles.methodCopy}>
               <Text style={styles.methodTitle}>Cheque #{cheque.nroCheque}</Text>
               <Text style={styles.methodDetail}>
-                {cheque.beneficiario} · {formatPrice(cheque.moneda, cheque.saldo)}
+                {cheque.beneficiario} - {formatCurrency(cheque.saldo, cheque.moneda)}
               </Text>
+              {!compatible ? (
+                <Text style={styles.incompatibleText}>Moneda incompatible</Text>
+              ) : null}
             </View>
             {selected ? (
               <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
@@ -276,15 +305,18 @@ export default function CompraPagoScreen() {
         <Text style={styles.confirmLabel}>Metodo seleccionado</Text>
         <Text style={styles.confirmValue}>
           {selectedOption
-            ? `${selectedOption.label} · ${selectedOption.detail}`
+            ? `${selectedOption.label} - ${selectedOption.detail}`
             : "Sin seleccionar"}
         </Text>
       </View>
 
       <Pressable
-        style={[styles.primaryButton, submitting && styles.primaryButtonDisabled]}
+        style={[
+          styles.primaryButton,
+          (submitting || savingMethod) && styles.primaryButtonDisabled,
+        ]}
         onPress={confirmar}
-        disabled={submitting}
+        disabled={submitting || savingMethod}
       >
         <Text style={styles.primaryButtonText}>
           {submitting ? "Confirmando..." : "Confirmar compra"}
@@ -322,10 +354,12 @@ const styles = StyleSheet.create({
   totalLabel: { color: "#64748B", fontWeight: "800" },
   totalValue: {
     marginTop: 4,
+    marginBottom: 10,
     fontSize: 30,
     color: "#0F172A",
     fontWeight: "900",
   },
+  breakdownLine: { color: "#334155", fontWeight: "800", marginBottom: 6 },
   summaryText: {
     marginTop: 10,
     color: "#334155",
@@ -354,6 +388,7 @@ const styles = StyleSheet.create({
     borderColor: "#22C55E",
     backgroundColor: "#F0FDF4",
   },
+  methodCardDisabled: { opacity: 0.5 },
   methodCopy: { flex: 1 },
   methodTitle: { color: "#0F172A", fontSize: 16, fontWeight: "900" },
   methodDetail: {
@@ -361,6 +396,12 @@ const styles = StyleSheet.create({
     color: "#64748B",
     fontSize: 12,
     fontWeight: "700",
+  },
+  incompatibleText: {
+    marginTop: 4,
+    color: "#B91C1C",
+    fontSize: 12,
+    fontWeight: "800",
   },
   emptyText: { color: "#64748B", fontWeight: "700", marginBottom: 10 },
   confirmCard: {

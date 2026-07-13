@@ -1,82 +1,146 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useUltimaAdjudicacion } from "@/src/hooks/useUltimaAdjudicacion";
+import {
+  formatCurrency,
+  formatDate,
+  getEstadoVentaLabel,
+} from "@/src/utils/venta";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 export default function MensajeriaScreen() {
+  const { adjudicacion, loading, error, recargar } = useUltimaAdjudicacion();
+
+  useFocusEffect(
+    useCallback(() => {
+      void recargar();
+    }, [recargar]),
+  );
+
   return (
-    <View style={styles.screen}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerCard}>
         <View style={styles.avatarWrap}>
           <Ionicons name="business" size={18} color="#1D4ED8" />
         </View>
-
         <View style={styles.headerMeta}>
           <Text style={styles.headerTitle}>Administrador Bidmax</Text>
           <Text style={styles.headerSubtitle}>Mensajes de la empresa</Text>
         </View>
-
-        <Pressable style={styles.callButton}>
-          <Ionicons name="mail-unread-outline" size={18} color="#1D4ED8" />
-        </Pressable>
       </View>
 
-      <ScrollView
-        style={styles.chatArea}
-        contentContainerStyle={styles.chatContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.dayDivider}>Hoy</Text>
-
-        <View style={styles.messageRowSupport}>
-          <View style={styles.messageMetaWrap}>
-            <View style={styles.inlineAvatar}>
-              <Ionicons name="person-outline" size={15} color="#1E293B" />
-            </View>
-          </View>
-          <View style={styles.bubbleSupport}>
-            <Text style={styles.messageTextSupport}>
-              Felicitaciones Santino, el item{" \"nombre\" "}es suyo.{"\n"}
-              Los costos del item a continuacion
-            </Text>
-          </View>
+      {loading && !adjudicacion ? (
+        <View style={styles.stateCard}>
+          <ActivityIndicator color="#2F63F6" />
+          <Text style={styles.stateText}>Cargando adjudicacion...</Text>
         </View>
+      ) : null}
 
+      {error ? (
+        <View style={styles.stateCard}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
+      {adjudicacion && !adjudicacion.tieneAdjudicacion ? (
+        <View style={styles.stateCard}>
+          <Ionicons name="mail-open-outline" size={28} color="#64748B" />
+          <Text style={styles.stateText}>No tenes adjudicaciones recientes.</Text>
+        </View>
+      ) : null}
+
+      {adjudicacion?.tieneAdjudicacion && adjudicacion.idVenta ? (
         <Pressable
           style={styles.messageRowSupport}
-          onPress={() => router.push("/(tabs)/compras" as any)}
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/compras/[idVenta]" as any,
+              params: { idVenta: String(adjudicacion.idVenta) },
+            })
+          }
         >
           <View style={styles.messageMetaWrap}>
             <View style={styles.inlineAvatar}>
-              <Ionicons name="person-outline" size={15} color="#1E293B" />
+              <Ionicons name="business-outline" size={15} color="#1D4ED8" />
             </View>
           </View>
           <View style={styles.bubbleSupportStrong}>
-            <Text style={styles.priceLine}>Precio item: $9999</Text>
-            <Text style={styles.priceLine}>Comision: $9999</Text>
-            <Text style={styles.actionLine}>COMPLETAR COMPRA</Text>
+            <Text style={styles.messageTitle}>Adjudicacion confirmada</Text>
+            <Text style={styles.messageItem}>{adjudicacion.tituloItem}</Text>
+
+            <View style={styles.amountPanel}>
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Puja</Text>
+                <Text style={styles.amountValue}>
+                  {formatCurrency(
+                    adjudicacion.montoPuja ?? 0,
+                    adjudicacion.moneda ?? "PESOS",
+                  )}
+                </Text>
+              </View>
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Comision</Text>
+                <Text style={styles.amountValue}>
+                  {formatCurrency(
+                    adjudicacion.comision ?? 0,
+                    adjudicacion.moneda ?? "PESOS",
+                  )}
+                </Text>
+              </View>
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Envio</Text>
+                <Text style={styles.amountValue}>
+                  {formatCurrency(
+                    adjudicacion.costoEnvio ?? 0,
+                    adjudicacion.moneda ?? "PESOS",
+                  )}
+                </Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.total}>
+                  {formatCurrency(
+                    adjudicacion.total ?? 0,
+                    adjudicacion.moneda ?? "PESOS",
+                  )}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.metaRow}>
+              <Ionicons name="time-outline" size={15} color="#64748B" />
+              <Text style={styles.line}>
+                Limite: {formatDate(adjudicacion.fechaLimitePago)}
+              </Text>
+            </View>
+            {adjudicacion.estado ? (
+              <View style={styles.statusPill}>
+                <Text style={styles.status}>
+                  {getEstadoVentaLabel(adjudicacion.estado)}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.actionLine}>Ver detalle de compra</Text>
           </View>
         </Pressable>
-      </ScrollView>
-
-      <View style={styles.footerInfo}>
-        <Ionicons name="information-circle-outline" size={16} color="#64748B" />
-        <Text style={styles.footerText}>
-          Canal informativo. No admite respuestas.
-        </Text>
-      </View>
-    </View>
+      ) : null}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F1F5F9",
-  },
+  screen: { flex: 1, backgroundColor: "#F1F5F9" },
+  content: { padding: 16, paddingBottom: 32 },
   headerCard: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 10,
+    marginBottom: 14,
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     paddingHorizontal: 14,
@@ -85,11 +149,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
   },
   avatarWrap: {
     width: 40,
@@ -100,60 +159,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 10,
   },
-  headerMeta: {
-    flex: 1,
-  },
-  headerTitle: {
-    color: "#0F172A",
-    fontSize: 15,
-    fontWeight: "800",
-  },
+  headerMeta: { flex: 1 },
+  headerTitle: { color: "#0F172A", fontSize: 15, fontWeight: "800" },
   headerSubtitle: {
     marginTop: 2,
     color: "#64748B",
     fontSize: 12,
     fontWeight: "600",
   },
-  callButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  messageMetaWrap: {
+    width: 28,
+    alignItems: "center",
+    marginRight: 6,
+  },
+  inlineAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#EFF6FF",
-  },
-  chatArea: {
-    flex: 1,
-  },
-  chatContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  dayDivider: {
-    alignSelf: "center",
-    color: "#475569",
-    fontSize: 12,
-    fontWeight: "700",
-    marginBottom: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#E2E8F0",
-    borderRadius: 999,
-  },
-  messageMetaWrap: {
-    width: 34,
-    alignItems: "center",
-    marginRight: 8,
-  },
-  inlineAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1.5,
-    borderColor: "#94A3B8",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
   },
   messageRowSupport: {
     flexDirection: "row",
@@ -161,56 +188,84 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     width: "100%",
   },
-  bubbleSupport: {
-    maxWidth: "86%",
+  bubbleSupportStrong: {
+    flex: 1,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#CBD5E1",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 14,
+    borderTopLeftRadius: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
   },
-  bubbleSupportStrong: {
-    maxWidth: "86%",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 2,
-    borderColor: "#A8B2C0",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  messageTextSupport: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "600",
-    color: "#0F172A",
-  },
-  priceLine: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#0F172A",
-    fontWeight: "700",
-  },
-  actionLine: {
-    marginTop: 4,
-    fontSize: 17,
+  messageTitle: {
+    color: "#475569",
+    fontSize: 12,
     fontWeight: "900",
-    letterSpacing: 0.1,
-    color: "#2563EB",
+    textTransform: "uppercase",
   },
-  footerInfo: {
+  messageItem: {
+    marginTop: 7,
+    color: "#0F172A",
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "900",
+  },
+  amountPanel: {
+    marginTop: 11,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  amountRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
+  amountLabel: { color: "#475569", fontSize: 13, fontWeight: "800" },
+  amountValue: { color: "#0F172A", fontSize: 13, fontWeight: "900" },
+  totalRow: {
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
+    paddingTop: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  totalLabel: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
+  total: { color: "#0F172A", fontSize: 16, fontWeight: "900" },
+  metaRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  line: { color: "#475569", fontSize: 12, fontWeight: "700" },
+  statusPill: {
+    alignSelf: "flex-start",
+    marginTop: 9,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  status: { color: "#475569", fontSize: 12, fontWeight: "900" },
+  actionLine: { marginTop: 12, color: "#1D4ED8", fontSize: 13, fontWeight: "900" },
+  stateCard: {
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DCE3F0",
+    borderRadius: 16,
+    padding: 20,
   },
-  footerText: {
-    fontSize: 12,
-    color: "#64748B",
-    fontWeight: "600",
-  },
+  stateText: { marginTop: 8, color: "#64748B", fontWeight: "700" },
+  errorText: { color: "#B91C1C", fontWeight: "800", textAlign: "center" },
 });

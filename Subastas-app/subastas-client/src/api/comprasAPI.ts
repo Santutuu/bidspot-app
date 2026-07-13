@@ -1,8 +1,8 @@
 import api from "@/src/api/axios";
 import {
-  CompraEstadoResponse,
   ConfigurarEntregaRequest,
   ConfirmarCompraRequest,
+  FacturaResponse,
   SeleccionarMedioPagoRequest,
   VentaDetalleResponse,
   VentaResumenResponse,
@@ -57,9 +57,18 @@ export async function confirmarCompra(
 
 export async function obtenerEstadoCompra(
   idVenta: string | number,
-): Promise<CompraEstadoResponse> {
-  const response = await api.get<CompraEstadoResponse>(
+): Promise<VentaDetalleResponse> {
+  const response = await api.get<VentaDetalleResponse>(
     `/me/compras/${idVenta}/estado`,
+  );
+  return response.data;
+}
+
+export async function obtenerFacturaCompra(
+  idVenta: string | number,
+): Promise<FacturaResponse> {
+  const response = await api.get<FacturaResponse>(
+    `/me/compras/${idVenta}/factura`,
   );
   return response.data;
 }

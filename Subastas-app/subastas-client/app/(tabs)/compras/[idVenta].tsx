@@ -1,8 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { configurarEntrega } from "@/src/api/comprasAPI";
-import { EstadoVenta, TipoEntrega } from "@/src/dto/CompraDTO";
+import { getApiErrorMessage } from "@/src/api/errors";
+import { TipoEntrega } from "@/src/dto/CompraDTO";
 import { useCompraDetalle } from "@/src/hooks/useCompraDetalle";
-import { getCurrencyCode } from "@/src/utils/moneda";
+import {
+  esCompraPendiente,
+  esDireccionTecnica,
+  formatCurrency,
+  formatDate,
+  getEstadoVentaLabel,
+} from "@/src/utils/venta";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -18,26 +25,6 @@ import {
 } from "react-native";
 
 const defaultImage = require("@/src/assets/images/obras_arte.jpg");
-
-function formatPrice(moneda: string, amount: number) {
-  return `${getCurrencyCode(moneda)} ${amount}`;
-}
-
-function estadoLabel(estado: EstadoVenta) {
-  const labels: Record<EstadoVenta, string> = {
-    PENDIENTE_PAGO: "Pendiente de pago",
-    PAGO_CONFIRMADO: "Pago confirmado",
-    PREPARANDO_ENVIO: "Preparando envio",
-    ENVIADO: "Enviado",
-    EN_CAMINO: "En camino",
-    ENTREGADO: "Entregado",
-    MULTADA: "Multada",
-    INCUMPLIDA: "Incumplida",
-    CANCELADA: "Cancelada",
-  };
-
-  return labels[estado] ?? estado;
-}
 
 export default function CompraDetalleScreen() {
   const { idVenta } = useLocalSearchParams<{ idVenta: string }>();
@@ -76,9 +63,7 @@ export default function CompraDetalleScreen() {
     } catch (err: any) {
       Alert.alert(
         "No pudimos guardar la entrega",
-        err.response?.data?.message ??
-          err.response?.data?.error ??
-          "Intentalo nuevamente.",
+        getApiErrorMessage(err, "Intentalo nuevamente."),
       );
     } finally {
       setSavingEntrega(false);
@@ -88,7 +73,7 @@ export default function CompraDetalleScreen() {
   function continuar() {
     if (!compra) return;
 
-    if (compra.estado !== "PENDIENTE_PAGO") {
+    if (!esCompraPendiente(compra.estado)) {
       router.push({
         pathname: "/(tabs)/compras/[idVenta]/estado" as any,
         params: { idVenta: String(compra.idVenta) },
@@ -133,6 +118,19 @@ export default function CompraDetalleScreen() {
   }
 
   const pendiente = compra.estado === "PENDIENTE_PAGO";
+  const direccionVisible = esDireccionTecnica(compra.direccionEntrega)
+    ? null
+    : compra.direccionEntrega;
+  const deadlineMs = compra.fechaLimitePago
+    ? new Date(compra.fechaLimitePago).getTime() - Date.now()
+    : null;
+  const plazoVencido = pendiente && deadlineMs !== null && deadlineMs <= 0;
+  const detallePlazo =
+    deadlineMs !== null && deadlineMs > 0
+      ? `${Math.floor(deadlineMs / 86400000)} dias ${Math.floor(
+          (deadlineMs % 86400000) / 3600000,
+        )} h restantes`
+      : "Plazo vencido";
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -148,34 +146,66 @@ export default function CompraDetalleScreen() {
 
       <Text style={styles.title}>{compra.tituloItem}</Text>
       <Text style={[styles.status, pendiente && styles.statusPending]}>
-        {estadoLabel(compra.estado)}
+        {getEstadoVentaLabel(compra.estado)}
       </Text>
+
+      {pendiente ? (
+        <View style={[styles.deadlineCard, plazoVencido && styles.problemCard]}>
+          <Text style={styles.deadlineTitle}>
+            {plazoVencido ? "Plazo vencido" : "Tenes tiempo para completar el pago"}
+          </Text>
+          <Text style={styles.deadlineText}>
+            Hasta {formatDate(compra.fechaLimitePago)}
+          </Text>
+          <Text style={styles.deadlineText}>{detallePlazo}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.summaryCard}>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Precio final</Text>
           <Text style={styles.summaryValue}>
-            {formatPrice(compra.moneda, compra.montoPuja)}
+            {formatCurrency(compra.montoPuja, compra.moneda)}
           </Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Comision</Text>
           <Text style={styles.summaryValue}>
-            {formatPrice(compra.moneda, compra.comision)}
+            {formatCurrency(compra.comision, compra.moneda)}
           </Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Envio</Text>
           <Text style={styles.summaryValue}>
-            {formatPrice(compra.moneda, compra.costoEnvio)}
+            {formatCurrency(compra.costoEnvio, compra.moneda)}
           </Text>
         </View>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>
-            {formatPrice(compra.moneda, compra.total)}
+            {formatCurrency(compra.total, compra.moneda)}
           </Text>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Fechas</Text>
+        <Text style={styles.paymentText}>
+          Adjudicacion: {formatDate(compra.fechaVenta)}
+        </Text>
+        <Text style={styles.paymentText}>
+          Limite de pago: {formatDate(compra.fechaLimitePago)}
+        </Text>
+        {compra.fechaPagoConfirmado ? (
+          <Text style={styles.paymentText}>
+            Pago confirmado: {formatDate(compra.fechaPagoConfirmado)}
+          </Text>
+        ) : null}
+        {compra.fechaIncumplimiento ? (
+          <Text style={styles.paymentText}>
+            Incumplimiento: {formatDate(compra.fechaIncumplimiento)}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.section}>
@@ -247,9 +277,35 @@ export default function CompraDetalleScreen() {
         </Text>
       </View>
 
-      <Pressable style={styles.primaryButton} onPress={continuar}>
+      {compra.tipoEntrega === "DOMICILIO" && direccionVisible ? (
+        <Text style={styles.deliveryText}>Direccion: {direccionVisible}</Text>
+      ) : null}
+
+      {compra.idFactura ? (
+        <Pressable
+          style={styles.secondaryWideButton}
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/compras/[idVenta]/factura" as any,
+              params: { idVenta: String(compra.idVenta) },
+            })
+          }
+        >
+          <Text style={styles.secondaryWideText}>Ver factura</Text>
+        </Pressable>
+      ) : null}
+
+      <Pressable
+        style={[styles.primaryButton, plazoVencido && styles.primaryButtonDisabled]}
+        onPress={continuar}
+        disabled={plazoVencido}
+      >
         <Text style={styles.primaryButtonText}>
-          {pendiente ? "Continuar con el pago" : "Ver estado del item"}
+          {plazoVencido
+            ? "Pago vencido"
+            : pendiente
+              ? "Continuar con el pago"
+              : "Ver estado del item"}
         </Text>
       </Pressable>
     </ScrollView>
@@ -286,6 +342,17 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   statusPending: { color: "#B45309" },
+  deadlineCard: {
+    marginTop: 14,
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    borderRadius: 16,
+    padding: 14,
+  },
+  problemCard: { borderColor: "#FCA5A5", backgroundColor: "#FEF2F2" },
+  deadlineTitle: { color: "#92400E", fontWeight: "900" },
+  deadlineText: { marginTop: 4, color: "#78350F", fontWeight: "700" },
   summaryCard: {
     marginTop: 18,
     backgroundColor: "#FFFFFF",
@@ -365,6 +432,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   paymentText: { color: "#475569", fontWeight: "700" },
+  deliveryText: {
+    marginTop: 10,
+    color: "#475569",
+    fontWeight: "800",
+    textAlign: "center",
+  },
   primaryButton: {
     marginTop: 18,
     backgroundColor: "#111827",
@@ -373,6 +446,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonText: { color: "#FFFFFF", fontWeight: "900", fontSize: 15 },
+  primaryButtonDisabled: { opacity: 0.5 },
+  secondaryWideButton: {
+    marginTop: 14,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  secondaryWideText: { color: "#2563EB", fontWeight: "900" },
   secondaryButton: {
     marginTop: 8,
     alignSelf: "flex-start",

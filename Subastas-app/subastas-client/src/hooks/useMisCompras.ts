@@ -1,22 +1,7 @@
 import { listarMisCompras } from "@/src/api/comprasAPI";
+import { getApiErrorMessage } from "@/src/api/errors";
 import { VentaResumenResponse } from "@/src/dto/CompraDTO";
-import { AxiosError } from "axios";
 import { useCallback, useEffect, useState } from "react";
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof AxiosError) {
-    const data = error.response?.data as
-      | { message?: string; error?: string }
-      | string
-      | undefined;
-    const backendMessage =
-      typeof data === "string" ? data : (data?.message ?? data?.error);
-
-    if (backendMessage) return backendMessage;
-  }
-
-  return "No pudimos cargar tus compras.";
-}
 
 export function useMisCompras() {
   const [compras, setCompras] = useState<VentaResumenResponse[]>([]);
@@ -29,7 +14,7 @@ export function useMisCompras() {
       setError(null);
       setCompras(await listarMisCompras());
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getApiErrorMessage(err, "No pudimos cargar tus compras."));
     } finally {
       setLoading(false);
     }

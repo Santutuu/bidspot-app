@@ -1,10 +1,10 @@
-import { obtenerDetalleCompra } from "@/src/api/comprasAPI";
+import { obtenerFacturaCompra } from "@/src/api/comprasAPI";
 import { getApiErrorMessage } from "@/src/api/errors";
-import { VentaDetalleResponse } from "@/src/dto/CompraDTO";
+import { FacturaResponse } from "@/src/dto/CompraDTO";
 import { useCallback, useEffect, useState } from "react";
 
-export function useCompraDetalle(idVenta?: string | number) {
-  const [compra, setCompra] = useState<VentaDetalleResponse | null>(null);
+export function useFacturaCompra(idVenta?: string | number) {
+  const [factura, setFactura] = useState<FacturaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,11 +18,9 @@ export function useCompraDetalle(idVenta?: string | number) {
     try {
       setLoading(true);
       setError(null);
-      setCompra(await obtenerDetalleCompra(idVenta));
+      setFactura(await obtenerFacturaCompra(idVenta));
     } catch (err) {
-      setError(
-        getApiErrorMessage(err, "No pudimos cargar el detalle de la compra."),
-      );
+      setError(getApiErrorMessage(err, "No pudimos cargar la factura."));
     } finally {
       setLoading(false);
     }
@@ -32,5 +30,5 @@ export function useCompraDetalle(idVenta?: string | number) {
     void recargar();
   }, [recargar]);
 
-  return { compra, loading, error, recargar, setCompra };
+  return { factura, loading, error, recargar };
 }

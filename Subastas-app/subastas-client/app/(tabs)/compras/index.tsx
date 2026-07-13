@@ -1,7 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMisCompras } from "@/src/hooks/useMisCompras";
-import { EstadoVenta, VentaResumenResponse } from "@/src/dto/CompraDTO";
-import { getCurrencyCode } from "@/src/utils/moneda";
+import { PenalizacionResponse, VentaResumenResponse } from "@/src/dto/CompraDTO";
+import { useMisPenalizaciones } from "@/src/hooks/useMisPenalizaciones";
+import {
+  formatCurrency,
+  formatDate,
+  getEstadoVentaLabel,
+} from "@/src/utils/venta";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import {
@@ -17,28 +22,16 @@ import {
 
 const defaultImage = require("@/src/assets/images/obras_arte.jpg");
 
-function formatPrice(moneda: string, amount: number) {
-  return `${getCurrencyCode(moneda)} ${amount}`;
-}
-
-function estadoLabel(estado: EstadoVenta) {
-  const labels: Record<EstadoVenta, string> = {
-    PENDIENTE_PAGO: "Pendiente de pago",
-    PAGO_CONFIRMADO: "Pago confirmado",
-    PREPARANDO_ENVIO: "Preparando envio",
-    ENVIADO: "Enviado",
-    EN_CAMINO: "En camino",
-    ENTREGADO: "Entregado",
-    MULTADA: "Multada",
-    INCUMPLIDA: "Incumplida",
-    CANCELADA: "Cancelada",
-  };
-
-  return labels[estado] ?? estado;
-}
-
 function CompraCard({ compra }: { compra: VentaResumenResponse }) {
   const pendiente = compra.estado === "PENDIENTE_PAGO";
+  const action =
+    compra.estado === "PENDIENTE_PAGO"
+      ? "Completar compra"
+      : compra.estado === "INCUMPLIDA"
+        ? "Pago vencido"
+        : compra.estado === "CANCELADA"
+          ? "Compra cancelada"
+          : "Ver seguimiento";
 
   return (
     <Pressable
@@ -64,14 +57,51 @@ function CompraCard({ compra }: { compra: VentaResumenResponse }) {
           <Ionicons name="chevron-forward" size={20} color="#64748B" />
         </View>
 
-        <Text style={styles.total}>{formatPrice(compra.moneda, compra.total)}</Text>
+        <Text style={styles.total}>
+          {formatCurrency(compra.total, compra.moneda)}
+        </Text>
         <Text style={[styles.status, pendiente && styles.statusPending]}>
-          {estadoLabel(compra.estado)}
+          {getEstadoVentaLabel(compra.estado)}
         </Text>
 
-        {pendiente ? (
-          <Text style={styles.ctaText}>Completar compra</Text>
+        <Text style={styles.ctaText}>{action}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function PenalizacionCard({
+  penalizacion,
+}: {
+  penalizacion: PenalizacionResponse;
+}) {
+  return (
+    <Pressable
+      style={styles.penaltyCard}
+      onPress={() =>
+        router.push({
+          pathname:
+            "/(tabs)/compras/penalizaciones/[idPenalizacion]" as any,
+          params: { idPenalizacion: String(penalizacion.idPenalizacion) },
+        })
+      }
+    >
+      <Ionicons name="alert-circle-outline" size={24} color="#B45309" />
+      <View style={styles.cardBody}>
+        <Text style={styles.penaltyTitle}>Multa pendiente</Text>
+        <Text style={styles.penaltyText}>
+          Falta de respaldo al cierre de la subasta
+        </Text>
+        <Text style={styles.total}>
+          {formatCurrency(penalizacion.importe, penalizacion.moneda)}
+        </Text>
+        <Text style={styles.penaltyText}>
+          Generada: {formatDate(penalizacion.fechaGeneracion)}
+        </Text>
+        {penalizacion.idVenta ? (
+          <Text style={styles.penaltyText}>Venta #{penalizacion.idVenta}</Text>
         ) : null}
+        <Text style={styles.ctaText}>Pagar multa</Text>
       </View>
     </Pressable>
   );
@@ -79,11 +109,17 @@ function CompraCard({ compra }: { compra: VentaResumenResponse }) {
 
 export default function MisComprasScreen() {
   const { compras, loading, error, recargar } = useMisCompras();
+  const {
+    penalizacionesPendientes,
+    loading: loadingPenalizaciones,
+    recargar: recargarPenalizaciones,
+  } = useMisPenalizaciones();
 
   useFocusEffect(
     useCallback(() => {
       void recargar();
-    }, [recargar]),
+      void recargarPenalizaciones();
+    }, [recargar, recargarPenalizaciones]),
   );
 
   return (
@@ -96,7 +132,19 @@ export default function MisComprasScreen() {
     >
       <Text style={styles.title}>Mis compras</Text>
 
-      {loading && compras.length === 0 ? (
+      {penalizacionesPendientes.length > 0 ? (
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>Pagos pendientes por multa</Text>
+          {penalizacionesPendientes.map((penalizacion) => (
+            <PenalizacionCard
+              key={penalizacion.idPenalizacion}
+              penalizacion={penalizacion}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {(loading || loadingPenalizaciones) && compras.length === 0 ? (
         <View style={styles.stateCard}>
           <ActivityIndicator color="#2F63F6" />
           <Text style={styles.stateText}>Cargando compras...</Text>
@@ -145,6 +193,23 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 14,
   },
+  penaltyCard: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 14,
+  },
+  sectionBlock: { marginBottom: 8 },
+  sectionTitle: {
+    color: "#0F172A",
+    fontSize: 16,
+    fontWeight: "900",
+    marginBottom: 10,
+  },
   image: {
     width: 92,
     height: 92,
@@ -178,6 +243,13 @@ const styles = StyleSheet.create({
     color: "#475569",
   },
   statusPending: { color: "#B45309" },
+  penaltyTitle: { color: "#92400E", fontSize: 16, fontWeight: "900" },
+  penaltyText: {
+    marginTop: 4,
+    color: "#78350F",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   ctaText: {
     marginTop: 8,
     fontSize: 13,

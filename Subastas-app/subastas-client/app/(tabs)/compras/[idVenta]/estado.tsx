@@ -1,10 +1,13 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { obtenerEstadoCompra } from "@/src/api/comprasAPI";
-import { CompraEstadoResponse, EstadoVenta } from "@/src/dto/CompraDTO";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { getApiErrorMessage } from "@/src/api/errors";
+import { EstadoVenta, VentaDetalleResponse } from "@/src/dto/CompraDTO";
+import { formatDate, getEstadoVentaLabel } from "@/src/utils/venta";
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,30 +15,27 @@ import {
   View,
 } from "react-native";
 
-const timeline: Array<{ estado: EstadoVenta; label: string }> = [
-  { estado: "PENDIENTE_PAGO", label: "Pago pendiente" },
-  { estado: "PAGO_CONFIRMADO", label: "Pago confirmado" },
-  { estado: "PREPARANDO_ENVIO", label: "Preparando envio" },
-  { estado: "ENVIADO", label: "Enviado" },
-  { estado: "EN_CAMINO", label: "En camino" },
-  { estado: "ENTREGADO", label: "Entregado" },
+const pasosDomicilio: EstadoVenta[] = [
+  "PAGO_CONFIRMADO",
+  "PREPARANDO_ENVIO",
+  "ENVIADO",
+  "EN_CAMINO",
+  "ENTREGADO",
 ];
 
-function estadoLabel(estado: EstadoVenta) {
-  if (estado === "MULTADA") return "Compra multada";
-  if (estado === "INCUMPLIDA") return "Compra incumplida";
-  if (estado === "CANCELADA") return "Compra cancelada";
+const pasosRetiro: EstadoVenta[] = [
+  "PAGO_CONFIRMADO",
+  "PREPARANDO_RETIRO",
+  "LISTO_PARA_RETIRAR",
+  "RETIRADO",
+];
 
-  return timeline.find((step) => step.estado === estado)?.label ?? estado;
-}
-
-function stepIndex(estado: EstadoVenta) {
-  return timeline.findIndex((step) => step.estado === estado);
-}
+const estadosProblematicos: EstadoVenta[] = ["INCUMPLIDA", "CANCELADA"];
 
 export default function CompraEstadoScreen() {
   const { idVenta } = useLocalSearchParams<{ idVenta: string }>();
-  const [estado, setEstado] = useState<CompraEstadoResponse | null>(null);
+  const navigation = useNavigation();
+  const [compra, setCompra] = useState<VentaDetalleResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,12 +45,10 @@ export default function CompraEstadoScreen() {
     try {
       setLoading(true);
       setError(null);
-      setEstado(await obtenerEstadoCompra(idVenta));
-    } catch (err: any) {
+      setCompra(await obtenerEstadoCompra(idVenta));
+    } catch (err) {
       setError(
-        err.response?.data?.message ??
-          err.response?.data?.error ??
-          "No pudimos cargar el estado de la compra.",
+        getApiErrorMessage(err, "No pudimos cargar el estado de la compra."),
       );
     } finally {
       setLoading(false);
@@ -60,10 +58,30 @@ export default function CompraEstadoScreen() {
   useFocusEffect(
     useCallback(() => {
       void cargar();
+
+      const onHardwareBack = () => {
+        router.replace("/(tabs)/compras" as any);
+        return true;
+      };
+
+      const hardwareSub = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onHardwareBack,
+      );
+
+      const beforeRemoveSub = navigation.addListener("beforeRemove", (event) => {
+        event.preventDefault();
+        router.replace("/(tabs)/compras" as any);
+      });
+
+      return () => {
+        hardwareSub.remove();
+        beforeRemoveSub();
+      };
     }, [cargar]),
   );
 
-  if (loading && !estado) {
+  if (loading && !compra) {
     return (
       <View style={styles.stateScreen}>
         <ActivityIndicator size="large" color="#2F63F6" />
@@ -72,10 +90,12 @@ export default function CompraEstadoScreen() {
     );
   }
 
-  if (error || !estado) {
+  if (error || !compra) {
     return (
       <View style={styles.stateScreen}>
-        <Text style={styles.errorText}>{error ?? "No pudimos cargar el estado."}</Text>
+        <Text style={styles.errorText}>
+          {error ?? "No pudimos cargar el estado."}
+        </Text>
         <Pressable style={styles.primaryButton} onPress={cargar}>
           <Text style={styles.primaryButtonText}>Reintentar</Text>
         </Pressable>
@@ -83,14 +103,17 @@ export default function CompraEstadoScreen() {
     );
   }
 
-  const currentIndex = stepIndex(estado.estado);
-  const isProblemState = ["MULTADA", "INCUMPLIDA", "CANCELADA"].includes(
-    estado.estado,
-  );
+  const timeline = compra.tipoEntrega === "RETIRO" ? pasosRetiro : pasosDomicilio;
+  const currentIndex = timeline.findIndex((estado) => estado === compra.estado);
+  const isProblemState = estadosProblematicos.includes(compra.estado);
+  const pagoPendiente = compra.estado === "PENDIENTE_PAGO";
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable style={styles.backButton} onPress={() => router.back()}>
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/(tabs)/compras" as any)}
+      >
         <Ionicons name="chevron-back" size={28} color="#0F172A" />
       </Pressable>
 
@@ -102,46 +125,64 @@ export default function CompraEstadoScreen() {
           color={isProblemState ? "#B91C1C" : "#22C55E"}
         />
         <View style={styles.statusCopy}>
-          <Text style={styles.statusTitle}>{estadoLabel(estado.estado)}</Text>
+          <Text style={styles.statusTitle}>{getEstadoVentaLabel(compra.estado)}</Text>
           <Text style={styles.statusSubtitle}>
-            {isProblemState
-              ? "La compra requiere revision. No se implementa logica de multa desde la app."
-              : "Te vamos a mostrar los avances de entrega a medida que se actualicen."}
+            {pagoPendiente
+              ? `Tenes hasta ${formatDate(compra.fechaLimitePago)} para completar el pago.`
+              : isProblemState
+                ? "La compra requiere revision."
+                : "Te vamos a mostrar los avances a medida que se actualicen."}
           </Text>
         </View>
       </View>
 
-      <View style={styles.timelineCard}>
-        {timeline.map((step, index) => {
-          const done = currentIndex >= index;
-          const active = currentIndex === index;
+      {pagoPendiente ? (
+        <View style={styles.timelineCard}>
+          <Text style={styles.pendingText}>Pago pendiente</Text>
+        </View>
+      ) : (
+        <View style={styles.timelineCard}>
+          {timeline.map((estado, index) => {
+            const done = currentIndex >= index;
+            const active = currentIndex === index;
 
-          return (
-            <View key={step.estado} style={styles.timelineRow}>
-              <View style={styles.markerColumn}>
-                <View
-                  style={[
-                    styles.marker,
-                    done && styles.markerDone,
-                    active && styles.markerActive,
-                  ]}
-                />
-                {index < timeline.length - 1 ? (
-                  <View style={[styles.line, done && styles.lineDone]} />
-                ) : null}
+            return (
+              <View key={estado} style={styles.timelineRow}>
+                <View style={styles.markerColumn}>
+                  <View
+                    style={[
+                      styles.marker,
+                      done && styles.markerDone,
+                      active && styles.markerActive,
+                    ]}
+                  />
+                  {index < timeline.length - 1 ? (
+                    <View style={[styles.line, done && styles.lineDone]} />
+                  ) : null}
+                </View>
+                <Text
+                  style={[styles.timelineText, done && styles.timelineTextDone]}
+                >
+                  {getEstadoVentaLabel(estado)}
+                </Text>
               </View>
-              <Text style={[styles.timelineText, done && styles.timelineTextDone]}>
-                {step.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      )}
 
-      {estado.entregaEstimada ? (
-        <Text style={styles.estimatedText}>
-          Entrega estimada: {estado.entregaEstimada}
-        </Text>
+      {compra.idFactura ? (
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/compras/[idVenta]/factura" as any,
+              params: { idVenta: String(compra.idVenta) },
+            })
+          }
+        >
+          <Text style={styles.primaryButtonText}>Ver factura</Text>
+        </Pressable>
       ) : null}
     </ScrollView>
   );
@@ -185,6 +226,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
+  pendingText: { color: "#B45309", fontWeight: "900" },
   timelineRow: { flexDirection: "row", minHeight: 48 },
   markerColumn: { width: 28, alignItems: "center" },
   marker: {
@@ -206,18 +248,13 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   timelineTextDone: { color: "#0F172A" },
-  estimatedText: {
-    marginTop: 14,
-    color: "#475569",
-    fontWeight: "800",
-    textAlign: "center",
-  },
   primaryButton: {
     marginTop: 14,
     backgroundColor: "#111827",
     borderRadius: 14,
     paddingHorizontal: 18,
     paddingVertical: 12,
+    alignItems: "center",
   },
   primaryButtonText: { color: "#FFFFFF", fontWeight: "900" },
   stateScreen: {
