@@ -5,7 +5,9 @@ import com.subastas.subastas_api.model.ItemCatalogo;
 import com.subastas.subastas_api.model.Puja;
 import com.subastas.subastas_api.model.Subasta;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +22,7 @@ public interface PujaRepository
             ORDER BY p.fechaHora ASC
             """)
     List<Puja> findBySubastaOrderByFechaHoraAsc(
+            @Param("subasta")
             Subasta subasta
     );
 
@@ -33,12 +36,11 @@ public interface PujaRepository
             """)
     Optional<Puja>
     findTopByItemCatalogoAndClienteOrderByMontoDesc(
+            @Param("itemCatalogo")
             ItemCatalogo itemCatalogo,
-            Cliente cliente
-    );
 
-    void deleteByItemCatalogo(
-            ItemCatalogo itemCatalogo
+            @Param("cliente")
+            Cliente cliente
     );
 
     @Query("""
@@ -50,6 +52,23 @@ public interface PujaRepository
             """)
     Optional<Puja>
     findTopByItemCatalogoOrderByMontoDesc(
+            @Param("itemCatalogo")
+            ItemCatalogo itemCatalogo
+    );
+
+    /**
+     * Elimina todas las pujas correspondientes a un lote.
+     *
+     * Se utiliza cuando se reabre el lote para que vuelva
+     * a comenzar desde el precio base y sin mejor postor.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            DELETE FROM Puja p
+            WHERE p.itemCatalogo = :itemCatalogo
+            """)
+    int deleteTodasPorItemCatalogo(
+            @Param("itemCatalogo")
             ItemCatalogo itemCatalogo
     );
 }

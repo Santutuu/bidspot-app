@@ -305,7 +305,7 @@ public class AdminSubastaService {
         /*
          * Después se eliminan las pujas del lote.
          */
-        pujaRepository.deleteByItemCatalogo(
+        pujaRepository.deleteTodasPorItemCatalogo(
                 lote
         );
 
