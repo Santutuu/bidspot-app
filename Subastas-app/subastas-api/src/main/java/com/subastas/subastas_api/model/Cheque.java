@@ -57,4 +57,22 @@ public class Cheque extends MedioDePago {
     public Float getSaldo() {
         return saldo;
     }
+
+    public boolean tieneSaldoSuficiente(Float monto) {
+        return monto != null
+                && monto > 0f
+                && saldo != null
+                && saldo >= monto;
+    }
+
+    public void consumirSaldo(Float monto) {
+
+        if (!tieneSaldoSuficiente(monto)) {
+            throw new IllegalStateException(
+                    "El cheque no tiene saldo suficiente"
+            );
+        }
+
+        this.saldo -= monto;
+    }
 }

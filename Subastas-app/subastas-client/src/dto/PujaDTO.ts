@@ -7,7 +7,7 @@ export interface EstadoPujaSubastaResponseDTO {
   mejorOferta: number;
   incrementoMinimo: number;
   incrementoMaximo: number;
-  ofertaMinimaPermitida: number;
+  ofertaMinimaPermitida: number | null;
   ofertaMaximaPermitida: number | null;
   moneda: MonedaPuja;
   miMejorOferta: number | null;

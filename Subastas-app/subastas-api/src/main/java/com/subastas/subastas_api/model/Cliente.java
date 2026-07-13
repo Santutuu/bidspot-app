@@ -47,6 +47,20 @@ public class Cliente {
     )
     private List<MedioDePago> mediosDePago = new ArrayList<>();
 
+    /*
+     * Restricción comercial.
+     *
+     * Un Cliente suspendido puede seguir iniciando sesión y acceder
+     * a sus compras, pero no puede realizar nuevas pujas.
+     *
+     * Esta suspensión es independiente del bloqueo técnico de Usuario.
+     */
+    @Column(
+            name = "suspendido_para_pujar",
+            nullable = false
+    )
+    private boolean suspendidoParaPujar = false;
+
     public Cliente() {
     }
 
@@ -57,6 +71,7 @@ public class Cliente {
         this.admitido = "si";
         this.categoria = categoria;
         this.verificador = verificador;
+        this.suspendidoParaPujar = false;
     }
 
     public Cliente(Persona persona,
@@ -68,6 +83,7 @@ public class Cliente {
         this.admitido = "si";
         this.categoria = categoria;
         this.verificador = verificador;
+        this.suspendidoParaPujar = false;
     }
 
     public Long getIdentificador() {
@@ -102,8 +118,24 @@ public class Cliente {
         return mediosDePago;
     }
 
+    public boolean isSuspendidoParaPujar() {
+        return suspendidoParaPujar;
+    }
+
     public boolean estaAdmitido() {
         return "si".equalsIgnoreCase(admitido);
+    }
+
+    /**
+     * Un Cliente puede pujar únicamente cuando está admitido
+     * y no posee una suspensión comercial activa.
+     *
+     * La validación de categoría, medios de pago, garantía, etc.
+     * continúa siendo responsabilidad de PujaService.
+     */
+    public boolean puedePujar() {
+        return estaAdmitido()
+                && !suspendidoParaPujar;
     }
 
     public void aprobar(CategoriaUsuario categoria,
@@ -124,6 +156,26 @@ public class Cliente {
 
     public void rechazar() {
         this.admitido = "no";
+    }
+
+    /**
+     * Suspende comercialmente al Cliente.
+     *
+     * Se utilizará cuando se genere una Penalizacion pendiente
+     * por falta de respaldo suficiente al cerrar un lote.
+     */
+    public void suspenderParaPujar() {
+        this.suspendidoParaPujar = true;
+    }
+
+    /**
+     * Habilita nuevamente al Cliente.
+     *
+     * El service encargado del pago de penalizaciones deberá comprobar
+     * previamente que el Cliente no tenga otras penalizaciones pendientes.
+     */
+    public void habilitarParaPujar() {
+        this.suspendidoParaPujar = false;
     }
 
     public void setCuenta(CuentaBanco cuenta) {

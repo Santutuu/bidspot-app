@@ -37,6 +37,10 @@ public interface PujaRepository
             Cliente cliente
     );
 
+    void deleteByItemCatalogo(
+            ItemCatalogo itemCatalogo
+    );
+
     @Query("""
             SELECT p
             FROM Puja p

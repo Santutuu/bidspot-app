@@ -9,10 +9,23 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 public class CierreLoteService {
+
+    /*
+     * Tarifa fija provisoria para la entrega a domicilio.
+     *
+     * Más adelante puede reemplazarse por un servicio de logística
+     * sin modificar VentaConcretada.
+     */
+    private static final Float TARIFA_FIJA_ENVIO = 999f;
+
+    private static final BigDecimal PORCENTAJE_MULTA =
+            new BigDecimal("0.10");
 
     private final SubastaRepository subastaRepository;
     private final ItemCatalogoRepository itemCatalogoRepository;
@@ -21,6 +34,8 @@ public class CierreLoteService {
     private final RegistroSubastaRepository registroSubastaRepository;
     private final EstadoItemCatalogoRepository estadoItemCatalogoRepository;
     private final EstadoSubastaRepository estadoSubastaRepository;
+    private final PenalizacionRepository penalizacionRepository;
+    private final DisponibilidadPagoService disponibilidadPagoService;
 
     public CierreLoteService(
             SubastaRepository subastaRepository,
@@ -29,18 +44,36 @@ public class CierreLoteService {
             VentaConcretadaRepository ventaRepository,
             RegistroSubastaRepository registroSubastaRepository,
             EstadoItemCatalogoRepository estadoItemCatalogoRepository,
-            EstadoSubastaRepository estadoSubastaRepository
+            EstadoSubastaRepository estadoSubastaRepository,
+            PenalizacionRepository penalizacionRepository,
+            DisponibilidadPagoService disponibilidadPagoService
     ) {
-        this.subastaRepository = subastaRepository;
-        this.itemCatalogoRepository = itemCatalogoRepository;
-        this.pujaRepository = pujaRepository;
-        this.ventaRepository = ventaRepository;
+        this.subastaRepository =
+                subastaRepository;
+
+        this.itemCatalogoRepository =
+                itemCatalogoRepository;
+
+        this.pujaRepository =
+                pujaRepository;
+
+        this.ventaRepository =
+                ventaRepository;
+
         this.registroSubastaRepository =
                 registroSubastaRepository;
+
         this.estadoItemCatalogoRepository =
                 estadoItemCatalogoRepository;
+
         this.estadoSubastaRepository =
                 estadoSubastaRepository;
+
+        this.penalizacionRepository =
+                penalizacionRepository;
+
+        this.disponibilidadPagoService =
+                disponibilidadPagoService;
     }
 
     @Transactional
@@ -59,14 +92,18 @@ public class CierreLoteService {
                 subasta
         );
 
-        Puja pujaGanadora = pujaRepository
-                .findTopByItemCatalogoOrderByMontoDesc(lote)
-                .orElse(null);
+        validarMonedaSubasta(subasta);
+
+        Puja pujaGanadora =
+                pujaRepository
+                        .findTopByItemCatalogoOrderByMontoDesc(lote)
+                        .orElse(null);
 
         VentaConcretada venta = null;
         Cliente comprador = null;
 
         if (pujaGanadora != null) {
+
             pujaGanadora.marcarGanadora();
             pujaRepository.save(pujaGanadora);
 
@@ -84,7 +121,11 @@ public class CierreLoteService {
                             montoPuja
                     );
 
-            Float costoEnvioInicial = 0f;
+            String direccionPredeterminada =
+                    obtenerDireccionComprador(comprador);
+
+            Float costoEnvioInicial =
+                    TARIFA_FIJA_ENVIO;
 
             Float total =
                     montoPuja
@@ -99,30 +140,52 @@ public class CierreLoteService {
                     comision
             );
 
-            Cliente compradorFinal =
-                    comprador;
+            Optional<VentaConcretada> ventaExistente =
+                    ventaRepository
+                            .findByItemCatalogo(lote);
 
-            venta = ventaRepository
-                    .findByItemCatalogo(lote)
-                    .orElseGet(() ->
-                            new VentaConcretada(
-                                    compradorFinal,
-                                    lote,
-                                    pujaGanadora,
-                                    montoPuja,
-                                    comision,
-                                    costoEnvioInicial,
-                                    total,
-                                    subasta.getUbicacion()
-                            )
-                    );
+            if (ventaExistente.isPresent()) {
+                venta = ventaExistente.get();
+            } else {
+                venta =
+                        new VentaConcretada(
+                                comprador,
+                                lote,
+                                pujaGanadora,
+                                montoPuja,
+                                comision,
+                                costoEnvioInicial,
+                                total,
+                                subasta.getUbicacion()
+                        );
 
-            ventaRepository.save(venta);
+                /*
+                 * La compra queda configurada inicialmente para
+                 * entrega al domicilio declarado por el comprador.
+                 *
+                 * El usuario podrá cambiarla después a retiro.
+                 */
+                venta.configurarEntregaDomicilio(
+                        direccionPredeterminada,
+                        costoEnvioInicial
+                );
+
+                venta =
+                        ventaRepository.save(venta);
+            }
+
+            verificarRespaldoYAplicarMulta(
+                    comprador,
+                    venta,
+                    subasta.getMoneda(),
+                    montoPuja
+            );
 
             cambiarEstadoLote(
                     lote,
                     EstadoItemCatalogo.VENDIDO
             );
+
         } else {
             lote.setPujaActual(null);
 
@@ -171,7 +234,16 @@ public class CierreLoteService {
                 subasta
         );
 
-        ventaRepository.deleteByItemCatalogo(lote);
+        /*
+         * Antes de eliminar la venta se eliminan las penalizaciones
+         * que dependan de ella.
+         *
+         * Esto evita violaciones de FK y revierte correctamente
+         * la suspensión generada por el cierre anterior.
+         */
+        ventaRepository
+                .findByItemCatalogo(lote)
+                .ifPresent(this::eliminarVentaYPenalizaciones);
 
         /*
          * El registro legacy representa una operación cerrada.
@@ -186,9 +258,10 @@ public class CierreLoteService {
                         registroSubastaRepository::delete
                 );
 
-        Puja pujaAnterior = pujaRepository
-                .findTopByItemCatalogoOrderByMontoDesc(lote)
-                .orElse(null);
+        Puja pujaAnterior =
+                pujaRepository
+                        .findTopByItemCatalogoOrderByMontoDesc(lote)
+                        .orElse(null);
 
         if (pujaAnterior != null) {
             pujaAnterior.marcarRegistrada();
@@ -203,6 +276,7 @@ public class CierreLoteService {
                         EstadoItemCatalogo.EN_REMATE
                 )
                 .forEach(loteActual -> {
+
                     if (!loteActual
                             .getIdItemCatalogo()
                             .equals(
@@ -245,6 +319,138 @@ public class CierreLoteService {
         );
     }
 
+    private void verificarRespaldoYAplicarMulta(
+            Cliente comprador,
+            VentaConcretada venta,
+            Moneda monedaSubasta,
+            Float montoPuja
+    ) {
+        boolean tieneRespaldo =
+                disponibilidadPagoService
+                        .tieneRespaldoSuficiente(
+                                comprador,
+                                monedaSubasta,
+                                montoPuja
+                        );
+
+        if (tieneRespaldo) {
+            return;
+        }
+
+        boolean multaYaExiste =
+                penalizacionRepository
+                        .existsByVentaAndTipo(
+                                venta,
+                                TipoPenalizacion.FALTA_FONDOS
+                        );
+
+        if (!multaYaExiste) {
+            BigDecimal importeMulta =
+                    calcularMulta(montoPuja);
+
+            Penalizacion penalizacion =
+                    new Penalizacion(
+                            comprador,
+                            venta,
+                            importeMulta,
+                            monedaSubasta.normalizada(),
+                            TipoPenalizacion.FALTA_FONDOS
+                    );
+
+            penalizacionRepository.save(penalizacion);
+        }
+
+        comprador.suspenderParaPujar();
+
+        /*
+         * No se necesita save explícito del Cliente:
+         * se encuentra administrado por JPA dentro de esta transacción
+         * y Hibernate persistirá el cambio mediante dirty checking.
+         */
+    }
+
+    private BigDecimal calcularMulta(
+            Float montoPuja
+    ) {
+        if (montoPuja == null || montoPuja <= 0f) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "No se puede calcular la multa porque el monto de la puja no es válido"
+            );
+        }
+
+        return BigDecimal
+                .valueOf(montoPuja.doubleValue())
+                .multiply(PORCENTAJE_MULTA)
+                .setScale(
+                        2,
+                        RoundingMode.HALF_UP
+                );
+    }
+
+    private void eliminarVentaYPenalizaciones(
+            VentaConcretada venta
+    ) {
+        Cliente comprador =
+                venta.getComprador();
+
+        List<Penalizacion> penalizaciones =
+                penalizacionRepository
+                        .findByVenta(venta);
+
+        if (!penalizaciones.isEmpty()) {
+            penalizacionRepository
+                    .deleteAll(penalizaciones);
+
+            /*
+             * Ejecutamos los DELETE antes de consultar si quedan
+             * otras penalizaciones pendientes para el mismo cliente.
+             */
+            penalizacionRepository.flush();
+        }
+
+        ventaRepository.delete(venta);
+        ventaRepository.flush();
+
+        boolean conservaPenalizacionesPendientes =
+                penalizacionRepository
+                        .existsByClienteAndEstado(
+                                comprador,
+                                EstadoPenalizacion.PENDIENTE
+                        );
+
+        if (!conservaPenalizacionesPendientes) {
+            comprador.habilitarParaPujar();
+        }
+    }
+
+    private String obtenerDireccionComprador(
+            Cliente comprador
+    ) {
+        if (comprador.getPersona() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El comprador no tiene una persona asociada"
+            );
+        }
+
+        String direccion =
+                comprador
+                        .getPersona()
+                        .getDomicilio().toString();
+
+        if (direccion == null
+                || direccion.isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El comprador no tiene una dirección declarada"
+            );
+        }
+
+        return direccion.trim();
+    }
+
     private void registrarResultadoLegacy(
             Subasta subasta,
             ItemCatalogo lote,
@@ -252,7 +458,8 @@ public class CierreLoteService {
             Float montoPuja,
             Float comision
     ) {
-        Item producto = lote.getItem();
+        Item producto =
+                lote.getItem();
 
         if (producto == null) {
             throw new ResponseStatusException(
@@ -261,7 +468,8 @@ public class CierreLoteService {
             );
         }
 
-        Duenio duenio = producto.getDuenio();
+        Duenio duenio =
+                producto.getDuenio();
 
         if (duenio == null) {
             throw new ResponseStatusException(
@@ -287,8 +495,12 @@ public class CierreLoteService {
                         duenio,
                         producto,
                         comprador,
-                        BigDecimal.valueOf(montoPuja),
-                        BigDecimal.valueOf(comision)
+                        BigDecimal.valueOf(
+                                montoPuja.doubleValue()
+                        ),
+                        BigDecimal.valueOf(
+                                comision.doubleValue()
+                        )
                 );
 
         registroSubastaRepository.save(registro);
@@ -317,23 +529,56 @@ public class CierreLoteService {
             ItemCatalogo loteCerrado,
             Subasta subasta
     ) {
+        if (loteCerrado.getCatalogo() == null
+                || loteCerrado
+                .getCatalogo()
+                .getIdCatalogo() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El lote cerrado no tiene un catálogo asociado"
+            );
+        }
+
         Optional<ItemCatalogo> proximoLote =
                 itemCatalogoRepository
-                        .findFirstByCatalogoAndEstadoOrderByIdItemCatalogoAsc(
-                                loteCerrado.getCatalogo(),
-                                EstadoItemCatalogo.PENDIENTE
+                        .findFirstByCatalogoIdAndEstado(
+                                loteCerrado
+                                        .getCatalogo()
+                                        .getIdCatalogo(),
+                                EstadoItemCatalogo
+                                        .PENDIENTE
+                                        .name()
                         );
 
         if (proximoLote.isPresent()) {
             ItemCatalogo siguiente =
                     proximoLote.get();
 
+            /*
+             * Un próximo lote pendiente también debe empezar
+             * sin pujas residuales.
+             */
+            siguiente.setPujaActual(null);
+
+            itemCatalogoRepository.saveAndFlush(
+                    siguiente
+            );
+
+            pujaRepository.deleteByItemCatalogo(
+                    siguiente
+            );
+
+            pujaRepository.flush();
+
             cambiarEstadoLote(
                     siguiente,
                     EstadoItemCatalogo.EN_REMATE
             );
 
-            itemCatalogoRepository.save(siguiente);
+            itemCatalogoRepository.save(
+                    siguiente
+            );
 
             return siguiente.getIdItemCatalogo();
         }
@@ -343,7 +588,9 @@ public class CierreLoteService {
                 EstadoSubasta.FINALIZADA
         );
 
-        subastaRepository.save(subasta);
+        subastaRepository.save(
+                subasta
+        );
 
         return null;
     }
@@ -396,6 +643,16 @@ public class CierreLoteService {
                 * lote.getComision()
                 / 100f;
     }
+    private void validarMonedaSubasta(
+            Subasta subasta
+    ) {
+        if (subasta.getMoneda() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La subasta no tiene una moneda configurada"
+            );
+        }
+    }
 
     private Subasta obtenerSubasta(
             Long idSubasta
@@ -430,7 +687,8 @@ public class CierreLoteService {
             Subasta subasta
     ) {
         if (lote.getCatalogo() == null
-                || lote.getCatalogo().getSubasta() == null) {
+                || lote.getCatalogo()
+                .getSubasta() == null) {
 
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,

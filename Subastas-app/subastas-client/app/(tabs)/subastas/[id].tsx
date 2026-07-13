@@ -56,7 +56,7 @@ function getPrecioLabel(tipoPrecio: string) {
 }
 
 function formatPrice(moneda: string, precio: number | null) {
-  if (precio === null) return "Precio no disponible";
+  if (precio === null) return "Sin limite";
 
   return `${getCurrencyCode(moneda)} ${precio}`;
 }
@@ -496,7 +496,11 @@ export default function DetalleSubastaScreen() {
       return;
     }
 
-    if (estadoPuja && monto < estadoPuja.ofertaMinimaPermitida) {
+    if (
+      estadoPuja?.ofertaMinimaPermitida !== null &&
+      estadoPuja?.ofertaMinimaPermitida !== undefined &&
+      monto < estadoPuja.ofertaMinimaPermitida
+    ) {
       setErrorPuja(
         `La oferta debe ser al menos ${formatPrice(estadoPuja.moneda, estadoPuja.ofertaMinimaPermitida)}.`,
       );
@@ -642,7 +646,10 @@ export default function DetalleSubastaScreen() {
     !montoOferta.trim() ||
     Number.isNaN(amountNumber) ||
     amountNumber <= 0 ||
-    (estadoPuja ? amountNumber < estadoPuja.ofertaMinimaPermitida : false) ||
+    (estadoPuja?.ofertaMinimaPermitida !== null &&
+    estadoPuja?.ofertaMinimaPermitida !== undefined
+      ? amountNumber < estadoPuja.ofertaMinimaPermitida
+      : false) ||
     (estadoPuja?.ofertaMaximaPermitida !== null &&
     estadoPuja?.ofertaMaximaPermitida !== undefined
       ? amountNumber > estadoPuja.ofertaMaximaPermitida

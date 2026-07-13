@@ -57,4 +57,22 @@ public class TarjetaCredito extends MedioDePago {
     public Float getLimiteCredito() {
         return limiteCredito;
     }
+
+    public boolean tieneLimiteSuficiente(Float monto) {
+        return monto != null
+                && monto > 0f
+                && limiteCredito != null
+                && limiteCredito >= monto;
+    }
+
+    public void consumirLimite(Float monto) {
+
+        if (!tieneLimiteSuficiente(monto)) {
+            throw new IllegalStateException(
+                    "La tarjeta no tiene límite suficiente"
+            );
+        }
+
+        this.limiteCredito -= monto;
+    }
 }
