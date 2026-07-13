@@ -5,16 +5,7 @@ import com.subastas.subastas_api.DTO.publicacion.ResolverAccionSolicitudRequestD
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionDetalleDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionRequestDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionResumenDTO;
-import com.subastas.subastas_api.model.AccionSolicitudPublicacion;
-import com.subastas.subastas_api.model.Cliente;
-import com.subastas.subastas_api.model.DevolucionSolicitud;
-import com.subastas.subastas_api.model.EstadoAccionSolicitud;
-import com.subastas.subastas_api.model.MedioDePago;
-import com.subastas.subastas_api.model.Moneda;
-import com.subastas.subastas_api.model.PropuestaCondicionesVenta;
-import com.subastas.subastas_api.model.SolicitudPublicacion;
-import com.subastas.subastas_api.model.TipoAccionSolicitud;
-import com.subastas.subastas_api.model.Usuario;
+import com.subastas.subastas_api.model.*;
 import com.subastas.subastas_api.repository.AccionSolicitudPublicacionRepository;
 import com.subastas.subastas_api.repository.DevolucionSolicitudRepository;
 import com.subastas.subastas_api.repository.MedioDePagoRepository;
@@ -98,9 +89,10 @@ public class SolicitudPublicacionService {
                 tarjetaRepository
                         .findByCliente(cliente)
                         .stream()
-                        .anyMatch(tarjeta ->
-                                tarjeta.getMoneda()
-                                        == Moneda.PESOS
+                        .map(TarjetaCredito::getMoneda)
+                        .anyMatch(moneda ->
+                                moneda == Moneda.PESOS
+                                        || moneda == Moneda.ARS
                         );
 
         if (!tieneTarjetaPesos) {

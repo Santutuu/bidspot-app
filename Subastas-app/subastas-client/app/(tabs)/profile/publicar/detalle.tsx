@@ -2,6 +2,7 @@ import { uploadSubastaImages } from "@/src/api/uploadAPI";
 import { useTarjetas } from "@/src/hooks/useTarjetas";
 import { useCrearSolicitudPublicacion } from "@/src/hooks/useSolicitudesPublicacion";
 import { Categoria } from "@/src/types/solicitudesPublicacion";
+import { normalizeMoneda } from "@/src/utils/moneda";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
@@ -86,7 +87,9 @@ export default function PublicarDetalleScreen() {
       return;
     }
 
-    const tieneTarjetaPesos = tarjetas.some((tarjeta) => tarjeta.moneda === "PESOS");
+    const tieneTarjetaPesos = tarjetas.some(
+      (tarjeta) => normalizeMoneda(tarjeta.moneda) === "PESOS",
+    );
     if (!tieneTarjetaPesos) {
       Alert.alert(
         "Tarjeta en pesos requerida",
