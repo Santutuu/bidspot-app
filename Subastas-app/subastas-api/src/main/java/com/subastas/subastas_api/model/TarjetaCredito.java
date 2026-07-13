@@ -23,14 +23,17 @@ public class TarjetaCredito extends MedioDePago {
     public TarjetaCredito() {
     }
 
-    public TarjetaCredito(Cliente cliente,
-                          String numero,
-                          String nombre,
-                          String fechaVto,
-                          String cvv,
-                          Moneda moneda,
-                          Float limiteCredito) {
+    public TarjetaCredito(
+            Cliente cliente,
+            String numero,
+            String nombre,
+            String fechaVto,
+            String cvv,
+            Moneda moneda,
+            Float limiteCredito
+    ) {
         super(cliente, moneda);
+
         this.numero = numero;
         this.nombre = nombre;
         this.fechaVto = fechaVto;
@@ -58,21 +61,24 @@ public class TarjetaCredito extends MedioDePago {
         return limiteCredito;
     }
 
-    public boolean tieneLimiteSuficiente(Float monto) {
+    public boolean tieneLimiteSuficiente(
+            Float monto
+    ) {
         return monto != null
                 && monto > 0f
                 && limiteCredito != null
                 && limiteCredito >= monto;
     }
 
-    public void consumirLimite(Float monto) {
-
+    public void consumirLimite(
+            Float monto
+    ) {
         if (!tieneLimiteSuficiente(monto)) {
             throw new IllegalStateException(
                     "La tarjeta no tiene límite suficiente"
             );
         }
 
-        this.limiteCredito -= monto;
+        limiteCredito -= monto;
     }
 }

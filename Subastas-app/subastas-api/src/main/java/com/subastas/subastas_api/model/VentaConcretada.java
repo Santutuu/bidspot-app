@@ -13,13 +13,14 @@ public class VentaConcretada {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idVenta;
 
-    /*
-     * El comprador de negocio es Cliente.
-     *
-     * La cuenta Usuario queda solamente como autenticación.
-     */
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "comprador_id", nullable = false)
+    @ManyToOne(
+            optional = false,
+            fetch = FetchType.LAZY
+    )
+    @JoinColumn(
+            name = "comprador_id",
+            nullable = false
+    )
     private Cliente comprador;
 
     @OneToOne(optional = false)
@@ -34,9 +35,17 @@ public class VentaConcretada {
     @JoinColumn(name = "medio_pago_id")
     private MedioDePago medioPago;
 
+    @OneToOne
+    @JoinColumn(
+            name = "factura_id_factura",
+            unique = true
+    )
+    private Factura factura;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EstadoVenta estado = EstadoVenta.PENDIENTE_PAGO;
+    private EstadoVenta estado =
+            EstadoVenta.PENDIENTE_PAGO;
 
     @Enumerated(EnumType.STRING)
     private TipoEntrega tipoEntrega;
@@ -58,36 +67,28 @@ public class VentaConcretada {
 
     private LocalDateTime fechaPagoConfirmado;
 
-    /*
-     * Se calcula al crear la VentaConcretada.
-     *
-     * El comprador dispone de 72 horas desde la adjudicación
-     * para completar el pago de la compra.
-     */
     @Column(
             name = "fecha_limite_pago",
             nullable = false
     )
     private LocalDateTime fechaLimitePago;
 
-    /*
-     * Se completa cuando la VentaConcretada pasa a INCUMPLIDA.
-     */
     @Column(name = "fecha_incumplimiento")
     private LocalDateTime fechaIncumplimiento;
 
     public VentaConcretada() {
     }
 
-    public VentaConcretada(Cliente comprador,
-                           ItemCatalogo itemCatalogo,
-                           Puja pujaGanadora,
-                           Float montoPuja,
-                           Float comision,
-                           Float costoEnvio,
-                           Float total,
-                           String ubicacionRetiro) {
-
+    public VentaConcretada(
+            Cliente comprador,
+            ItemCatalogo itemCatalogo,
+            Puja pujaGanadora,
+            Float montoPuja,
+            Float comision,
+            Float costoEnvio,
+            Float total,
+            String ubicacionRetiro
+    ) {
         this.comprador = comprador;
         this.itemCatalogo = itemCatalogo;
         this.pujaGanadora = pujaGanadora;
@@ -97,12 +98,16 @@ public class VentaConcretada {
         this.total = total;
         this.ubicacionRetiro = ubicacionRetiro;
 
-        this.estado = EstadoVenta.PENDIENTE_PAGO;
+        this.estado =
+                EstadoVenta.PENDIENTE_PAGO;
 
-        this.fechaVenta = LocalDateTime.now();
+        this.fechaVenta =
+                LocalDateTime.now();
 
         this.fechaLimitePago =
-                this.fechaVenta.plusHours(HORAS_LIMITE_PAGO);
+                fechaVenta.plusHours(
+                        HORAS_LIMITE_PAGO
+                );
     }
 
     public Long getIdVenta() {
@@ -123,6 +128,10 @@ public class VentaConcretada {
 
     public MedioDePago getMedioPago() {
         return medioPago;
+    }
+
+    public Factura getFactura() {
+        return factura;
     }
 
     public EstadoVenta getEstado() {
@@ -173,9 +182,10 @@ public class VentaConcretada {
         return fechaIncumplimiento;
     }
 
-    public void configurarEntregaDomicilio(String direccionEntrega,
-                                           Float costoEnvio) {
-
+    public void configurarEntregaDomicilio(
+            String direccionEntrega,
+            Float costoEnvio
+    ) {
         validarPendientePago();
 
         if (direccionEntrega == null
@@ -186,22 +196,29 @@ public class VentaConcretada {
             );
         }
 
-        if (costoEnvio == null || costoEnvio < 0f) {
+        if (costoEnvio == null
+                || costoEnvio < 0f) {
 
             throw new IllegalArgumentException(
                     "El costo de envío no puede ser negativo"
             );
         }
 
-        this.tipoEntrega = TipoEntrega.DOMICILIO;
-        this.direccionEntrega = direccionEntrega;
-        this.costoEnvio = costoEnvio;
+        this.tipoEntrega =
+                TipoEntrega.DOMICILIO;
+
+        this.direccionEntrega =
+                direccionEntrega;
+
+        this.costoEnvio =
+                costoEnvio;
 
         recalcularTotal();
     }
 
-    public void configurarRetiro(String ubicacionRetiro) {
-
+    public void configurarRetiro(
+            String ubicacionRetiro
+    ) {
         validarPendientePago();
 
         if (ubicacionRetiro == null
@@ -212,16 +229,24 @@ public class VentaConcretada {
             );
         }
 
-        this.tipoEntrega = TipoEntrega.RETIRO;
-        this.ubicacionRetiro = ubicacionRetiro;
-        this.direccionEntrega = null;
-        this.costoEnvio = 0f;
+        this.tipoEntrega =
+                TipoEntrega.RETIRO;
+
+        this.ubicacionRetiro =
+                ubicacionRetiro;
+
+        this.direccionEntrega =
+                null;
+
+        this.costoEnvio =
+                0f;
 
         recalcularTotal();
     }
 
-    public void seleccionarMedioPago(MedioDePago medioPago) {
-
+    public void seleccionarMedioPago(
+            MedioDePago medioPago
+    ) {
         validarPendientePago();
 
         if (medioPago == null) {
@@ -230,12 +255,44 @@ public class VentaConcretada {
             );
         }
 
-        this.medioPago = medioPago;
+        this.medioPago =
+                medioPago;
+    }
+
+    public void asociarFactura(
+            Factura factura
+    ) {
+        if (factura == null) {
+            throw new IllegalArgumentException(
+                    "La factura es obligatoria"
+            );
+        }
+
+        if (this.factura != null) {
+            throw new IllegalStateException(
+                    "La venta ya tiene una factura asociada"
+            );
+        }
+
+        this.factura = factura;
+    }
+
+    public boolean estaVencida() {
+        return estado
+                == EstadoVenta.PENDIENTE_PAGO
+                && fechaLimitePago != null
+                && !LocalDateTime.now()
+                .isBefore(fechaLimitePago);
     }
 
     public void confirmarPago() {
-
         validarPendientePago();
+
+        if (estaVencida()) {
+            throw new IllegalStateException(
+                    "La compra superó el plazo de pago"
+            );
+        }
 
         if (tipoEntrega == null) {
             throw new IllegalStateException(
@@ -249,20 +306,31 @@ public class VentaConcretada {
             );
         }
 
-        this.estado =
+        estado =
                 EstadoVenta.PAGO_CONFIRMADO;
 
-        this.fechaPagoConfirmado =
+        fechaPagoConfirmado =
                 LocalDateTime.now();
     }
 
-    /*
-     * FLUJO DE ENTREGA A DOMICILIO
-     */
+    public void marcarIncumplida() {
+        if (estado != EstadoVenta.PENDIENTE_PAGO) {
+            throw new IllegalStateException(
+                    "Solo una venta pendiente de pago puede marcarse como incumplida"
+            );
+        }
+
+        estado =
+                EstadoVenta.INCUMPLIDA;
+
+        fechaIncumplimiento =
+                LocalDateTime.now();
+    }
 
     public void marcarPreparandoEnvio() {
-
-        validarTipoEntrega(TipoEntrega.DOMICILIO);
+        validarTipoEntrega(
+                TipoEntrega.DOMICILIO
+        );
 
         if (estado != EstadoVenta.PAGO_CONFIRMADO) {
             throw new IllegalStateException(
@@ -270,13 +338,14 @@ public class VentaConcretada {
             );
         }
 
-        this.estado =
+        estado =
                 EstadoVenta.PREPARANDO_ENVIO;
     }
 
     public void marcarEnviado() {
-
-        validarTipoEntrega(TipoEntrega.DOMICILIO);
+        validarTipoEntrega(
+                TipoEntrega.DOMICILIO
+        );
 
         if (estado != EstadoVenta.PREPARANDO_ENVIO) {
             throw new IllegalStateException(
@@ -284,59 +353,44 @@ public class VentaConcretada {
             );
         }
 
-        this.estado =
+        estado =
                 EstadoVenta.ENVIADO;
     }
 
     public void marcarEnCamino() {
-
-        validarTipoEntrega(TipoEntrega.DOMICILIO);
+        validarTipoEntrega(
+                TipoEntrega.DOMICILIO
+        );
 
         if (estado != EstadoVenta.ENVIADO) {
             throw new IllegalStateException(
-                    "La venta debe haber sido enviada"
+                    "La venta debe estar enviada"
             );
         }
 
-        this.estado =
+        estado =
                 EstadoVenta.EN_CAMINO;
     }
 
-    public void marcarEntregado() {
-
-        validarTipoEntrega(TipoEntrega.DOMICILIO);
-
-        if (estado != EstadoVenta.EN_CAMINO) {
-            throw new IllegalStateException(
-                    "La venta debe estar en camino antes de marcarse como entregada"
-            );
-        }
-
-        this.estado =
-                EstadoVenta.ENTREGADO;
-    }
-
-    /*
-     * FLUJO DE RETIRO EN DEPÓSITO
-     */
-
     public void marcarPreparandoRetiro() {
-
-        validarTipoEntrega(TipoEntrega.RETIRO);
+        validarTipoEntrega(
+                TipoEntrega.RETIRO
+        );
 
         if (estado != EstadoVenta.PAGO_CONFIRMADO) {
             throw new IllegalStateException(
-                    "La venta debe tener el pago confirmado para preparar el retiro"
+                    "La venta debe tener el pago confirmado"
             );
         }
 
-        this.estado =
+        estado =
                 EstadoVenta.PREPARANDO_RETIRO;
     }
 
     public void marcarListaParaRetirar() {
-
-        validarTipoEntrega(TipoEntrega.RETIRO);
+        validarTipoEntrega(
+                TipoEntrega.RETIRO
+        );
 
         if (estado != EstadoVenta.PREPARANDO_RETIRO) {
             throw new IllegalStateException(
@@ -344,13 +398,29 @@ public class VentaConcretada {
             );
         }
 
-        this.estado =
+        estado =
                 EstadoVenta.LISTO_PARA_RETIRAR;
     }
 
-    public void marcarRetirada() {
+    public void marcarEntregado() {
+        validarTipoEntrega(
+                TipoEntrega.DOMICILIO
+        );
 
-        validarTipoEntrega(TipoEntrega.RETIRO);
+        if (estado != EstadoVenta.EN_CAMINO) {
+            throw new IllegalStateException(
+                    "La venta debe estar en camino"
+            );
+        }
+
+        estado =
+                EstadoVenta.ENTREGADO;
+    }
+
+    public void marcarRetirado() {
+        validarTipoEntrega(
+                TipoEntrega.RETIRO
+        );
 
         if (estado != EstadoVenta.LISTO_PARA_RETIRAR) {
             throw new IllegalStateException(
@@ -358,53 +428,16 @@ public class VentaConcretada {
             );
         }
 
-        this.estado =
+        estado =
                 EstadoVenta.RETIRADO;
     }
 
-    /*
-     * INCUMPLIMIENTO
-     */
-
-    public boolean vencioPlazoPago() {
-
-        return estado == EstadoVenta.PENDIENTE_PAGO
-                && fechaLimitePago != null
-                && LocalDateTime.now()
-                .isAfter(fechaLimitePago);
-    }
-
-    public void marcarIncumplida() {
-
-        if (estado != EstadoVenta.PENDIENTE_PAGO) {
-            throw new IllegalStateException(
-                    "Solo una venta pendiente de pago puede marcarse como incumplida"
-            );
-        }
-
-        this.estado =
-                EstadoVenta.INCUMPLIDA;
-
-        this.fechaIncumplimiento =
-                LocalDateTime.now();
-    }
-
     public void cancelar() {
-
-        if (estado == EstadoVenta.ENTREGADO
-                || estado == EstadoVenta.RETIRADO) {
-
-            throw new IllegalStateException(
-                    "Una venta completada no puede cancelarse"
-            );
-        }
-
-        this.estado =
+        estado =
                 EstadoVenta.CANCELADA;
     }
 
     private void validarPendientePago() {
-
         if (estado != EstadoVenta.PENDIENTE_PAGO) {
             throw new IllegalStateException(
                     "La venta ya no está pendiente de pago"
@@ -412,8 +445,9 @@ public class VentaConcretada {
         }
     }
 
-    private void validarTipoEntrega(TipoEntrega tipoEsperado) {
-
+    private void validarTipoEntrega(
+            TipoEntrega tipoEsperado
+    ) {
         if (tipoEntrega != tipoEsperado) {
             throw new IllegalStateException(
                     "La venta no utiliza el tipo de entrega requerido"
@@ -422,7 +456,6 @@ public class VentaConcretada {
     }
 
     private void recalcularTotal() {
-
         float monto =
                 montoPuja != null
                         ? montoPuja
@@ -438,7 +471,7 @@ public class VentaConcretada {
                         ? costoEnvio
                         : 0f;
 
-        this.total =
+        total =
                 monto
                         + com
                         + envio;

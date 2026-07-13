@@ -23,14 +23,17 @@ public class Cheque extends MedioDePago {
     public Cheque() {
     }
 
-    public Cheque(Cliente cliente,
-                  String identificacion,
-                  String nroCheque,
-                  String beneficiario,
-                  String cuilCuit,
-                  Float saldo,
-                  Moneda moneda) {
+    public Cheque(
+            Cliente cliente,
+            String identificacion,
+            String nroCheque,
+            String beneficiario,
+            String cuilCuit,
+            Float saldo,
+            Moneda moneda
+    ) {
         super(cliente, moneda);
+
         this.identificacion = identificacion;
         this.nroCheque = nroCheque;
         this.beneficiario = beneficiario;
@@ -58,21 +61,24 @@ public class Cheque extends MedioDePago {
         return saldo;
     }
 
-    public boolean tieneSaldoSuficiente(Float monto) {
+    public boolean tieneSaldoSuficiente(
+            Float monto
+    ) {
         return monto != null
                 && monto > 0f
                 && saldo != null
                 && saldo >= monto;
     }
 
-    public void consumirSaldo(Float monto) {
-
+    public void consumirSaldo(
+            Float monto
+    ) {
         if (!tieneSaldoSuficiente(monto)) {
             throw new IllegalStateException(
                     "El cheque no tiene saldo suficiente"
             );
         }
 
-        this.saldo -= monto;
+        saldo -= monto;
     }
 }

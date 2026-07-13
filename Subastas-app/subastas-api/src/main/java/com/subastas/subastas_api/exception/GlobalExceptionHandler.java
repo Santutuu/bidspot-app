@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -21,76 +22,174 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             HttpServletRequest request
     ) {
-        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        Map<String, String> fieldErrors =
+                new LinkedHashMap<>();
 
-        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            fieldErrors.put(error.getField(), error.getDefaultMessage());
+        for (FieldError error
+                : ex.getBindingResult().getFieldErrors()) {
+
+            fieldErrors.put(
+                    error.getField(),
+                    error.getDefaultMessage()
+            );
         }
 
-        ApiErrorResponse response = new ApiErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                "Bad Request",
-                "Datos inválidos",
-                request.getRequestURI(),
-                fieldErrors
-        );
+        ApiErrorResponse response =
+                new ApiErrorResponse(
+                        LocalDateTime.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        HttpStatus.BAD_REQUEST
+                                .getReasonPhrase(),
+                        "Datos inválidos",
+                        request.getRequestURI(),
+                        fieldErrors
+                );
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse>
+    handleResponseStatusException(
+            ResponseStatusException ex,
+            HttpServletRequest request
+    ) {
+        HttpStatus status =
+                HttpStatus.valueOf(
+                        ex.getStatusCode().value()
+                );
+
+        String mensaje =
+                ex.getReason() != null
+                        ? ex.getReason()
+                        : status.getReasonPhrase();
+
+        ApiErrorResponse response =
+                new ApiErrorResponse(
+                        LocalDateTime.now(),
+                        status.value(),
+                        status.getReasonPhrase(),
+                        mensaje,
+                        request.getRequestURI(),
+                        null
+                );
+
+        return ResponseEntity
+                .status(status)
+                .body(response);
     }
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiErrorResponse> handleBusiness(
+    public ResponseEntity<ApiErrorResponse>
+    handleBusiness(
             BusinessException ex,
             HttpServletRequest request
     ) {
-        ApiErrorResponse response = new ApiErrorResponse(
-                LocalDateTime.now(),
-                ex.getStatus().value(),
-                ex.getStatus().getReasonPhrase(),
-                ex.getMessage(),
-                request.getRequestURI(),
-                null
-        );
+        ApiErrorResponse response =
+                new ApiErrorResponse(
+                        LocalDateTime.now(),
+                        ex.getStatus().value(),
+                        ex.getStatus()
+                                .getReasonPhrase(),
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        null
+                );
 
-        return ResponseEntity.status(ex.getStatus()).body(response);
+        return ResponseEntity
+                .status(ex.getStatus())
+                .body(response);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiErrorResponse> handleBadCredentials(
+    public ResponseEntity<ApiErrorResponse>
+    handleBadCredentials(
             BadCredentialsException ex,
             HttpServletRequest request
     ) {
-        ApiErrorResponse response = new ApiErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
-                "Email o contraseña incorrectos",
-                request.getRequestURI(),
-                null
-        );
+        ApiErrorResponse response =
+                new ApiErrorResponse(
+                        LocalDateTime.now(),
+                        HttpStatus.UNAUTHORIZED.value(),
+                        HttpStatus.UNAUTHORIZED
+                                .getReasonPhrase(),
+                        "Email o contraseña incorrectos",
+                        request.getRequestURI(),
+                        null
+                );
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(response);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse>
+    handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request
+    ) {
+        ApiErrorResponse response =
+                new ApiErrorResponse(
+                        LocalDateTime.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        HttpStatus.BAD_REQUEST
+                                .getReasonPhrase(),
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        null
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse>
+    handleIllegalState(
+            IllegalStateException ex,
+            HttpServletRequest request
+    ) {
+        ApiErrorResponse response =
+                new ApiErrorResponse(
+                        LocalDateTime.now(),
+                        HttpStatus.CONFLICT.value(),
+                        HttpStatus.CONFLICT
+                                .getReasonPhrase(),
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        null
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleGeneralException(
+    public ResponseEntity<ApiErrorResponse>
+    handleGeneralException(
             Exception ex,
             HttpServletRequest request
     ) {
         ex.printStackTrace();
 
-        ApiErrorResponse error = new ApiErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Internal Server Error",
-                ex.getMessage(),
-                request.getRequestURI(),
-                null
-        );
+        ApiErrorResponse response =
+                new ApiErrorResponse(
+                        LocalDateTime.now(),
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        HttpStatus.INTERNAL_SERVER_ERROR
+                                .getReasonPhrase(),
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        null
+                );
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(error);
+                .body(response);
     }
 }
