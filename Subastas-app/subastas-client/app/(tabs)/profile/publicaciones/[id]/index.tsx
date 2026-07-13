@@ -2,17 +2,20 @@ import AuctionInfoCard from "@/src/components/publicaciones/AuctionInfoCard";
 import PublicationStatusBadge from "@/src/components/publicaciones/PublicationStatusBadge";
 import RequiredActionCard from "@/src/components/publicaciones/RequiredActionCard";
 import { useDetalleSolicitudPublicacion } from "@/src/hooks/useSolicitudesPublicacion";
-import { AccionRequerida, SolicitudPublicacionDetalle } from "@/src/types/solicitudesPublicacion";
+import {
+    AccionRequerida,
+    SolicitudPublicacionDetalle,
+} from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 function accionToCard(accion: AccionRequerida) {
@@ -53,7 +56,8 @@ function auctionFromDetalle(detalle: SolicitudPublicacionDetalle) {
 
 export default function PublicacionDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { detalle, loading, error, recargar } = useDetalleSolicitudPublicacion(id);
+  const { detalle, loading, error, recargar } =
+    useDetalleSolicitudPublicacion(id);
 
   if (loading && !detalle) {
     return (
@@ -80,7 +84,10 @@ export default function PublicacionDetalleScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={styles.iconButton}>
+        <Pressable
+          onPress={() => router.replace("/(tabs)/profile" as any)}
+          style={styles.iconButton}
+        >
           <Ionicons name="chevron-back" size={30} color="#111827" />
         </Pressable>
         <Text style={styles.headerTitle}>Detalle publicación</Text>
@@ -95,7 +102,11 @@ export default function PublicacionDetalleScreen() {
         contentContainerStyle={styles.gallery}
       >
         {detalle.imagenesUrl.map((image, index) => (
-          <Image key={`${image}-${index}`} source={{ uri: image }} style={styles.galleryImage} />
+          <Image
+            key={`${image}-${index}`}
+            source={{ uri: image }}
+            style={styles.galleryImage}
+          />
         ))}
       </ScrollView>
 
@@ -186,7 +197,9 @@ export default function PublicacionDetalleScreen() {
                   Monto solicitado: ARS {respuesta.montoAseguradoSolicitado}
                 </Text>
               )}
-              <Text style={styles.responseDate}>{formatFecha(respuesta.fechaRespuesta)}</Text>
+              <Text style={styles.responseDate}>
+                {formatFecha(respuesta.fechaRespuesta)}
+              </Text>
             </View>
           ))
         )}
@@ -195,7 +208,9 @@ export default function PublicacionDetalleScreen() {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Información adicional</Text>
         {detalle.motivoRechazo && (
-          <Text style={styles.text}>Motivo rechazo: {detalle.motivoRechazo}</Text>
+          <Text style={styles.text}>
+            Motivo rechazo: {detalle.motivoRechazo}
+          </Text>
         )}
         <Text style={styles.text}>
           Depósito: {detalle.ubicacionDeposito ?? "Sin depósito asignado"}

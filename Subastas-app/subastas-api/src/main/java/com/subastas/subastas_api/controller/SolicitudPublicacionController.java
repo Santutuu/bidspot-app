@@ -1,10 +1,10 @@
 package com.subastas.subastas_api.controller;
 
-import com.subastas.subastas_api.DTO.publicacion.ResponderAccionRequestDTO;
+import com.subastas.subastas_api.DTO.publicacion.ConfigurarDevolucionRequestDTO;
+import com.subastas.subastas_api.DTO.publicacion.ResolverAccionSolicitudRequestDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionDetalleDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionRequestDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionResumenDTO;
-import com.subastas.subastas_api.model.AccionRequerida;
 import com.subastas.subastas_api.model.Usuario;
 import com.subastas.subastas_api.repository.UsuarioRepository;
 import com.subastas.subastas_api.service.SolicitudPublicacionService;
@@ -40,15 +40,14 @@ public class SolicitudPublicacionController {
         Usuario usuario =
                 obtenerUsuarioActual(authentication);
 
-        SolicitudPublicacionDetalleDTO response =
-                solicitudService.crearSolicitud(
-                        usuario,
-                        request
-                );
-
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(response);
+                .body(
+                        solicitudService.crearSolicitud(
+                                usuario,
+                                request
+                        )
+                );
     }
 
     @GetMapping
@@ -60,8 +59,7 @@ public class SolicitudPublicacionController {
                 obtenerUsuarioActual(authentication);
 
         return ResponseEntity.ok(
-                solicitudService
-                        .listarMisSolicitudes(usuario)
+                solicitudService.listarMisSolicitudes(usuario)
         );
     }
 
@@ -82,31 +80,66 @@ public class SolicitudPublicacionController {
         );
     }
 
-    @PostMapping(
-            "/{idSolicitud}/acciones/{accion}/resolver"
-    )
+    @PostMapping("/{idSolicitud}/acciones/{idAccion}/resolver")
     public ResponseEntity<SolicitudPublicacionDetalleDTO>
-    responderAccion(
+    resolverAccion(
             @PathVariable Long idSolicitud,
-            @PathVariable AccionRequerida accion,
-            @RequestBody ResponderAccionRequestDTO request,
+            @PathVariable Long idAccion,
+            @RequestBody ResolverAccionSolicitudRequestDTO request,
             Authentication authentication
     ) {
         Usuario usuario =
                 obtenerUsuarioActual(authentication);
 
         return ResponseEntity.ok(
-                solicitudService.responderAccion(
+                solicitudService.resolverAccion(
                         idSolicitud,
-                        accion,
+                        idAccion,
                         usuario,
                         request
                 )
         );
     }
 
+    @PutMapping("/{idSolicitud}/devolucion")
+    public ResponseEntity<SolicitudPublicacionDetalleDTO>
+    configurarDevolucion(
+            @PathVariable Long idSolicitud,
+            @RequestBody ConfigurarDevolucionRequestDTO request,
+            Authentication authentication
+    ) {
+        Usuario usuario =
+                obtenerUsuarioActual(authentication);
+
+        return ResponseEntity.ok(
+                solicitudService.configurarDevolucion(
+                        idSolicitud,
+                        usuario,
+                        request
+                )
+        );
+    }
+
+    @PostMapping("/{idSolicitud}/devolucion/confirmar-pago")
+    public ResponseEntity<SolicitudPublicacionDetalleDTO>
+    confirmarPagoDevolucion(
+            @PathVariable Long idSolicitud,
+            Authentication authentication
+    ) {
+        Usuario usuario =
+                obtenerUsuarioActual(authentication);
+
+        return ResponseEntity.ok(
+                solicitudService.confirmarPagoDevolucion(
+                        idSolicitud,
+                        usuario
+                )
+        );
+    }
+
     @DeleteMapping("/{idSolicitud}")
-    public ResponseEntity<Void> cancelarSolicitud(
+    public ResponseEntity<Void>
+    cancelarSolicitud(
             @PathVariable Long idSolicitud,
             Authentication authentication
     ) {

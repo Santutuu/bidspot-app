@@ -3,17 +3,18 @@ import { useMisSolicitudesPublicacion } from "@/src/hooks/useSolicitudesPublicac
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 
 export default function MisPublicacionesScreen() {
-  const { solicitudes, loading, error, recargar } = useMisSolicitudesPublicacion();
+  const { solicitudes, loading, error, recargar } =
+    useMisSolicitudesPublicacion();
   const activas = solicitudes.filter((item) => item.estado !== "CANCELADA");
   const cerradas = solicitudes.filter((item) => item.estado === "CANCELADA");
 
@@ -26,7 +27,10 @@ export default function MisPublicacionesScreen() {
       }
     >
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={styles.iconButton}>
+        <Pressable
+          onPress={() => router.replace("/(tabs)/profile" as any)}
+          style={styles.iconButton}
+        >
           <Ionicons name="chevron-back" size={30} color="#111827" />
         </Pressable>
         <Text style={styles.title}>Mis publicaciones</Text>

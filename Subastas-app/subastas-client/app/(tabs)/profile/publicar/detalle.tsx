@@ -6,9 +6,9 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
+    ActivityIndicator,
+    Alert,
+    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -27,7 +27,7 @@ export default function PublicarDetalleScreen() {
   const { crear, loading: creando } = useCrearSolicitudPublicacion();
 
   function handleBack() {
-    router.replace("/(tabs)/profile/publicar/categoria" as any);
+    router.replace("/(tabs)/profile" as any);
   }
 
   async function handleAgregarFotos() {
@@ -111,7 +111,7 @@ export default function PublicarDetalleScreen() {
         <View style={styles.photoHeader}>
           <View>
             <Text style={styles.label}>Fotos</Text>
-          <Text style={styles.helperText}>{imagenes.length}/6 agregadas</Text>
+            <Text style={styles.helperText}>{imagenes.length}/6 agregadas</Text>
           </View>
 
           <Pressable
@@ -120,7 +120,7 @@ export default function PublicarDetalleScreen() {
               imagenes.length >= 6 && styles.disabledButton,
             ]}
             onPress={handleAgregarFotos}
-          disabled={imagenes.length >= 6}
+            disabled={imagenes.length >= 6}
           >
             <Ionicons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.addPhotoText}>Agregar</Text>

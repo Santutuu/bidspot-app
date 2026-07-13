@@ -1,21 +1,26 @@
 package com.subastas.subastas_api.service;
 
-import com.subastas.subastas_api.DTO.publicacion.ResponderAccionRequestDTO;
-import com.subastas.subastas_api.DTO.publicacion.RespuestaAccionDTO;
+import com.subastas.subastas_api.DTO.publicacion.ConfigurarDevolucionRequestDTO;
+import com.subastas.subastas_api.DTO.publicacion.ResolverAccionSolicitudRequestDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionDetalleDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionRequestDTO;
 import com.subastas.subastas_api.DTO.publicacion.SolicitudPublicacionResumenDTO;
-import com.subastas.subastas_api.model.AccionRequerida;
+import com.subastas.subastas_api.model.AccionSolicitudPublicacion;
 import com.subastas.subastas_api.model.Cliente;
-import com.subastas.subastas_api.model.EstadoItem;
-import com.subastas.subastas_api.model.EstadoSolicitud;
-import com.subastas.subastas_api.model.RespuestaAccionRequerida;
+import com.subastas.subastas_api.model.DevolucionSolicitud;
+import com.subastas.subastas_api.model.EstadoAccionSolicitud;
+import com.subastas.subastas_api.model.MedioDePago;
+import com.subastas.subastas_api.model.Moneda;
+import com.subastas.subastas_api.model.PropuestaCondicionesVenta;
 import com.subastas.subastas_api.model.SolicitudPublicacion;
-import com.subastas.subastas_api.model.Subasta;
+import com.subastas.subastas_api.model.TipoAccionSolicitud;
 import com.subastas.subastas_api.model.Usuario;
-import com.subastas.subastas_api.repository.RespuestaAccionRequeridaRepository;
+import com.subastas.subastas_api.repository.AccionSolicitudPublicacionRepository;
+import com.subastas.subastas_api.repository.DevolucionSolicitudRepository;
+import com.subastas.subastas_api.repository.MedioDePagoRepository;
+import com.subastas.subastas_api.repository.PropuestaCondicionesVentaRepository;
 import com.subastas.subastas_api.repository.SolicitudPublicacionRepository;
-import com.subastas.subastas_api.repository.SubastaRepository;
+import com.subastas.subastas_api.repository.TarjetaCreditoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,17 +32,35 @@ import java.util.List;
 public class SolicitudPublicacionService {
 
     private final SolicitudPublicacionRepository solicitudRepository;
-    private final RespuestaAccionRequeridaRepository respuestaRepository;
-    private final SubastaRepository subastaRepository;
+
+    private final AccionSolicitudPublicacionRepository accionRepository;
+
+    private final PropuestaCondicionesVentaRepository propuestaRepository;
+
+    private final DevolucionSolicitudRepository devolucionRepository;
+
+    private final MedioDePagoRepository medioDePagoRepository;
+
+    private final TarjetaCreditoRepository tarjetaRepository;
+
+    private final SolicitudPublicacionMapper mapper;
 
     public SolicitudPublicacionService(
             SolicitudPublicacionRepository solicitudRepository,
-            RespuestaAccionRequeridaRepository respuestaRepository,
-            SubastaRepository subastaRepository
+            AccionSolicitudPublicacionRepository accionRepository,
+            PropuestaCondicionesVentaRepository propuestaRepository,
+            DevolucionSolicitudRepository devolucionRepository,
+            MedioDePagoRepository medioDePagoRepository,
+            TarjetaCreditoRepository tarjetaRepository,
+            SolicitudPublicacionMapper mapper
     ) {
         this.solicitudRepository = solicitudRepository;
-        this.respuestaRepository = respuestaRepository;
-        this.subastaRepository = subastaRepository;
+        this.accionRepository = accionRepository;
+        this.propuestaRepository = propuestaRepository;
+        this.devolucionRepository = devolucionRepository;
+        this.medioDePagoRepository = medioDePagoRepository;
+        this.tarjetaRepository = tarjetaRepository;
+        this.mapper = mapper;
     }
 
     @Transactional
@@ -45,9 +68,25 @@ public class SolicitudPublicacionService {
             Usuario usuario,
             SolicitudPublicacionRequestDTO request
     ) {
-        Cliente cliente = obtenerClienteValido(usuario);
+        Cliente cliente = validarCliente(usuario);
 
-        validarRequest(request);
+        validarCreacion(request);
+
+        boolean tieneTarjetaPesos =
+                tarjetaRepository
+                        .findByCliente(cliente)
+                        .stream()
+                        .anyMatch(tarjeta ->
+                                tarjeta.getMoneda()
+                                        == Moneda.PESOS
+                        );
+
+        if (!tieneTarjetaPesos) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Debe registrar al menos una tarjeta de crédito en pesos"
+            );
+        }
 
         SolicitudPublicacion solicitud =
                 new SolicitudPublicacion(
@@ -62,7 +101,7 @@ public class SolicitudPublicacionService {
         SolicitudPublicacion guardada =
                 solicitudRepository.save(solicitud);
 
-        return toDetalleDTO(guardada);
+        return mapper.toDetalle(guardada);
     }
 
     @Transactional(readOnly = true)
@@ -70,12 +109,14 @@ public class SolicitudPublicacionService {
     listarMisSolicitudes(
             Usuario usuario
     ) {
-        Cliente cliente = obtenerClienteValido(usuario);
+        Cliente cliente = validarCliente(usuario);
 
         return solicitudRepository
-                .findByClienteOrderByFechaCreacionDesc(cliente)
+                .findByClienteOrderByFechaCreacionDesc(
+                        cliente
+                )
                 .stream()
-                .map(this::toResumenDTO)
+                .map(mapper::toResumen)
                 .toList();
     }
 
@@ -84,14 +125,262 @@ public class SolicitudPublicacionService {
             Long idSolicitud,
             Usuario usuario
     ) {
-        Cliente cliente = obtenerClienteValido(usuario);
+        Cliente cliente = validarCliente(usuario);
 
-        return toDetalleDTO(
-                obtenerSolicitudDelCliente(
+        SolicitudPublicacion solicitud =
+                obtenerDelCliente(
                         idSolicitud,
                         cliente
+                );
+
+        return mapper.toDetalle(solicitud);
+    }
+
+    @Transactional
+    public SolicitudPublicacionDetalleDTO resolverAccion(
+            Long idSolicitud,
+            Long idAccion,
+            Usuario usuario,
+            ResolverAccionSolicitudRequestDTO request
+    ) {
+        if (request == null
+                || request.getAceptada() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Debe indicar si acepta o rechaza"
+            );
+        }
+
+        Cliente cliente = validarCliente(usuario);
+
+        SolicitudPublicacion solicitud =
+                obtenerDelCliente(
+                        idSolicitud,
+                        cliente
+                );
+
+        AccionSolicitudPublicacion accion =
+                accionRepository
+                        .findByIdAccionAndSolicitud(
+                                idAccion,
+                                solicitud
+                        )
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Acción no encontrada"
+                                )
+                        );
+
+        if (!accion.estaPendiente()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La acción ya fue resuelta"
+            );
+        }
+
+        switch (accion.getTipo()) {
+
+            case ACEPTAR_ENVIO_INSPECCION -> {
+                if (Boolean.TRUE.equals(
+                        request.getAceptada()
+                )) {
+                    ejecutarDominio(
+                            solicitud::aceptarEnvioInspeccion
+                    );
+                } else {
+                    ejecutarDominio(solicitud::cancelar);
+                }
+            }
+
+            case ACEPTAR_CONDICIONES_VENTA ->
+                    resolverCondicionesVenta(
+                            solicitud,
+                            request
+                    );
+
+            case REVISAR_POLIZA ->
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "La póliza se resuelve desde los endpoints /poliza"
+                    );
+
+            case PAGAR_DEVOLUCION ->
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Configure y confirme la devolución desde los endpoints /devolucion"
+                    );
+
+            case COMPROBAR_ORIGEN_LICITO,
+                 PROPUESTA_COLECCION -> {
+                // Se guarda la respuesta sin transición adicional.
+            }
+        }
+
+        ejecutarDominio(() ->
+                accion.completar(
+                        request.getAceptada(),
+                        request.getComentario()
                 )
         );
+
+        return mapper.toDetalle(solicitud);
+    }
+
+    private void resolverCondicionesVenta(
+            SolicitudPublicacion solicitud,
+            ResolverAccionSolicitudRequestDTO request
+    ) {
+        PropuestaCondicionesVenta propuesta =
+                propuestaRepository
+                        .findBySolicitud(solicitud)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "No existe una propuesta de venta"
+                                )
+                        );
+
+        if (Boolean.TRUE.equals(
+                request.getAceptada()
+        )) {
+            ejecutarDominio(propuesta::aceptar);
+            return;
+        }
+
+        String motivo =
+                request.getComentario() == null
+                        || request.getComentario().isBlank()
+                        ? "Condiciones rechazadas por el usuario"
+                        : request.getComentario().trim();
+
+        ejecutarDominio(() ->
+                propuesta.rechazar(motivo)
+        );
+
+        DevolucionSolicitud devolucion =
+                new DevolucionSolicitud(
+                        solicitud,
+                        15000f,
+                        Moneda.PESOS
+                );
+
+        devolucionRepository.save(devolucion);
+
+        ejecutarDominio(() ->
+                solicitud.iniciarDevolucion(
+                        motivo,
+                        devolucion
+                )
+        );
+
+        crearAccion(
+                solicitud,
+                TipoAccionSolicitud.PAGAR_DEVOLUCION,
+                "Pagar devolución",
+                "Configure la dirección, el medio de pago y confirme el pago de la devolución."
+        );
+    }
+
+    @Transactional
+    public SolicitudPublicacionDetalleDTO configurarDevolucion(
+            Long idSolicitud,
+            Usuario usuario,
+            ConfigurarDevolucionRequestDTO request
+    ) {
+        Cliente cliente = validarCliente(usuario);
+
+        SolicitudPublicacion solicitud =
+                obtenerDelCliente(
+                        idSolicitud,
+                        cliente
+                );
+
+        DevolucionSolicitud devolucion =
+                devolucionRepository
+                        .findBySolicitud(solicitud)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "No existe una devolución pendiente"
+                                )
+                        );
+
+        if (request == null
+                || request.getDireccionDestino() == null
+                || request.getDireccionDestino().isBlank()
+                || request.getIdMedioPago() == null) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "La dirección y el medio de pago son obligatorios"
+            );
+        }
+
+        MedioDePago medioPago =
+                medioDePagoRepository
+                        .findByIdMedioPagoAndCliente(
+                                request.getIdMedioPago(),
+                                cliente
+                        )
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Medio de pago no encontrado"
+                                )
+                        );
+
+        ejecutarDominio(() ->
+                devolucion.configurar(
+                        request.getDireccionDestino().trim(),
+                        medioPago
+                )
+        );
+
+        return mapper.toDetalle(solicitud);
+    }
+
+    @Transactional
+    public SolicitudPublicacionDetalleDTO
+    confirmarPagoDevolucion(
+            Long idSolicitud,
+            Usuario usuario
+    ) {
+        Cliente cliente = validarCliente(usuario);
+
+        SolicitudPublicacion solicitud =
+                obtenerDelCliente(
+                        idSolicitud,
+                        cliente
+                );
+
+        DevolucionSolicitud devolucion =
+                devolucionRepository
+                        .findBySolicitud(solicitud)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "No existe una devolución pendiente"
+                                )
+                        );
+
+        ejecutarDominio(devolucion::confirmarPago);
+
+        accionRepository
+                .findFirstBySolicitudAndTipoAndEstadoOrderByFechaCreacionDesc(
+                        solicitud,
+                        TipoAccionSolicitud.PAGAR_DEVOLUCION,
+                        EstadoAccionSolicitud.PENDIENTE
+                )
+                .ifPresent(accion ->
+                        accion.completar(
+                                true,
+                                "Pago de devolución confirmado"
+                        )
+                );
+
+        return mapper.toDetalle(solicitud);
     }
 
     @Transactional
@@ -99,87 +388,39 @@ public class SolicitudPublicacionService {
             Long idSolicitud,
             Usuario usuario
     ) {
-        Cliente cliente = obtenerClienteValido(usuario);
+        Cliente cliente = validarCliente(usuario);
 
         SolicitudPublicacion solicitud =
-                obtenerSolicitudDelCliente(
+                obtenerDelCliente(
                         idSolicitud,
                         cliente
                 );
 
-        if (solicitud.getEstado() != EstadoSolicitud.PENDIENTE
-                && solicitud.getEstado()
-                != EstadoSolicitud.EN_REVISION) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "La solicitud ya no puede cancelarse"
-            );
-        }
-
-        solicitud.setEstado(EstadoSolicitud.CANCELADA);
-
-        solicitudRepository.save(solicitud);
+        ejecutarDominio(solicitud::cancelar);
     }
 
-    @Transactional
-    public SolicitudPublicacionDetalleDTO responderAccion(
-            Long idSolicitud,
-            AccionRequerida accion,
-            Usuario usuario,
-            ResponderAccionRequestDTO request
+    private void crearAccion(
+            SolicitudPublicacion solicitud,
+            TipoAccionSolicitud tipo,
+            String titulo,
+            String descripcion
     ) {
-        Cliente cliente = obtenerClienteValido(usuario);
-
-        SolicitudPublicacion solicitud =
-                obtenerSolicitudDelCliente(
-                        idSolicitud,
-                        cliente
-                );
-
-        if (!solicitud
-                .getAccionesRequeridas()
-                .contains(accion)) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "La acción indicada no está requerida para esta solicitud"
-            );
-        }
-
-        validarRespuestaAccion(
-                accion,
-                request
-        );
-
-        RespuestaAccionRequerida respuesta =
-                new RespuestaAccionRequerida(
+        AccionSolicitudPublicacion accion =
+                new AccionSolicitudPublicacion(
                         solicitud,
-                        accion,
-                        request.getTipoRespuesta(),
-                        request.getAceptada(),
-                        request.getComentario(),
-                        request.getArchivoUrl(),
-                        request.getMontoAseguradoSolicitado()
+                        tipo,
+                        titulo,
+                        descripcion
                 );
 
-        respuestaRepository.save(respuesta);
-
-        solicitud.eliminarAccionRequerida(accion);
-
-        aplicarEfectoDeRespuesta(
-                solicitud,
-                accion,
-                request
+        ejecutarDominio(() ->
+                solicitud.agregarAccion(accion)
         );
 
-        SolicitudPublicacion guardada =
-                solicitudRepository.save(solicitud);
-
-        return toDetalleDTO(guardada);
+        accionRepository.save(accion);
     }
 
-    private Cliente obtenerClienteValido(
+    private Cliente validarCliente(
             Usuario usuario
     ) {
         if (usuario == null) {
@@ -196,26 +437,19 @@ public class SolicitudPublicacionService {
             );
         }
 
-        Cliente cliente = usuario.getCliente();
+        if (!usuario.estaValidadoComoCliente()
+                || usuario.getCliente() == null) {
 
-        if (cliente == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "El usuario no tiene un perfil de cliente asociado"
-            );
-        }
-
-        if (!usuario.estaValidadoComoCliente()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "El usuario todavía no fue validado como cliente"
+                    "El usuario no está validado como cliente"
             );
         }
 
-        return cliente;
+        return usuario.getCliente();
     }
 
-    private SolicitudPublicacion obtenerSolicitudDelCliente(
+    private SolicitudPublicacion obtenerDelCliente(
             Long idSolicitud,
             Cliente cliente
     ) {
@@ -227,75 +461,18 @@ public class SolicitudPublicacionService {
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                "No existe una solicitud con ese id para este cliente"
+                                "Solicitud no encontrada"
                         )
                 );
     }
 
-    private void aplicarEfectoDeRespuesta(
-            SolicitudPublicacion solicitud,
-            AccionRequerida accion,
-            ResponderAccionRequestDTO request
-    ) {
-        if (accion
-                == AccionRequerida.ACEPTAR_CONDICIONES_VENTA
-                && Boolean.FALSE.equals(
-                request.getAceptada()
-        )) {
-            solicitud.setEstado(
-                    EstadoSolicitud.CANCELADA
-            );
-
-            if (solicitud.getItem() != null) {
-                solicitud.getItem().setEstado(
-                        EstadoItem.RECHAZADO
-                );
-            }
-        }
-
-        if (accion == AccionRequerida.ACEPTAR_POLIZA
-                && solicitud.getItem() != null
-                && solicitud.getItem().getPoliza() != null) {
-
-            if (Boolean.TRUE.equals(
-                    request.getAceptada()
-            )) {
-                solicitud.getItem()
-                        .getPoliza()
-                        .aceptar();
-
-            } else if (Boolean.FALSE.equals(
-                    request.getAceptada()
-            )) {
-                solicitud.getItem()
-                        .getPoliza()
-                        .rechazar();
-            }
-        }
-
-        if (accion == AccionRequerida.MODIFICAR_POLIZA
-                && solicitud.getItem() != null
-                && solicitud.getItem().getPoliza() != null) {
-
-            solicitud.getItem()
-                    .getPoliza()
-                    .solicitarAumento(
-                            request.getMontoAseguradoSolicitado()
-                    );
-
-            solicitud.agregarAccionRequerida(
-                    AccionRequerida.ACEPTAR_POLIZA
-            );
-        }
-    }
-
-    private void validarRequest(
+    private void validarCreacion(
             SolicitudPublicacionRequestDTO request
     ) {
         if (request == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Los datos de la solicitud son obligatorios"
+                    "Los datos son obligatorios"
             );
         }
 
@@ -307,9 +484,7 @@ public class SolicitudPublicacionService {
         }
 
         if (request.getTitulo() == null
-                || request.getTitulo()
-                .trim()
-                .length() < 3) {
+                || request.getTitulo().isBlank()) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -318,9 +493,7 @@ public class SolicitudPublicacionService {
         }
 
         if (request.getDescripcion() == null
-                || request.getDescripcion()
-                .trim()
-                .length() < 10) {
+                || request.getDescripcion().isBlank()) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -328,178 +501,35 @@ public class SolicitudPublicacionService {
             );
         }
 
-        if (request.getImagenesUrl() == null
-                || request.getImagenesUrl().size() < 6) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Debe cargar al menos 6 imágenes"
-            );
-        }
-
         if (!request.isDeclaracionPropiedad()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Debe declarar que el bien le pertenece"
-            );
-        }
-    }
-
-    private void validarRespuestaAccion(
-            AccionRequerida accion,
-            ResponderAccionRequestDTO request
-    ) {
-        if (accion == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "La acción es obligatoria"
+                    "Debe aceptar la declaración de propiedad"
             );
         }
 
-        if (request == null
-                || request.getTipoRespuesta() == null) {
+        if (request.getImagenesUrl() == null
+                || request.getImagenesUrl().isEmpty()) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "El tipo de respuesta es obligatorio"
+                    "Debe cargar al menos una imagen"
             );
         }
+    }
 
-        switch (accion) {
-            case ACEPTAR_CONDICIONES_VENTA,
-                 ACEPTAR_POLIZA,
-                 PROPUESTA_COLECCION -> {
+    private void ejecutarDominio(
+            Runnable operacion
+    ) {
+        try {
+            operacion.run();
+        } catch (IllegalStateException
+                 | IllegalArgumentException exception) {
 
-                if (request.getAceptada() == null) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Debe aceptar o rechazar la propuesta"
-                    );
-                }
-            }
-
-            case MODIFICAR_POLIZA -> {
-                if (request.getMontoAseguradoSolicitado() == null
-                        || request
-                        .getMontoAseguradoSolicitado() <= 0) {
-
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Debe indicar un monto asegurado válido"
-                    );
-                }
-            }
-
-            case COMPROBAR_ORIGEN_LICITO -> {
-                if (request.getArchivoUrl() == null
-                        || request.getArchivoUrl().isBlank()) {
-
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Debe adjuntar documentación del origen lícito"
-                    );
-                }
-            }
-
-            case ENVIAR_ITEM -> {
-                if (request.getComentario() == null
-                        || request.getComentario().isBlank()) {
-
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Debe indicar cómo o cuándo enviará el item"
-                    );
-                }
-            }
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    exception.getMessage()
+            );
         }
-    }
-
-    private SolicitudPublicacionResumenDTO toResumenDTO(
-            SolicitudPublicacion solicitud
-    ) {
-        Subasta subasta =
-                obtenerSubastaAsignada(solicitud);
-
-        return new SolicitudPublicacionResumenDTO(
-                solicitud.getIdSolicitud(),
-                solicitud.getTitulo(),
-                solicitud.getEstado().name(),
-                solicitud.getCategoria().name(),
-                solicitud.getPrimeraImagen(),
-                subasta != null
-                        ? subasta.getIdSubasta()
-                        : null,
-                subasta != null
-                        ? subasta.getFechaInicio()
-                        : null
-        );
-    }
-
-    private SolicitudPublicacionDetalleDTO toDetalleDTO(
-            SolicitudPublicacion solicitud
-    ) {
-        Subasta subasta =
-                obtenerSubastaAsignada(solicitud);
-
-        List<RespuestaAccionDTO> respuestas =
-                solicitud.getRespuestasAcciones()
-                        .stream()
-                        .map(this::toRespuestaDTO)
-                        .toList();
-
-        return new SolicitudPublicacionDetalleDTO(
-                solicitud.getIdSolicitud(),
-                solicitud.getTitulo(),
-                solicitud.getDescripcion(),
-                solicitud.getCategoria().name(),
-                solicitud.getEstado().name(),
-                solicitud.getImagenesUrl(),
-                solicitud.isDeclaracionPropiedad(),
-                solicitud.getAccionesRequeridas(),
-                respuestas,
-                solicitud.getMotivoRechazo(),
-                solicitud.getUbicacionDeposito(),
-                subasta != null
-                        ? subasta.getIdSubasta()
-                        : null,
-                subasta != null
-                        && subasta.getCatalogo() != null
-                        ? subasta.getCatalogo()
-                        .getDescripcion()
-                        : null,
-                subasta != null
-                        ? subasta.getFechaInicio()
-                        : null,
-                subasta != null
-                        ? subasta.getUbicacion()
-                        : null
-        );
-    }
-
-    private RespuestaAccionDTO toRespuestaDTO(
-            RespuestaAccionRequerida respuesta
-    ) {
-        return new RespuestaAccionDTO(
-                respuesta.getIdRespuesta(),
-                respuesta.getAccion().name(),
-                respuesta.getTipoRespuesta().name(),
-                respuesta.getAceptada(),
-                respuesta.getComentario(),
-                respuesta.getArchivoUrl(),
-                respuesta.getMontoAseguradoSolicitado(),
-                respuesta.getFechaRespuesta()
-        );
-    }
-
-    private Subasta obtenerSubastaAsignada(
-            SolicitudPublicacion solicitud
-    ) {
-        if (solicitud.getItem() == null) {
-            return null;
-        }
-
-        return subastaRepository.findByItemIdItem(
-                solicitud.getItem().getIdItem()
-        );
     }
 }

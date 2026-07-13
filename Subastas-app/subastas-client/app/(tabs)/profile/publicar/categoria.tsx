@@ -25,14 +25,18 @@ export default function PublicarCategoriaScreen() {
         <Text style={styles.step}>Paso 1 de 2</Text>
         <Text style={styles.title}>Elegi la categoria del item</Text>
         <Text style={styles.subtitle}>
-          Esta informacion ayuda a clasificar la publicacion antes de la revision.
+          Esta informacion ayuda a clasificar la publicacion antes de la
+          revision.
         </Text>
       </View>
 
       <View style={styles.formCard}>
         <Text style={styles.label}>Categoria</Text>
 
-        <Pressable style={styles.selectBox} onPress={() => setOpen((value) => !value)}>
+        <Pressable
+          style={styles.selectBox}
+          onPress={() => setOpen((value) => !value)}
+        >
           <Text
             style={[
               styles.selectText,
@@ -70,7 +74,10 @@ export default function PublicarCategoriaScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Pressable onPress={() => router.back()} style={styles.secondaryButton}>
+        <Pressable
+          onPress={() => router.replace("/(tabs)/profile" as any)}
+          style={styles.secondaryButton}
+        >
           <Ionicons name="chevron-back" size={18} color="#111827" />
           <Text style={styles.secondaryButtonText}>Volver</Text>
         </Pressable>

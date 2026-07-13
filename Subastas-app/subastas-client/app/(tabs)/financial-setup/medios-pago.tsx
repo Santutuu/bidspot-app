@@ -1,13 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function MediosPagoScreen() {
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const backRoute =
+    from === "profile" ? "/(tabs)/profile" : "/(tabs)/financial-setup";
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Pressable
         style={styles.backButton}
-        onPress={() => router.replace("/(tabs)/financial-setup" as any)}
+        onPress={() => router.replace(backRoute as any)}
       >
         <Ionicons name="chevron-back" size={28} color="#111827" />
       </Pressable>

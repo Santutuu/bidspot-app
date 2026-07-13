@@ -74,7 +74,10 @@ export default function FinancialSetupScreen() {
           <Pressable
             style={styles.option}
             onPress={() =>
-              router.push("/(tabs)/financial-setup/cuenta-cobro" as any)
+              router.push({
+                pathname: "/(tabs)/financial-setup/cuenta-cobro" as any,
+                params: { from: "financial-setup" },
+              })
             }
           >
             <View>
@@ -90,7 +93,10 @@ export default function FinancialSetupScreen() {
           <Pressable
             style={styles.option}
             onPress={() =>
-              router.push("/(tabs)/financial-setup/medios-pago" as any)
+              router.push({
+                pathname: "/(tabs)/financial-setup/medios-pago" as any,
+                params: { from: "financial-setup" },
+              })
             }
           >
             <View>

@@ -1,22 +1,25 @@
 import { uploadSubastaImages } from "@/src/api/uploadAPI";
 import {
-  useDetalleSolicitudPublicacion,
-  useResponderAccionSolicitud,
+    useDetalleSolicitudPublicacion,
+    useResponderAccionSolicitud,
 } from "@/src/hooks/useSolicitudesPublicacion";
-import { AccionRequerida, ResponderAccionRequest } from "@/src/types/solicitudesPublicacion";
+import {
+    AccionRequerida,
+    ResponderAccionRequest,
+} from "@/src/types/solicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 const titles: Record<AccionRequerida, string> = {
@@ -70,7 +73,10 @@ export default function AccionesRequeridasScreen() {
   const [archivoUrls, setArchivoUrls] = useState<Record<string, string>>({});
   const [uploadingAction, setUploadingAction] = useState<string | null>(null);
 
-  async function submit(accion: AccionRequerida, request: ResponderAccionRequest) {
+  async function submit(
+    accion: AccionRequerida,
+    request: ResponderAccionRequest,
+  ) {
     try {
       const updated = await responder(id, accion, request);
       if (updated) {
@@ -122,7 +128,9 @@ export default function AccionesRequeridasScreen() {
   if (error || !detalle) {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.errorText}>{error ?? "No pudimos cargar acciones."}</Text>
+        <Text style={styles.errorText}>
+          {error ?? "No pudimos cargar acciones."}
+        </Text>
         <Pressable style={styles.primaryAction} onPress={recargar}>
           <Text style={styles.primaryActionText}>Reintentar</Text>
         </Pressable>
@@ -135,7 +143,10 @@ export default function AccionesRequeridasScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={styles.iconButton}>
+        <Pressable
+          onPress={() => router.replace("/(tabs)/profile" as any)}
+          style={styles.iconButton}
+        >
           <Ionicons name="chevron-back" size={30} color="#111827" />
         </Pressable>
         <Text style={styles.title}>Acciones requeridas</Text>
@@ -167,7 +178,9 @@ export default function AccionesRequeridasScreen() {
                   <View style={styles.policyHeader}>
                     <View>
                       <Text style={styles.policyEyebrow}>Próxima subasta</Text>
-                      <Text style={styles.policyTitle}>Condiciones de venta</Text>
+                      <Text style={styles.policyTitle}>
+                        Condiciones de venta
+                      </Text>
                     </View>
                     <Text style={styles.policyStatus}>
                       {condicionesVentaDemo.estadoSubasta}
@@ -224,7 +237,10 @@ export default function AccionesRequeridasScreen() {
                   <View style={styles.policyRow}>
                     <Text style={styles.policyLabel}>Comisión</Text>
                     <Text style={styles.policyValue}>
-                      {(condicionesVentaDemo.comision * 100).toLocaleString("es-AR")}%
+                      {(condicionesVentaDemo.comision * 100).toLocaleString(
+                        "es-AR",
+                      )}
+                      %
                     </Text>
                   </View>
                 </View>
@@ -234,26 +250,31 @@ export default function AccionesRequeridasScreen() {
                 <View style={styles.policyCard}>
                   <View style={styles.policyHeader}>
                     <View>
-                      <Text style={styles.policyEyebrow}>Propuesta de seguro</Text>
+                      <Text style={styles.policyEyebrow}>
+                        Propuesta de seguro
+                      </Text>
                       <Text style={styles.policyTitle}>Póliza de subasta</Text>
                     </View>
                     <Text style={styles.policyStatus}>Revisión</Text>
                   </View>
 
                   <Text style={styles.noticeText}>
-                    Revisá la póliza contratada para tu artículo y, si querés, solicitá
-                    un aumento del monto asegurado.
+                    Revisá la póliza contratada para tu artículo y, si querés,
+                    solicitá un aumento del monto asegurado.
                   </Text>
                   <Pressable
                     style={styles.secondaryAction}
                     onPress={() =>
                       router.push({
-                        pathname: "/(tabs)/profile/publicaciones/[id]/poliza" as any,
+                        pathname:
+                          "/(tabs)/profile/publicaciones/[id]/poliza" as any,
                         params: { id },
                       })
                     }
                   >
-                    <Text style={styles.secondaryActionText}>Revisar póliza</Text>
+                    <Text style={styles.secondaryActionText}>
+                      Revisar póliza
+                    </Text>
                   </Pressable>
                 </View>
               )}
@@ -271,7 +292,10 @@ export default function AccionesRequeridasScreen() {
                     placeholderTextColor="#94A3B8"
                     value={comentario}
                     onChangeText={(value) =>
-                      setComentarios((current) => ({ ...current, [accion]: value }))
+                      setComentarios((current) => ({
+                        ...current,
+                        [accion]: value,
+                      }))
                     }
                   />
                   <Pressable
@@ -280,11 +304,14 @@ export default function AccionesRequeridasScreen() {
                     onPress={() =>
                       submit(accion, {
                         tipoRespuesta: "COMENTARIO",
-                        comentario: comentario || "Coordino entrega en depósito.",
+                        comentario:
+                          comentario || "Coordino entrega en depósito.",
                       })
                     }
                   >
-                    <Text style={styles.primaryActionText}>Enviar respuesta</Text>
+                    <Text style={styles.primaryActionText}>
+                      Enviar respuesta
+                    </Text>
                   </Pressable>
                 </>
               )}
@@ -296,7 +323,11 @@ export default function AccionesRequeridasScreen() {
                     onPress={() => pickArchivo(accion)}
                     disabled={busy}
                   >
-                    <Ionicons name="document-attach-outline" size={24} color="#2F63F6" />
+                    <Ionicons
+                      name="document-attach-outline"
+                      size={24}
+                      color="#2F63F6"
+                    />
                     <Text style={styles.uploadText}>
                       {archivoUrl ? "Archivo cargado" : "Añadir archivo"}
                     </Text>
@@ -307,11 +338,17 @@ export default function AccionesRequeridasScreen() {
                     placeholderTextColor="#94A3B8"
                     value={comentario}
                     onChangeText={(value) =>
-                      setComentarios((current) => ({ ...current, [accion]: value }))
+                      setComentarios((current) => ({
+                        ...current,
+                        [accion]: value,
+                      }))
                     }
                   />
                   <Pressable
-                    style={[styles.primaryAction, !archivoUrl && styles.disabled]}
+                    style={[
+                      styles.primaryAction,
+                      !archivoUrl && styles.disabled,
+                    ]}
                     disabled={busy || !archivoUrl}
                     onPress={() =>
                       submit(accion, {
@@ -321,7 +358,9 @@ export default function AccionesRequeridasScreen() {
                       })
                     }
                   >
-                    <Text style={styles.primaryActionText}>Enviar comprobante</Text>
+                    <Text style={styles.primaryActionText}>
+                      Enviar comprobante
+                    </Text>
                   </Pressable>
                 </>
               )}
@@ -341,7 +380,8 @@ export default function AccionesRequeridasScreen() {
                   <Pressable
                     style={[
                       styles.primaryAction,
-                      (!monto || Number.isNaN(Number(monto))) && styles.disabled,
+                      (!monto || Number.isNaN(Number(monto))) &&
+                        styles.disabled,
                     ]}
                     disabled={busy || !monto || Number.isNaN(Number(monto))}
                     onPress={() =>
@@ -352,7 +392,9 @@ export default function AccionesRequeridasScreen() {
                       })
                     }
                   >
-                    <Text style={styles.primaryActionText}>Enviar solicitud</Text>
+                    <Text style={styles.primaryActionText}>
+                      Enviar solicitud
+                    </Text>
                   </Pressable>
                 </>
               )}

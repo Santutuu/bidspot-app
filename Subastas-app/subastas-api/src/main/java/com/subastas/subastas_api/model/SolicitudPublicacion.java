@@ -2,6 +2,7 @@ package com.subastas.subastas_api.model;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,26 +17,35 @@ public class SolicitudPublicacion {
     private Long idSolicitud;
 
     /*
-     * La solicitud pertenece comercialmente a un Cliente.
-     *
-     * El Usuario se utiliza únicamente para autenticar la petición.
+     * La solicitud pertenece comercialmente a Cliente.
+     * Usuario solamente autentica la petición.
      */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-    @OneToOne
-    @JoinColumn(name = "item_id")
+    /*
+     * Se asigna recién cuando el usuario acepta las
+     * condiciones de venta.
+     *
+     * Item se encuentra mapeado a productos, tabla legacy.
+     */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", unique = true)
     private Item item;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "categoria", nullable = false)
     private Categoria categoria;
 
-    @Column(nullable = false)
+    @Column(name = "titulo", nullable = false)
     private String titulo;
 
-    @Column(length = 2000, nullable = false)
+    @Column(
+            name = "descripcion",
+            length = 2000,
+            nullable = false
+    )
     private String descripcion;
 
     @ElementCollection
@@ -43,41 +53,83 @@ public class SolicitudPublicacion {
             name = "solicitud_publicacion_imagenes",
             joinColumns = @JoinColumn(name = "solicitud_id")
     )
-    @Column(name = "imagen_url")
-    private List<String> imagenesUrl = new ArrayList<>();
+    @Column(name = "imagen_url", length = 1000)
+    private List<String> imagenesUrl =
+            new ArrayList<>();
 
-    @Column(nullable = false)
+    @Column(name = "declaracion_propiedad", nullable = false)
     private boolean declaracionPropiedad;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EstadoSolicitud estado = EstadoSolicitud.PENDIENTE;
+    @Column(name = "estado", nullable = false)
+    private EstadoSolicitud estado =
+            EstadoSolicitud.PENDIENTE_REVISION;
 
-    @ElementCollection
-    @CollectionTable(
-            name = "solicitud_publicacion_acciones",
-            joinColumns = @JoinColumn(name = "solicitud_id")
-    )
-    @Enumerated(EnumType.STRING)
-    @Column(name = "accion")
-    private List<AccionRequerida> accionesRequeridas =
-            new ArrayList<>();
+    /*
+     * Información cargada cuando la empresa muestra interés.
+     */
+    @Column(name = "direccion_deposito", length = 500)
+    private String direccionDeposito;
+
+    @Column(name = "fecha_limite_envio")
+    private LocalDate fechaLimiteEnvio;
+
+    /*
+     * Confirmación expresa del usuario.
+     */
+    @Column(name = "acepta_devolucion_con_cargo")
+    private Boolean aceptaDevolucionConCargo;
+
+    @Column(name = "fecha_aceptacion_envio")
+    private LocalDateTime fechaAceptacionEnvio;
+
+    /*
+     * La empresa completa esta fecha cuando recibe el producto.
+     */
+    @Column(name = "fecha_recepcion")
+    private LocalDateTime fechaRecepcion;
+
+    /*
+     * Ubicación actual simple, sin historial.
+     */
+    @Column(name = "ubicacion_actual", length = 500)
+    private String ubicacionActual;
+
+    @Column(name = "fecha_actualizacion_ubicacion")
+    private LocalDateTime fechaActualizacionUbicacion;
+
+    @Column(name = "motivo_rechazo", length = 1500)
+    private String motivoRechazo;
 
     @OneToMany(
-            mappedBy = "solicitudPublicacion",
+            mappedBy = "solicitud",
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<RespuestaAccionRequerida> respuestasAcciones =
+    @OrderBy("fechaCreacion ASC")
+    private List<AccionSolicitudPublicacion> acciones =
             new ArrayList<>();
 
-    @Column(length = 1000)
-    private String motivoRechazo;
+    @OneToOne(
+            mappedBy = "solicitud",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private PropuestaCondicionesVenta propuestaVenta;
 
-    private String ubicacionDeposito;
+    @OneToOne(
+            mappedBy = "solicitud",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private DevolucionSolicitud devolucion;
 
+    @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion;
 
+    @Column(name = "fecha_actualizacion", nullable = false)
     private LocalDateTime fechaActualizacion;
 
     public SolicitudPublicacion() {
@@ -101,22 +153,225 @@ public class SolicitudPublicacion {
                 : new ArrayList<>();
 
         this.declaracionPropiedad = declaracionPropiedad;
-        this.estado = EstadoSolicitud.PENDIENTE;
+        this.estado = EstadoSolicitud.PENDIENTE_REVISION;
     }
 
     @PrePersist
-    public void prePersist() {
-        this.fechaCreacion = LocalDateTime.now();
-        this.fechaActualizacion = LocalDateTime.now();
+    private void prePersist() {
+        LocalDateTime ahora = LocalDateTime.now();
 
         if (estado == null) {
-            estado = EstadoSolicitud.PENDIENTE;
+            estado = EstadoSolicitud.PENDIENTE_REVISION;
         }
+
+        if (fechaCreacion == null) {
+            fechaCreacion = ahora;
+        }
+
+        fechaActualizacion = ahora;
     }
 
     @PreUpdate
-    public void preUpdate() {
-        this.fechaActualizacion = LocalDateTime.now();
+    private void preUpdate() {
+        fechaActualizacion = LocalDateTime.now();
+    }
+
+    /*
+     * La empresa manifiesta interés.
+     */
+    public void mostrarInteres(
+            String direccionDeposito,
+            LocalDate fechaLimiteEnvio
+    ) {
+        exigirEstado(EstadoSolicitud.PENDIENTE_REVISION);
+
+        this.direccionDeposito = direccionDeposito;
+        this.fechaLimiteEnvio = fechaLimiteEnvio;
+        this.estado = EstadoSolicitud.INTERES_EMPRESA;
+        this.motivoRechazo = null;
+    }
+
+    /*
+     * El usuario acepta enviar el producto y la devolución
+     * con cargo si el bien fuera rechazado.
+     */
+    public void aceptarEnvioInspeccion() {
+        exigirEstado(EstadoSolicitud.INTERES_EMPRESA);
+
+        this.aceptaDevolucionConCargo = true;
+        this.fechaAceptacionEnvio = LocalDateTime.now();
+        this.estado = EstadoSolicitud.PENDIENTE_ENVIO;
+    }
+
+    /*
+     * La empresa confirma que recibió el producto.
+     */
+    public void confirmarRecepcion(
+            String ubicacionActual
+    ) {
+        exigirEstado(EstadoSolicitud.PENDIENTE_ENVIO);
+
+        this.fechaRecepcion = LocalDateTime.now();
+        actualizarUbicacion(ubicacionActual);
+        this.estado = EstadoSolicitud.EN_INSPECCION;
+    }
+
+    /*
+     * La empresa crea una propuesta de venta.
+     */
+    public void proponerCondiciones(
+            PropuestaCondicionesVenta propuestaVenta
+    ) {
+        exigirEstado(EstadoSolicitud.EN_INSPECCION);
+
+        this.propuestaVenta = propuestaVenta;
+        this.estado =
+                EstadoSolicitud.PENDIENTE_CONDICIONES_VENTA;
+    }
+
+    /*
+     * Se ejecutará cuando el usuario acepte las condiciones
+     * y el backend cree Item + ItemCatalogo legacy.
+     */
+    public void condicionesAceptadas(Item item) {
+        exigirEstado(
+                EstadoSolicitud.PENDIENTE_CONDICIONES_VENTA
+        );
+
+        this.item = item;
+        this.estado = EstadoSolicitud.PENDIENTE_POLIZA;
+    }
+
+    public void marcarListaParaSubasta() {
+        exigirEstado(EstadoSolicitud.PENDIENTE_POLIZA);
+        this.estado = EstadoSolicitud.LISTA_PARA_SUBASTA;
+    }
+
+    /*
+     * Rechazo antes de que el producto llegara a la empresa.
+     */
+    public void rechazarSinDevolucion(String motivo) {
+        if (estado != EstadoSolicitud.PENDIENTE_REVISION
+                && estado != EstadoSolicitud.INTERES_EMPRESA) {
+
+            throw new IllegalStateException(
+                    "La solicitud ya no puede rechazarse sin devolución"
+            );
+        }
+
+        this.motivoRechazo = motivo;
+        this.estado = EstadoSolicitud.RECHAZADA;
+        cancelarAccionesPendientes();
+    }
+
+    /*
+     * Rechazo cuando el producto está físicamente en poder
+     * de la empresa.
+     */
+    public void iniciarDevolucion(
+            String motivo,
+            DevolucionSolicitud devolucion
+    ) {
+        if (estado != EstadoSolicitud.EN_INSPECCION
+                && estado !=
+                EstadoSolicitud.PENDIENTE_CONDICIONES_VENTA) {
+
+            throw new IllegalStateException(
+                    "La solicitud no admite una devolución"
+            );
+        }
+
+        this.motivoRechazo = motivo;
+        this.devolucion = devolucion;
+        this.estado = EstadoSolicitud.DEVOLUCION_PENDIENTE;
+        cancelarAccionesPendientes();
+    }
+
+    public void marcarDevuelta() {
+        exigirEstado(EstadoSolicitud.DEVOLUCION_PENDIENTE);
+        this.estado = EstadoSolicitud.DEVUELTA;
+    }
+
+    public void cancelar() {
+        if (estado != EstadoSolicitud.PENDIENTE_REVISION
+                && estado != EstadoSolicitud.INTERES_EMPRESA) {
+
+            throw new IllegalStateException(
+                    "La solicitud ya no puede cancelarse directamente"
+            );
+        }
+
+        this.estado = EstadoSolicitud.CANCELADA;
+        cancelarAccionesPendientes();
+    }
+
+    public void actualizarUbicacion(String ubicacionActual) {
+        if (ubicacionActual == null
+                || ubicacionActual.isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "La ubicación es obligatoria"
+            );
+        }
+
+        this.ubicacionActual = ubicacionActual.trim();
+        this.fechaActualizacionUbicacion =
+                LocalDateTime.now();
+    }
+
+    public void agregarAccion(
+            AccionSolicitudPublicacion accion
+    ) {
+        if (accion == null) {
+            return;
+        }
+
+        boolean yaExistePendiente = acciones.stream()
+                .anyMatch(actual ->
+                        actual.getTipo() == accion.getTipo()
+                                && actual.estaPendiente()
+                );
+
+        if (yaExistePendiente) {
+            throw new IllegalStateException(
+                    "Ya existe una acción pendiente del tipo "
+                            + accion.getTipo()
+            );
+        }
+
+        acciones.add(accion);
+    }
+
+    public AccionSolicitudPublicacion
+    buscarAccionPendiente(TipoAccionSolicitud tipo) {
+
+        return acciones.stream()
+                .filter(AccionSolicitudPublicacion::estaPendiente)
+                .filter(accion -> accion.getTipo() == tipo)
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "No existe una acción pendiente de tipo "
+                                        + tipo
+                        )
+                );
+    }
+
+    private void cancelarAccionesPendientes() {
+        acciones.stream()
+                .filter(AccionSolicitudPublicacion::estaPendiente)
+                .forEach(AccionSolicitudPublicacion::cancelar);
+    }
+
+    private void exigirEstado(EstadoSolicitud esperado) {
+        if (estado != esperado) {
+            throw new IllegalStateException(
+                    "La solicitud debe encontrarse en estado "
+                            + esperado
+                            + " y actualmente está en "
+                            + estado
+            );
+        }
     }
 
     public Long getIdSolicitud() {
@@ -155,20 +410,48 @@ public class SolicitudPublicacion {
         return estado;
     }
 
-    public List<AccionRequerida> getAccionesRequeridas() {
-        return accionesRequeridas;
+    public String getDireccionDeposito() {
+        return direccionDeposito;
     }
 
-    public List<RespuestaAccionRequerida> getRespuestasAcciones() {
-        return respuestasAcciones;
+    public LocalDate getFechaLimiteEnvio() {
+        return fechaLimiteEnvio;
+    }
+
+    public Boolean getAceptaDevolucionConCargo() {
+        return aceptaDevolucionConCargo;
+    }
+
+    public LocalDateTime getFechaAceptacionEnvio() {
+        return fechaAceptacionEnvio;
+    }
+
+    public LocalDateTime getFechaRecepcion() {
+        return fechaRecepcion;
+    }
+
+    public String getUbicacionActual() {
+        return ubicacionActual;
+    }
+
+    public LocalDateTime getFechaActualizacionUbicacion() {
+        return fechaActualizacionUbicacion;
     }
 
     public String getMotivoRechazo() {
         return motivoRechazo;
     }
 
-    public String getUbicacionDeposito() {
-        return ubicacionDeposito;
+    public List<AccionSolicitudPublicacion> getAcciones() {
+        return acciones;
+    }
+
+    public PropuestaCondicionesVenta getPropuestaVenta() {
+        return propuestaVenta;
+    }
+
+    public DevolucionSolicitud getDevolucion() {
+        return devolucion;
     }
 
     public LocalDateTime getFechaCreacion() {
@@ -185,36 +468,5 @@ public class SolicitudPublicacion {
         }
 
         return imagenesUrl.get(0);
-    }
-
-    public void setEstado(EstadoSolicitud estado) {
-        this.estado = estado;
-    }
-
-    public void setItem(Item item) {
-        this.item = item;
-    }
-
-    public void setMotivoRechazo(String motivoRechazo) {
-        this.motivoRechazo = motivoRechazo;
-    }
-
-    public void setUbicacionDeposito(String ubicacionDeposito) {
-        this.ubicacionDeposito = ubicacionDeposito;
-    }
-
-    public void agregarAccionRequerida(
-            AccionRequerida accion
-    ) {
-        if (accion != null
-                && !accionesRequeridas.contains(accion)) {
-            accionesRequeridas.add(accion);
-        }
-    }
-
-    public void eliminarAccionRequerida(
-            AccionRequerida accion
-    ) {
-        accionesRequeridas.remove(accion);
     }
 }

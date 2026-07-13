@@ -327,17 +327,23 @@ export default function ProfileScreen() {
         <Pressable
           style={styles.optionCard}
           onPress={() =>
-            router.push("/(tabs)/financial-setup/cuenta-cobro" as any)
+            router.push({
+              pathname: "/(tabs)/financial-setup/cuenta-cobro" as any,
+              params: { from: "profile" },
+            })
           }
         >
-          <Text style={styles.optionTitle}>Cuenta de cobro</Text>
+          <Text style={styles.optionTitle}>Cuenta bancaria</Text>
           <Text style={styles.arrow}>→</Text>
         </Pressable>
 
         <Pressable
           style={styles.optionCard}
           onPress={() =>
-            router.push("/(tabs)/financial-setup/medios-pago" as any)
+            router.push({
+              pathname: "/(tabs)/financial-setup/medios-pago" as any,
+              params: { from: "profile" },
+            })
           }
         >
           <Text style={styles.optionTitle}>Medios de pago</Text>
@@ -423,7 +429,10 @@ export default function ProfileScreen() {
             <Pressable
               style={styles.quickInfoChip}
               onPress={() =>
-                router.push("/(tabs)/financial-setup/cuenta-cobro" as any)
+                router.push({
+                  pathname: "/(tabs)/financial-setup/cuenta-cobro" as any,
+                  params: { from: "profile" },
+                })
               }
             >
               <Ionicons name="wallet-outline" size={14} color="#0F172A" />
@@ -442,7 +451,10 @@ export default function ProfileScreen() {
           <Pressable
             style={styles.menuRowButton}
             onPress={() =>
-              router.push("/(tabs)/financial-setup/medios-pago" as any)
+              router.push({
+                pathname: "/(tabs)/financial-setup/medios-pago" as any,
+                params: { from: "profile" },
+              })
             }
           >
             <Text style={styles.menuText}>Medios de pago</Text>
@@ -452,10 +464,13 @@ export default function ProfileScreen() {
           <Pressable
             style={styles.menuRowButton}
             onPress={() =>
-              router.push("/(tabs)/financial-setup/cuenta-cobro" as any)
+              router.push({
+                pathname: "/(tabs)/financial-setup/cuenta-cobro" as any,
+                params: { from: "profile" },
+              })
             }
           >
-            <Text style={styles.menuText}>Cuenta de cobro</Text>
+            <Text style={styles.menuText}>Cuenta bancaria</Text>
             <Ionicons name="chevron-forward" size={18} color="#334155" />
           </Pressable>
 

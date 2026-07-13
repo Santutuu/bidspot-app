@@ -1,19 +1,19 @@
 import {
-  useAumentarPolizaSolicitud,
-  usePolizaSolicitud,
+    useAumentarPolizaSolicitud,
+    usePolizaSolicitud,
 } from "@/src/hooks/useSolicitudesPublicacion";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 function formatMoney(value: number) {
@@ -81,7 +81,10 @@ export default function PolizaSolicitudScreen() {
       if (updated) {
         setPoliza(updated);
         setNuevoMonto("");
-        Alert.alert("Solicitud enviada", "El aumento de póliza quedó solicitado.");
+        Alert.alert(
+          "Solicitud enviada",
+          "El aumento de póliza quedó solicitado.",
+        );
       }
     } catch (err: any) {
       Alert.alert(
@@ -96,8 +99,13 @@ export default function PolizaSolicitudScreen() {
   if (!validIdSolicitud) {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.errorText}>No encontramos una solicitud válida.</Text>
-        <Pressable style={styles.retryButton} onPress={() => router.back()}>
+        <Text style={styles.errorText}>
+          No encontramos una solicitud válida.
+        </Text>
+        <Pressable
+          style={styles.retryButton}
+          onPress={() => router.replace("/(tabs)/profile" as any)}
+        >
           <Text style={styles.retryText}>Volver</Text>
         </Pressable>
       </View>
@@ -116,7 +124,9 @@ export default function PolizaSolicitudScreen() {
   if (error || !poliza) {
     return (
       <View style={styles.stateContainer}>
-        <Text style={styles.errorText}>{error ?? "No encontramos esta póliza."}</Text>
+        <Text style={styles.errorText}>
+          {error ?? "No encontramos esta póliza."}
+        </Text>
         <Pressable style={styles.retryButton} onPress={recargar}>
           <Text style={styles.retryText}>Reintentar</Text>
         </Pressable>
@@ -125,12 +135,16 @@ export default function PolizaSolicitudScreen() {
   }
 
   const validationPreview = nuevoMonto.trim() ? validate() : null;
-  const submitDisabled = submitting || !!validationPreview || !nuevoMonto.trim();
+  const submitDisabled =
+    submitting || !!validationPreview || !nuevoMonto.trim();
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={styles.iconButton}>
+        <Pressable
+          onPress={() => router.replace("/(tabs)/profile" as any)}
+          style={styles.iconButton}
+        >
           <Ionicons name="chevron-back" size={30} color="#111827" />
         </Pressable>
         <Text style={styles.headerTitle}>Póliza de seguro</Text>
@@ -190,7 +204,9 @@ export default function PolizaSolicitudScreen() {
         />
 
         {(validation || validationPreview) && (
-          <Text style={styles.errorText}>{validation ?? validationPreview}</Text>
+          <Text style={styles.errorText}>
+            {validation ?? validationPreview}
+          </Text>
         )}
 
         {preview && amount > poliza.montoAsegurado && (
@@ -201,11 +217,15 @@ export default function PolizaSolicitudScreen() {
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Nuevo premio estimado</Text>
-              <Text style={styles.value}>{formatMoney(preview.nuevoPremio)}</Text>
+              <Text style={styles.value}>
+                {formatMoney(preview.nuevoPremio)}
+              </Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Diferencia a pagar</Text>
-              <Text style={styles.value}>{formatMoney(preview.diferencia)}</Text>
+              <Text style={styles.value}>
+                {formatMoney(preview.diferencia)}
+              </Text>
             </View>
           </View>
         )}

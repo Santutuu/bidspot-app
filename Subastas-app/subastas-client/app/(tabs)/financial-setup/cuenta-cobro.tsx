@@ -1,6 +1,6 @@
 import { useCuentaCobro } from "@/src/hooks/useCuentaCobro";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
 import {
     ActivityIndicator,
@@ -13,8 +13,12 @@ import {
 } from "react-native";
 
 export default function CuentaCobroScreen() {
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { cuenta, loading, refreshing, error, cargarCuenta, refrescar } =
     useCuentaCobro();
+
+  const backRoute =
+    from === "profile" ? "/(tabs)/profile" : "/(tabs)/financial-setup";
 
   useFocusEffect(
     useCallback(() => {
@@ -32,7 +36,7 @@ export default function CuentaCobroScreen() {
     >
       <Pressable
         style={styles.backButton}
-        onPress={() => router.replace("/(tabs)/financial-setup" as any)}
+        onPress={() => router.replace(backRoute as any)}
       >
         <Ionicons name="chevron-back" size={28} color="#111827" />
       </Pressable>
