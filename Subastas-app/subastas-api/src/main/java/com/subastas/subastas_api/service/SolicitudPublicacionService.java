@@ -31,19 +31,28 @@ import java.util.List;
 @Service
 public class SolicitudPublicacionService {
 
-    private final SolicitudPublicacionRepository solicitudRepository;
+    private static final int MINIMO_IMAGENES = 6;
 
-    private final AccionSolicitudPublicacionRepository accionRepository;
+    private final SolicitudPublicacionRepository
+            solicitudRepository;
 
-    private final PropuestaCondicionesVentaRepository propuestaRepository;
+    private final AccionSolicitudPublicacionRepository
+            accionRepository;
 
-    private final DevolucionSolicitudRepository devolucionRepository;
+    private final PropuestaCondicionesVentaRepository
+            propuestaRepository;
 
-    private final MedioDePagoRepository medioDePagoRepository;
+    private final DevolucionSolicitudRepository
+            devolucionRepository;
 
-    private final TarjetaCreditoRepository tarjetaRepository;
+    private final MedioDePagoRepository
+            medioDePagoRepository;
 
-    private final SolicitudPublicacionMapper mapper;
+    private final TarjetaCreditoRepository
+            tarjetaRepository;
+
+    private final SolicitudPublicacionMapper
+            mapper;
 
     public SolicitudPublicacionService(
             SolicitudPublicacionRepository solicitudRepository,
@@ -54,12 +63,24 @@ public class SolicitudPublicacionService {
             TarjetaCreditoRepository tarjetaRepository,
             SolicitudPublicacionMapper mapper
     ) {
-        this.solicitudRepository = solicitudRepository;
-        this.accionRepository = accionRepository;
-        this.propuestaRepository = propuestaRepository;
-        this.devolucionRepository = devolucionRepository;
-        this.medioDePagoRepository = medioDePagoRepository;
-        this.tarjetaRepository = tarjetaRepository;
+        this.solicitudRepository =
+                solicitudRepository;
+
+        this.accionRepository =
+                accionRepository;
+
+        this.propuestaRepository =
+                propuestaRepository;
+
+        this.devolucionRepository =
+                devolucionRepository;
+
+        this.medioDePagoRepository =
+                medioDePagoRepository;
+
+        this.tarjetaRepository =
+                tarjetaRepository;
+
         this.mapper = mapper;
     }
 
@@ -68,7 +89,8 @@ public class SolicitudPublicacionService {
             Usuario usuario,
             SolicitudPublicacionRequestDTO request
     ) {
-        Cliente cliente = validarCliente(usuario);
+        Cliente cliente =
+                validarCliente(usuario);
 
         validarCreacion(request);
 
@@ -88,13 +110,18 @@ public class SolicitudPublicacionService {
             );
         }
 
+        List<String> imagenesValidas =
+                normalizarImagenes(
+                        request.getImagenesUrl()
+                );
+
         SolicitudPublicacion solicitud =
                 new SolicitudPublicacion(
                         cliente,
                         request.getCategoria(),
                         request.getTitulo().trim(),
                         request.getDescripcion().trim(),
-                        request.getImagenesUrl(),
+                        imagenesValidas,
                         request.isDeclaracionPropiedad()
                 );
 
@@ -109,7 +136,8 @@ public class SolicitudPublicacionService {
     listarMisSolicitudes(
             Usuario usuario
     ) {
-        Cliente cliente = validarCliente(usuario);
+        Cliente cliente =
+                validarCliente(usuario);
 
         return solicitudRepository
                 .findByClienteOrderByFechaCreacionDesc(
@@ -125,7 +153,8 @@ public class SolicitudPublicacionService {
             Long idSolicitud,
             Usuario usuario
     ) {
-        Cliente cliente = validarCliente(usuario);
+        Cliente cliente =
+                validarCliente(usuario);
 
         SolicitudPublicacion solicitud =
                 obtenerDelCliente(
@@ -152,7 +181,8 @@ public class SolicitudPublicacionService {
             );
         }
 
-        Cliente cliente = validarCliente(usuario);
+        Cliente cliente =
+                validarCliente(usuario);
 
         SolicitudPublicacion solicitud =
                 obtenerDelCliente(
@@ -190,7 +220,9 @@ public class SolicitudPublicacionService {
                             solicitud::aceptarEnvioInspeccion
                     );
                 } else {
-                    ejecutarDominio(solicitud::cancelar);
+                    ejecutarDominio(
+                            solicitud::cancelar
+                    );
                 }
             }
 
@@ -214,14 +246,22 @@ public class SolicitudPublicacionService {
 
             case COMPROBAR_ORIGEN_LICITO,
                  PROPUESTA_COLECCION -> {
-                // Se guarda la respuesta sin transición adicional.
+                /*
+                 * Por ahora se registra únicamente la respuesta.
+                 */
             }
         }
+
+        String comentario =
+                obtenerComentarioAccion(
+                        accion,
+                        request
+                );
 
         ejecutarDominio(() ->
                 accion.completar(
                         request.getAceptada(),
-                        request.getComentario()
+                        comentario
                 )
         );
 
@@ -245,7 +285,10 @@ public class SolicitudPublicacionService {
         if (Boolean.TRUE.equals(
                 request.getAceptada()
         )) {
-            ejecutarDominio(propuesta::aceptar);
+            ejecutarDominio(
+                    propuesta::aceptar
+            );
+
             return;
         }
 
@@ -289,7 +332,8 @@ public class SolicitudPublicacionService {
             Usuario usuario,
             ConfigurarDevolucionRequestDTO request
     ) {
-        Cliente cliente = validarCliente(usuario);
+        Cliente cliente =
+                validarCliente(usuario);
 
         SolicitudPublicacion solicitud =
                 obtenerDelCliente(
@@ -333,7 +377,8 @@ public class SolicitudPublicacionService {
 
         ejecutarDominio(() ->
                 devolucion.configurar(
-                        request.getDireccionDestino().trim(),
+                        request.getDireccionDestino()
+                                .trim(),
                         medioPago
                 )
         );
@@ -347,7 +392,8 @@ public class SolicitudPublicacionService {
             Long idSolicitud,
             Usuario usuario
     ) {
-        Cliente cliente = validarCliente(usuario);
+        Cliente cliente =
+                validarCliente(usuario);
 
         SolicitudPublicacion solicitud =
                 obtenerDelCliente(
@@ -365,7 +411,9 @@ public class SolicitudPublicacionService {
                                 )
                         );
 
-        ejecutarDominio(devolucion::confirmarPago);
+        ejecutarDominio(
+                devolucion::confirmarPago
+        );
 
         accionRepository
                 .findFirstBySolicitudAndTipoAndEstadoOrderByFechaCreacionDesc(
@@ -388,7 +436,8 @@ public class SolicitudPublicacionService {
             Long idSolicitud,
             Usuario usuario
     ) {
-        Cliente cliente = validarCliente(usuario);
+        Cliente cliente =
+                validarCliente(usuario);
 
         SolicitudPublicacion solicitud =
                 obtenerDelCliente(
@@ -396,7 +445,9 @@ public class SolicitudPublicacionService {
                         cliente
                 );
 
-        ejecutarDominio(solicitud::cancelar);
+        ejecutarDominio(
+                solicitud::cancelar
+        );
     }
 
     private void crearAccion(
@@ -405,6 +456,18 @@ public class SolicitudPublicacionService {
             String titulo,
             String descripcion
     ) {
+        boolean yaExiste =
+                accionRepository
+                        .existsBySolicitudAndTipoAndEstado(
+                                solicitud,
+                                tipo,
+                                EstadoAccionSolicitud.PENDIENTE
+                        );
+
+        if (yaExiste) {
+            return;
+        }
+
         AccionSolicitudPublicacion accion =
                 new AccionSolicitudPublicacion(
                         solicitud,
@@ -508,14 +571,84 @@ public class SolicitudPublicacionService {
             );
         }
 
-        if (request.getImagenesUrl() == null
-                || request.getImagenesUrl().isEmpty()) {
+        List<String> imagenesValidas =
+                normalizarImagenes(
+                        request.getImagenesUrl()
+                );
+
+        if (imagenesValidas.size()
+                < MINIMO_IMAGENES) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Debe cargar al menos una imagen"
+                    "Debe cargar al menos 6 imágenes válidas y diferentes"
             );
         }
+    }
+
+    /*
+     * No existe un máximo de imágenes.
+     *
+     * Solamente se eliminan:
+     * - null;
+     * - cadenas vacías;
+     * - URLs repetidas.
+     */
+    private List<String> normalizarImagenes(
+            List<String> imagenesUrl
+    ) {
+        if (imagenesUrl == null) {
+            return List.of();
+        }
+
+        return imagenesUrl
+                .stream()
+                .filter(url ->
+                        url != null
+                                && !url.isBlank()
+                )
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+
+    private String obtenerComentarioAccion(
+            AccionSolicitudPublicacion accion,
+            ResolverAccionSolicitudRequestDTO request
+    ) {
+        if (request.getComentario() != null
+                && !request.getComentario().isBlank()) {
+
+            return request.getComentario()
+                    .trim();
+        }
+
+        if (!Boolean.TRUE.equals(
+                request.getAceptada()
+        )) {
+            return "Rechazado por el usuario";
+        }
+
+        return switch (accion.getTipo()) {
+
+            case ACEPTAR_ENVIO_INSPECCION ->
+                    "El usuario aceptó las condiciones de envío e inspección";
+
+            case ACEPTAR_CONDICIONES_VENTA ->
+                    "El usuario aceptó las condiciones de venta";
+
+            case REVISAR_POLIZA ->
+                    "El usuario aceptó la póliza";
+
+            case PAGAR_DEVOLUCION ->
+                    "El usuario confirmó la devolución";
+
+            case COMPROBAR_ORIGEN_LICITO ->
+                    "El usuario respondió la solicitud de origen lícito";
+
+            case PROPUESTA_COLECCION ->
+                    "El usuario respondió la propuesta de colección";
+        };
     }
 
     private void ejecutarDominio(
@@ -523,6 +656,7 @@ public class SolicitudPublicacionService {
     ) {
         try {
             operacion.run();
+
         } catch (IllegalStateException
                  | IllegalArgumentException exception) {
 

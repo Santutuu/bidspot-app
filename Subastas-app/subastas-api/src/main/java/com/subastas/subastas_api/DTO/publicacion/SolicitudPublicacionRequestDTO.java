@@ -62,7 +62,10 @@ public class SolicitudPublicacionRequestDTO {
     public void setImagenesUrl(
             List<String> imagenesUrl
     ) {
-        this.imagenesUrl = imagenesUrl;
+        this.imagenesUrl =
+                imagenesUrl != null
+                        ? new ArrayList<>(imagenesUrl)
+                        : new ArrayList<>();
     }
 
     public void setDeclaracionPropiedad(
