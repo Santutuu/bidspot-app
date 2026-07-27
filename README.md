@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Subastas-app/subastas-client/assets/images/banner-logo.png">
+  <img src="src/assets/images/logo-minimalista.png" alt="Banner">
 </p>
 
 # Description
