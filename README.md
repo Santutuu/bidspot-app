@@ -1,35 +1,39 @@
-## Descripción
+# Description
 
-Plataforma mobile de subastas desarrollada con React Native y Spring Boot.
+A mobile auction platform built with React Native and Spring Boot.
 
-El sistema permite que usuarios registrados participen en remates en tiempo real, publiquen artículos para futuras subastas y gestionen las operaciones posteriores a una adjudicación.
+The system allows registered users to participate in real-time auctions, submit items for future auctions, and manage all post-auction operations after an item has been awarded.
 
-El proyecto modela el ciclo completo de una subasta:
+The project models the complete auction lifecycle, including:
 
-- registro y validación de usuarios;
-- configuración de medios de pago;
-- solicitud e inspección de artículos;
-- contratación y revisión de pólizas;
-- creación de catálogos y lotes;
-- pujas concurrentes en tiempo real;
-- cierre automático de lotes;
-- adjudicación del bien;
-- confirmación del pago;
-- envío o retiro;
-- seguimiento de la entrega.
+- user registration and verification;
+- payment method setup;
+- item submission and inspection;
+- insurance policy request and review;
+- catalog and lot creation;
+- concurrent real-time bidding;
+- automatic lot closing;
+- item award;
+- payment confirmation;
+- shipping or pickup;
+- delivery tracking.
 
-La aplicación fue construida alrededor de reglas de negocio reales, con validaciones de dominio, control de concurrencia, operaciones transaccionales y persistencia de los eventos principales.
+The application was designed around real-world business rules, featuring domain-driven validations, concurrency control, transactional operations, and persistent storage of the main business events.
+
+---
+
+# Screenshots
+
+*Coming soon.*
+
+---
+
+# Architecture
+
+The project is divided into two applications:
 
 
-#Capturas
-
-
-
-## Arquitectura
-
-El proyecto está dividido en dos aplicaciones:
-
-### Backend
+## API REST
 
 - Java 17
 - Spring Boot
@@ -41,7 +45,7 @@ El proyecto está dividido en dos aplicaciones:
 - WebSocket
 - Maven
 
-El backend organiza la lógica en:
+The backend is organized into the following layers:
 
 ```text
 Controller
@@ -51,3 +55,22 @@ Service
 Repository
     ↓
 Database
+```
+
+## Client
+
+- React Native
+- Expo
+- Expo Router
+- TypeScript
+- Axios
+- Expo SecureStore
+
+The frontend includes:
+
+- file-based routing with Expo Router;
+- authentication context for session management;
+- secure JWT storage using Expo SecureStore;
+- custom hooks for API communication;
+- real-time bid updates;
+- persistent registration progress across app sessions.
