@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src//assets/images/logo-minimalista.png?raw=true>
+  <img src="Subastas-app/subastas-client/src/assets/images/logo-minimalista.png" alt="BidSpot Banner" width="300">
 </p>
 
 # Description
