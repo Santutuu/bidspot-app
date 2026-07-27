@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Subastas-app/subastas-client/assets/images/splash-icon.png" alt="BidSpot Banner">
+  <img src="Subastas-app/subastas-client/assets/images/banner-logo.png">
 </p>
 
 # Description
