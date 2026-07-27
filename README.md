@@ -1,7 +1,6 @@
 <p align="center">
-  <img src="assets\images\splash-icon.png" alt="BidSpot Banner">
+  <img src="subastas-client/assets/images/splash-icon.png" alt="BidSpot Banner">
 </p>
-
 # Description
 
 A mobile auction platform built with React Native and Spring Boot.
