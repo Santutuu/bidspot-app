@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/assets/images/logo-minimalista.png" alt="Banner">
+  <img src="src//assets/images/logo-minimalista.png?raw=true>
 </p>
 
 # Description
