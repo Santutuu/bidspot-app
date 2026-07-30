@@ -33,7 +33,7 @@ The application was designed around real-world business rules, featuring domain-
 <p align="center">
   <img src="https://github.com/user-attachments/assets/90dd9b62-b5f7-4b50-b8fa-f8afb7c4889c" width="220" />
   <img src="https://github.com/user-attachments/assets/f3ac4c54-796c-45be-87ea-41bacafd5c61" width="220" />
-  <img src="https://github.com/user-attachments/assets/c89315c6-59c6-4432-8282-81ce7db865e9" width="220" />
+  
 </p>
 
 <p align="center">
