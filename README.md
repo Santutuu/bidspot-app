@@ -54,10 +54,9 @@ Users can browse live and scheduled auctions filtered by product category.
 ## 📝 Publish an Item
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/6a8827e6-b6d0-4a39-a690-4cae19ef1998" height="540" alt="Seller payout account"/>
-  <img src="https://github.com/user-attachments/assets/ca16e010-aaed-4a31-9e08-efe078f5f060" height="540" alt="Product submission form"/>
-</p>
+  <img src="https://github.com/user-attachments/assets/7d232b9d-2a44-4c7e-b5c8-b737752d58f0" height="540" alt="Auction award notification"/>
 
+</p>
 Sellers select the payout account where auction proceeds will be deposited and complete the product submission form with images, title, description, and ownership confirmation.
 
 ---
@@ -65,7 +64,8 @@ Sellers select the payout account where auction proceeds will be deposited and c
 ## 🔔 Auction Notifications
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/7d232b9d-2a44-4c7e-b5c8-b737752d58f0" height="540" alt="Auction award notification"/>
+  <img src="https://github.com/user-attachments/assets/5198aad7-4efb-4aae-afa5-72231d6b0a26" height="540" alt="Seller item tracking"/>
+   <img src="https://github.com/user-attachments/assets/ca16e010-aaed-4a31-9e08-efe078f5f060" height="540" alt="Product submission form"/>
 </p>
 
 Users receive notifications when they win an auction or when an action is required to continue the purchase process.
@@ -75,22 +75,12 @@ Users receive notifications when they win an auction or when an action is requir
 ## 📦 Seller Item Tracking
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/5198aad7-4efb-4aae-afa5-72231d6b0a26" height="540" alt="Seller item tracking"/>
+  <img src="https://github.com/user-attachments/assets/470d9176-06cd-46a7-843e-222c6be1d887" height="540" alt="Live auction overview"/>
 </p>
-
 Sellers can track submitted items, review their current status, check inspection instructions, and see any pending actions.
 
 ---
 
-## 💎 Auction Overview
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/470d9176-06cd-46a7-843e-222c6be1d887" height="540" alt="Live auction overview"/>
-</p>
-
-The auction overview displays its status, date, location, category, auctioneer, currency, and an image gallery for the current lot.
-
----
 
 ## 🔎 Lot Details
 
